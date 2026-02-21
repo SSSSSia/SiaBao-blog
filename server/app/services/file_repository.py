@@ -637,13 +637,15 @@ async def import_article_from_markdown(
             title = title.removesuffix(".md").strip()
 
         # Ensure tags is a list
-        tags = metadata.get("tags", [])
+        tags = metadata.get("tags", ["未分类"])
         if tags is None:
-            tags = []
+            tags = ["未分类"]
         elif isinstance(tags, str):
-            tags = [tags]
+            tags = [tags] if tags else ["未分类"]
         elif not isinstance(tags, list):
-            tags = list(tags) if tags else []
+            tags = list(tags) if tags else ["未分类"]
+        elif len(tags) == 0:
+            tags = ["未分类"]
 
         # Generate excerpt from content if not provided
         excerpt = metadata.get("excerpt")

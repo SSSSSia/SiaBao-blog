@@ -95,6 +95,42 @@ async def list_articles(
     )
 
 
+@router.get("/search")
+async def search_articles_endpoint(
+    q: str = Query("", description="Search keyword"),
+    status: str | None = Query(None, description="Filter by status"),
+    category: str | None = Query(None, description="Filter by category"),
+    tags: str | None = Query(None, description="Filter by tags (comma-separated)"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
+    current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None,
+) -> R:
+    """Search articles by keyword in title, content, excerpt, or tags."""
+    is_admin = _is_admin_user(current_user)
+    effective_status = _resolve_public_status_filter(status, is_admin)
+
+    tags_list = None
+    if tags:
+        tags_list = [t.strip() for t in tags.split(",") if t.strip()]
+
+    articles, total = await search_articles(
+        query=q,
+        status=effective_status,
+        category=category,
+        tags=tags_list,
+        page=page,
+        page_size=page_size,
+    )
+    return R.ok(
+        data={
+            "articles": articles,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
+    )
+
+
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_new_article(
     article_data: ArticleCreate,
@@ -213,44 +249,6 @@ async def import_article(
         message="Article imported",
         data={"article": result.get("article")},
     )
-
-
-@router.get("/search")
-async def search_articles(
-    q: str = Query("", description="Search keyword"),
-    status: str | None = Query(None, description="Filter by status"),
-    category: str | None = Query(None, description="Filter by category"),
-    tags: str | None = Query(None, description="Filter by tags (comma-separated)"),
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
-    current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None,
-) -> R:
-    """Search articles by keyword in title, content, excerpt, or tags."""
-    is_admin = _is_admin_user(current_user)
-    effective_status = _resolve_public_status_filter(status, is_admin)
-
-    tags_list = None
-    if tags:
-        tags_list = [t.strip() for t in tags.split(",") if t.strip()]
-
-    articles, total = await search_articles(
-        query=q,
-        status=effective_status,
-        category=category,
-        tags=tags_list,
-        page=page,
-        page_size=page_size,
-    )
-    return R.ok(
-        data={
-            "articles": articles,
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-        }
-    )
-
-
 @router.get("/categories")
 async def list_categories() -> R:
     """Get all unique categories from published articles."""

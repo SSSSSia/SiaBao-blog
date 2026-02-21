@@ -59,7 +59,8 @@ function preprocessMarkdown(markdown) {
   // 3. 处理块级公式 $$...$$
   let blockIndex = 0;
   text = text.replace(/^\$\$([\s\S]+?)\$\$/gm, (_match, formula) => {
-    const placeholder = `__MATH_BLOCK_${blockIndex}__`;
+    // 使用 @@ 符号作为占位符边界，避免被 Markdown 解析为粗体
+    const placeholder = `@@MATH_BLOCK_${blockIndex}@@`;
     const html = renderMath(formula.trim(), true);
     mathBlocks.push({ placeholder, html });
     blockIndex++;
@@ -71,7 +72,8 @@ function preprocessMarkdown(markdown) {
   text = text.replace(/\$([^$\n]+?)\$/g, (_match, formula) => {
     // 过滤掉日常文本中的纯数字美元符号（如 $100）
     if (/^\d+(\.\d+)?$/.test(formula.trim())) return _match;
-    const placeholder = `__MATH_INLINE_${inlineIndex}__`;
+    // 使用 @@ 符号作为占位符边界，避免被 Markdown 解析为粗体
+    const placeholder = `@@MATH_INLINE_${inlineIndex}@@`;
     const html = renderMath(formula.trim(), false);
     mathBlocks.push({ placeholder, html });
     inlineIndex++;
@@ -310,17 +312,18 @@ export function renderMarkdown(markdown) {
     // 2. 预处理：保护公式，同时保留代码块供 marked 解析
     const { processed, mathBlocks } = preprocessMarkdown(fixedMarkdown);
 
-    // 2. 将处理后的 Markdown 转换为 HTML (此时 marked 会正确处理标题、代码和表格)
+    // 3. 将处理后的 Markdown 转换为 HTML (此时 marked 会正确处理标题、代码和表格)
     const rawHtml = marked(processed);
 
-    // 3. 后处理：只替换数学公式的 HTML 占位符
+    // 4. 后处理：只替换数学公式的 HTML 占位符
     let processedHtml = rawHtml;
     mathBlocks.forEach(({ placeholder, html: mathHtml }) => {
-      // 同样使用 () => mathHtml 防止意外的正则捕获替换
-      processedHtml = processedHtml.replace(new RegExp(placeholder, 'g'), () => mathHtml);
+      // 使用字符串替换而不是正则替换，避免特殊字符转义问题
+      // 同时使用 split/join 的方式来替换所有出现的占位符
+      processedHtml = processedHtml.split(placeholder).join(mathHtml);
     });
 
-    // 4. 使用 DOMPurify 清理 HTML（你的原始配置很完善，保持不变即可）
+    // 5. 使用 DOMPurify 清理 HTML（你的原始配置很完善，保持不变即可）
     const cleanHtml = DOMPurify.sanitize(processedHtml, {
       ALLOWED_TAGS: [
         'p', 'br', 'strong', 'em', 'u', 's', 'a',
@@ -356,11 +359,7 @@ export function renderMarkdown(markdown) {
     });
 
     return { __html: cleanHtml };
-    }
-
-    return { __html: cleanHtml };
   } catch (error) {
-    markdownStats.generalErrors++;
     console.error('Markdown 渲染失败:', error);
     return { __html: '<p>内容渲染失败</p>' };
   }
