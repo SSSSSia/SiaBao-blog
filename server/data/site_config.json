@@ -1,0 +1,33 @@
+{
+  "featured_article_ids": [
+    "08e81c83-670c-4dd7-9df2-f72078b2088b",
+    "c16c0980-8ba5-46bc-b288-3dee109c4108",
+    "ee7f376d-37f3-4503-a0f1-4942fa980554",
+    "999",
+    "f442dee1-4be3-434a-84b1-6856dfb571a4"
+  ],
+  "recent_articles_count": 2,
+  "user_profile": {
+    "name": "SiaBao",
+    "title": "研究生在读",
+    "bio": "热衷于创造优雅的用户体验和高效的技术解决方案。喜欢探索新技术，在这里分享技术见解、学习心得和生活感悟。",
+    "avatar": "/public/uploads/general/a7a40b97-a680-479b-9deb-f1ec89bd041c.jpg",
+    "location": "中国 • 四川",
+    "joined_date": "2026",
+    "email": "1327966204@qq.com",
+    "github": "https://github.com/SSSSSia",
+    "gitee": "https://gitee.com/sssssia",
+    "skills": [
+      "React",
+      "Vue.js",
+      "JavaScript",
+      "Python",
+      "Docker",
+      "Git",
+      "UI/UX",
+      "MongoDB",
+      "PostgreSQL",
+      "Redis"
+    ]
+  }
+}

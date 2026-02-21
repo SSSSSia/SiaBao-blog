@@ -1,0 +1,103 @@
+/**
+ * 分页组件样式
+ * 极简艺术风格
+ */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+  padding: var(--space-4) 0;
+}
+
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.pagination-button,
+.pagination-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 var(--space-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-button:disabled,
+.pagination-page:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-button:hover:not(:disabled),
+.pagination-page:hover:not(.pagination-page-active):not(:disabled) {
+  color: var(--color-black);
+  border-color: var(--color-gray-800);
+  background: var(--bg-secondary);
+  transform: translateY(-1px);
+}
+
+.pagination-page-active {
+  color: var(--color-white) !important;
+  background: var(--color-gray-900) !important;
+  border-color: var(--color-gray-900) !important;
+}
+
+.pagination-ellipsis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  color: var(--text-tertiary);
+  font-size: 0.875rem;
+  user-select: none;
+}
+
+.pagination-button-prev,
+.pagination-button-next {
+  padding: 0;
+}
+
+.pagination-button-prev svg,
+.pagination-button-next svg {
+  flex-shrink: 0;
+}
+
+/* ===================================
+   移动端响应式优化
+   =================================== */
+@media (max-width: 640px) {
+  .pagination {
+    gap: var(--space-1);
+    margin-top: var(--space-5);
+    padding: var(--space-3) 0;
+  }
+
+  .pagination-button,
+  .pagination-page {
+    min-width: 40px;
+    height: 40px;
+    padding: 0 var(--space-2);
+    font-size: 0.875rem;
+  }
+
+  .pagination-ellipsis {
+    min-width: 40px;
+    height: 40px;
+    font-size: 0.875rem;
+  }
+}

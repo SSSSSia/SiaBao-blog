@@ -1,0 +1,154 @@
+/**
+ * 头部导航组件样式
+ */
+
+.header {
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--bg-tertiary);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+
+.header-logo {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.header-nav-link {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  position: relative;
+  padding: var(--space-1) 0;
+}
+
+.header-nav-link:hover,
+.header-nav-link.active {
+  color: var(--text-primary);
+}
+
+.header-nav-link.active::after {
+  width: 100%;
+}
+
+.header-mobile-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: var(--transition-base);
+}
+
+.header-mobile-toggle:hover {
+  background: var(--bg-secondary);
+}
+
+.header-mobile-toggle:active {
+  transform: scale(0.95);
+}
+
+/* ===================================
+   响应式设计
+   =================================== */
+@media (max-width: 768px) {
+  .header-container {
+    height: 56px;
+  }
+
+  .header-logo {
+    font-size: 1.125rem;
+  }
+
+  .header-mobile-toggle {
+    display: flex;
+  }
+
+  .header-nav {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    flex-direction: column;
+    gap: 0;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--bg-tertiary);
+    padding: var(--space-4);
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .header-nav-open {
+    transform: translateX(0);
+  }
+
+  .header-nav-link {
+    width: 100%;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    padding: var(--space-3) var(--space-2);
+    font-size: 1rem;
+    border-bottom: 1px solid var(--bg-tertiary);
+    transition: var(--transition-base);
+  }
+
+  .header-nav-link:last-child {
+    border-bottom: none;
+  }
+
+  .header-nav-link:active {
+    background: var(--bg-secondary);
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    height: 52px;
+  }
+
+  .header-logo {
+    font-size: 1rem;
+  }
+
+  .header-mobile-toggle {
+    width: 40px;
+    height: 40px;
+  }
+
+  .header-nav {
+    top: 52px;
+    padding: var(--space-3);
+  }
+
+  .header-nav-link {
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.9375rem;
+  }
+}

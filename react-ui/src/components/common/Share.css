@@ -1,0 +1,270 @@
+/**
+ * 分享组件样式
+ * 极简艺术风格
+ */
+
+/* ===================================
+   分享按钮
+   =================================== */
+.share-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.share-button:hover {
+  color: var(--color-black);
+  border-color: var(--color-gray-800);
+  background: var(--bg-primary);
+  transform: translateY(-1px);
+}
+
+/* ===================================
+   分享模态框
+   =================================== */
+.share-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.share-modal {
+  position: relative;
+  width: 90%;
+  max-width: 480px;
+  max-height: 80vh;
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 模态框头部 */
+.share-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.share-modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.share-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.share-modal-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+/* 模态框内容 */
+.share-modal-body {
+  padding: var(--space-4);
+}
+
+/* ===================================
+   分享区块
+   =================================== */
+.share-section {
+  margin-bottom: var(--space-4);
+}
+
+.share-section:last-child {
+  margin-bottom: 0;
+}
+
+.share-section-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  margin: 0 0 var(--space-3);
+  color: var(--text-primary);
+}
+
+/* ===================================
+   社交媒体按钮
+   =================================== */
+.share-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+.share-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.share-btn svg {
+  flex-shrink: 0;
+}
+
+.share-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.share-btn-weibo {
+  background: linear-gradient(135deg, #fa7d3c, #e65100);
+}
+
+.share-btn-qzone {
+  background: linear-gradient(135deg, #2196f3, #1976d2);
+}
+
+/* ===================================
+   复制链接
+   =================================== */
+.share-link-box {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.share-link-input {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+}
+
+.share-link-copy {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-gray-800);
+  background: var(--bg-secondary);
+  border: 1px solid var(--color-gray-600);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+  white-space: nowrap;
+}
+
+.share-link-copy:hover {
+  color: var(--color-white);
+  background: var(--color-gray-800);
+  border-color: var(--color-gray-800);
+}
+
+.share-link-copy-copied {
+  color: var(--color-white) !important;
+  background: var(--color-gray-900) !important;
+  border-color: var(--color-gray-900) !important;
+}
+
+/* ===================================
+   二维码
+   =================================== */
+.share-qrcode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.share-qrcode img {
+  width: 200px;
+  height: 200px;
+  display: block;
+}
+
+/* ===================================
+   响应式设计
+   =================================== */
+@media (max-width: 640px) {
+  .share-modal {
+    max-width: calc(100% - var(--space-6));
+  }
+
+  .share-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .share-link-box {
+    flex-direction: column;
+  }
+
+  .share-link-input {
+    width: 100%;
+  }
+
+  .share-link-copy {
+    width: 100%;
+    justify-content: center;
+  }
+}

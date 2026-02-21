@@ -1,0 +1,790 @@
+/* ===================================
+   全局样式系统 - 极简艺术风格
+   =================================== */
+
+/* 导入外部样式表 - 必须在最前面 */
+@import './components/ui/ConfirmDialog.css';
+
+/* ===================================
+   1. CSS 变量定义
+   =================================== */
+:root {
+  /* 主色板 - 单色调黑白灰渐变 */
+  --color-black: #0A0A0A;
+  --color-gray-900: #1A1A1A;
+  --color-gray-800: #2D2D2D;
+  --color-gray-600: #6B6B6B;
+  --color-gray-400: #A0A0A0;
+  --color-gray-200: #D4D4D4;
+  --color-white: #FAFAFA;
+
+  /* 强调色 - 仅一处使用 */
+  --color-accent: #C8A8E9;  /* 淡紫，优雅克制 */
+
+  /* 功能色 */
+  --color-success: #7C9A6E;
+  --color-error: #B85C5C;
+
+  /* 背景层次 */
+  --bg-primary: var(--color-white);
+  --bg-secondary: #F5F5F5;
+  --bg-tertiary: #EBEBEB;
+
+  /* 文本层次 */
+  --text-primary: var(--color-black);
+  --text-secondary: var(--color-gray-600);
+  --text-tertiary: var(--color-gray-400);
+
+  /* 空间系统 - 8px 基础单位 */
+  --space-1: 0.5rem;   /* 8px */
+  --space-2: 1rem;     /* 16px */
+  --space-3: 1.5rem;   /* 24px */
+  --space-4: 2rem;     /* 32px */
+  --space-5: 3rem;     /* 48px */
+  --space-6: 4rem;     /* 64px */
+  --space-8: 6rem;     /* 96px */
+
+  /* 容器宽度 */
+  --container-max-width: 1200px;
+  --prose-max-width: 860px;
+
+  /* 圆角 */
+  --radius-sm: 2px;
+
+  /* 过渡 */
+  --transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===================================
+   2. 全局重置
+   =================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-size: clamp(1rem, 2vw, 1.125rem);
+  font-weight: 400;
+  line-height: 1.7;
+  letter-spacing: 0;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  min-height: 100vh;
+  margin: 0;
+  /* 移动端触摸滚动优化 */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+  touch-action: pan-y;
+}
+
+/* ===================================
+   3. 字体系统
+   =================================== */
+h1, .h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-bottom: var(--space-4);
+}
+
+h2, .h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  margin-bottom: var(--space-3);
+}
+
+h3, .h3 {
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-bottom: var(--space-2);
+}
+
+h4, .h4 {
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.5;
+  margin-bottom: var(--space-2);
+}
+
+p {
+  margin-bottom: var(--space-2);
+}
+
+small, .small {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+a {
+  color: var(--text-primary);
+  text-decoration: none;
+  position: relative;
+  transition: var(--transition-base);
+}
+
+a::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--color-accent);
+  transition: width 0.3s ease;
+}
+
+a:hover::after {
+  width: 100%;
+}
+
+/* ===================================
+   4. 全局过渡
+   =================================== */
+* {
+  transition-property: color, background-color, border-color, transform, opacity;
+  transition-duration: 0.2s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===================================
+   5. 容器
+   =================================== */
+.container {
+  width: 100%;
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 0 var(--space-3);
+}
+
+.prose {
+  max-width: var(--prose-max-width);
+}
+
+/* ===================================
+   6. 分割线
+   =================================== */
+hr, .divider {
+  border: none;
+  border-top: 1px solid var(--bg-tertiary);
+  margin: var(--space-5) 0;
+}
+
+/* ===================================
+   7. 动画
+   =================================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* ===================================
+   8. 按钮基础样式
+   =================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===================================
+   9. 输入框基础样式
+   =================================== */
+.input-minimal {
+  width: 100%;
+  padding: var(--space-2) 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--bg-tertiary);
+  transition: border-color 0.3s ease;
+}
+
+.input-minimal:focus {
+  outline: none;
+  border-bottom-color: var(--color-gray-800);
+}
+
+.input-minimal::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* ===================================
+   10. 卡片基础样式
+   =================================== */
+.card {
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover {
+  border-color: var(--color-gray-400);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+}
+
+/* ===================================
+   11. 代码块样式
+   =================================== */
+pre {
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  overflow-x: auto;
+  margin-bottom: var(--space-3);
+}
+
+code {
+  font-family: 'SF Mono', 'Fira Code', 'Monaco', 'Courier New', monospace;
+  font-size: 0.875em;
+}
+
+:not(pre) > code {
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: 2px;
+  padding: 0.2em 0.4em;
+}
+
+/* ===================================
+   12. 标签样式
+   =================================== */
+.tag {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.tag:hover {
+  color: var(--text-primary);
+  border-color: var(--color-gray-400);
+}
+
+/* ===================================
+   13. 加载动画
+   =================================== */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  color: var(--text-secondary);
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--bg-tertiary);
+  border-top-color: var(--color-gray-800);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===================================
+   14. 工具类
+   =================================== */
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.mt-1 { margin-top: var(--space-1); }
+.mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); }
+.mt-4 { margin-top: var(--space-4); }
+.mt-5 { margin-top: var(--space-5); }
+
+.mb-1 { margin-bottom: var(--space-1); }
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-5 { margin-bottom: var(--space-5); }
+
+.flex {
+  display: flex;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+
+.accent-text {
+  color: var(--color-accent);
+}
+
+/* ===================================
+   15. KaTeX 数学公式样式
+   =================================== */
+/* 保护 KaTeX 不受全局样式影响 */
+.katex {
+  font-size: 1em !important;
+  line-height: 1 !important;
+}
+
+.katex-display {
+  margin: 1em 0 !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* 修复上标下标定位 */
+.katex-sup,
+.katex-sub {
+  position: relative !important;
+}
+
+/* 修复矩阵和其他布局元素 */
+.katex-array,
+.katex-mathml {
+  position: relative !important;
+}
+
+/* 确保公式内的元素不继承全局过渡 */
+.katex *,
+.katex-display * {
+  transition: none !important;
+}
+
+/* 修复分数显示 */
+.katex-fraction {
+  display: inline-block !important;
+  vertical-align: middle !important;
+}
+
+/* 修复极限符号的上下标 */
+.katex-op + .katex-sup,
+.katex-op + .katex-sub {
+  position: relative !important;
+}
+
+/* 确保数学公式的字体不被覆盖 */
+.katex-mathml {
+  font-family: 'KaTeX_Math', 'KaTeX_Main' !important;
+}
+
+/* 修复求和、积分等大型运算符 */
+.katex-size1,
+.katex-size2,
+.katex-size3,
+.katex-size4 {
+  transform-origin: left center !important;
+}
+
+
+.katex *,
+.katex-display * {
+  transition: none !important;
+  box-sizing: border-box !important; /* 强制盒模型，防止全局样式干扰 */
+  line-height: normal !important;    /* 防止继承 body 的 1.7 行高 */
+}
+
+/* 修复分数线的显示问题 */
+.katex-frac-line {
+  border-bottom-style: solid !important;
+}
+
+/* 修复根号顶部的横线 */
+.katex-sqrt > .katex-body > .katex-svg {
+  height: auto !important; /* 防止被全局 svg 样式影响 */
+}
+
+/* ===================================
+   16. Toast 通知样式优化
+   =================================== */
+
+/* 重置 Toast 容器样式 */
+.Toastify__toast-container {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  z-index: 9999;
+}
+
+/* Toast 基础样式 */
+.Toastify__toast {
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  padding: var(--space-3) var(--space-4);
+  min-height: auto;
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  transition: var(--transition-base);
+}
+
+/* Toast 悬停效果 */
+.Toastify__toast:hover {
+  border-color: var(--color-gray-400);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Toast 图标样式 */
+.Toastify__toast-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: var(--space-2);
+}
+
+/* Toast 关闭按钮 */
+.Toastify__close-button {
+  color: var(--text-tertiary);
+  opacity: 0.6;
+  transition: var(--transition-base);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.Toastify__close-button:hover {
+  opacity: 1;
+  color: var(--text-primary);
+}
+
+/* Toast 进度条 */
+.Toastify__progress-bar {
+  background: var(--bg-tertiary);
+  height: 2px;
+}
+
+.Toastify__progress-bar--animated {
+  animation: Toastify__trackProgress linear 1 forwards;
+}
+
+@keyframes Toastify__trackProgress {
+  0% {
+    width: 100%;
+  }
+  100% {
+    width: 0%;
+  }
+}
+
+/* 成功类型 Toast */
+.Toastify__toast--success {
+  border-left: 3px solid var(--color-success);
+}
+
+.Toastify__toast--success .Toastify__toast-icon {
+  color: var(--color-success);
+}
+
+/* 错误类型 Toast */
+.Toastify__toast--error {
+  border-left: 3px solid var(--color-error);
+}
+
+.Toastify__toast--error .Toastify__toast-icon {
+  color: var(--color-error);
+}
+
+/* 信息类型 Toast */
+.Toastify__toast--info {
+  border-left: 3px solid var(--color-gray-600);
+}
+
+.Toastify__toast--info .Toastify__toast-icon {
+  color: var(--color-gray-600);
+}
+
+/* 警告类型 Toast */
+.Toastify__toast--warning {
+  border-left: 3px solid var(--color-accent);
+}
+
+.Toastify__toast--warning .Toastify__toast-icon {
+  color: var(--color-accent);
+}
+
+/* Toast 动画 */
+.Toastify__toast-enter {
+  animation: toastSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.Toastify__toast-exit {
+  animation: toastSlideOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toastSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+/* Toast 内容区域 */
+.Toastify__toast-body {
+  margin: 0;
+  padding: 0;
+  flex: 1;
+}
+
+/* 移除全局过渡对 Toast 内部元素的影响 */
+.Toastify__toast *,
+.Toastify__toast-container * {
+  transition-duration: 0.2s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===================================
+   17. Admin 保存提示极简样式
+   =================================== */
+
+/* Admin Toast 容器 */
+.Toastify__toast-container.admin-toast-container {
+  top: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Admin Toast 基础样式 */
+.admin-save-toast {
+  border: none;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 20px rgba(10, 10, 10, 0.08);
+  background: var(--color-white);
+  min-height: 48px;
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  align-items: center;
+  backdrop-filter: blur(8px);
+}
+
+/* Admin Toast 内容区 */
+.admin-save-toast__body {
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  margin: 0;
+}
+
+/* Admin Toast 图标容器 */
+.admin-save-toast .Toastify__toast-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* Admin Toast 自定义图标 - 使用 SVG */
+.admin-save-toast--success .Toastify__toast-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--color-success);
+  stroke-width: 2.5;
+  fill: none;
+}
+
+.admin-save-toast--error .Toastify__toast-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--color-error);
+  stroke-width: 2.5;
+  fill: none;
+}
+
+.admin-save-toast--info .Toastify__toast-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--color-gray-600);
+  stroke-width: 2.5;
+  fill: none;
+}
+
+/* Admin Toast 进度条 */
+.admin-save-toast__progress {
+  height: 2px;
+  opacity: 0.6;
+  bottom: 0;
+  left: 0;
+  border-radius: 0;
+}
+
+/* 成功状态 - 极简绿色 */
+.admin-save-toast--success {
+  background: linear-gradient(135deg, var(--color-white) 0%, #F7F9F5 100%);
+  border-left: 3px solid var(--color-success);
+}
+
+.admin-save-toast--success .admin-save-toast__body {
+  color: var(--color-success);
+}
+
+.admin-save-toast--success .admin-save-toast__progress {
+  background: linear-gradient(90deg, var(--color-success) 0%, rgba(124, 154, 110, 0.3) 100%);
+}
+
+/* 错误状态 - 极简红色 */
+.admin-save-toast--error {
+  background: linear-gradient(135deg, var(--color-white) 0%, #F9F5F5 100%);
+  border-left: 3px solid var(--color-error);
+}
+
+.admin-save-toast--error .admin-save-toast__body {
+  color: var(--color-error);
+}
+
+.admin-save-toast--error .admin-save-toast__progress {
+  background: linear-gradient(90deg, var(--color-error) 0%, rgba(184, 92, 92, 0.3) 100%);
+}
+
+/* 信息状态 - 极简灰色 */
+.admin-save-toast--info {
+  background: linear-gradient(135deg, var(--color-white) 0%, #F5F5F5 100%);
+  border-left: 3px solid var(--color-gray-600);
+}
+
+.admin-save-toast--info .admin-save-toast__body {
+  color: var(--color-gray-600);
+}
+
+.admin-save-toast--info .admin-save-toast__progress {
+  background: linear-gradient(90deg, var(--color-gray-600) 0%, rgba(107, 107, 107, 0.3) 100%);
+}
+
+/* Admin Toast 动画 - 更流畅的进出 */
+.admin-save-toast.Toastify__toast-enter {
+  animation: adminToastSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.admin-save-toast.Toastify__toast-exit {
+  animation: adminToastSlideOut 0.3s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes adminToastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-24px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes adminToastSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.98);
+  }
+}
+
+/* Admin Toast 悬停效果 */
+.admin-save-toast:hover {
+  box-shadow: 0 8px 30px rgba(10, 10, 10, 0.12);
+  transform: translateY(-2px);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}

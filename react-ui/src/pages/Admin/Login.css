@@ -1,0 +1,50 @@
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+}
+
+.login-container {
+  background: var(--bg-primary);
+  padding: var(--space-6);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--bg-tertiary);
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-container h1 {
+  margin-bottom: var(--space-5);
+  text-align: center;
+}
+
+.login-container form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.login-container input {
+  width: 100%;
+}
+
+.login-hint {
+  margin-top: var(--space-4);
+  text-align: center;
+}
+
+/* 错误提示样式 */
+.alert {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-4);
+  font-size: 0.875rem;
+}
+
+.alert-error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}

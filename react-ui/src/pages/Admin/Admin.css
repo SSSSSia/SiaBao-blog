@@ -1,0 +1,208 @@
+.admin-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.admin-sidebar {
+  width: 250px;
+  height: 100vh;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--bg-tertiary);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+.sidebar-header h2 {
+  font-size: 1.25rem;
+  margin-bottom: var(--space-4);
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-4);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+}
+
+.nav-item {
+  padding: var(--space-2);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-base);
+}
+
+.nav-item:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* 返回前台按钮样式 - 固定在侧边栏底部 */
+.nav-back-to-frontend {
+  margin-top: auto;
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition-base);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.nav-back-to-frontend:hover {
+  background: var(--bg-primary);
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.admin-main {
+  flex: 1;
+  margin-left: 250px;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-5);
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+/* 移动端切换按钮 */
+.admin-mobile-toggle {
+  display: none;
+  position: fixed;
+  top: var(--space-4);
+  left: var(--space-4);
+  z-index: 1001;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.admin-mobile-toggle:hover {
+  background: var(--bg-tertiary);
+}
+
+.admin-mobile-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* 侧边栏打开时，移动切换按钮到侧边栏内顶部右侧 */
+body.admin-sidebar-open .admin-mobile-toggle {
+  left: calc(250px - 44px - var(--space-4));
+}
+
+/* 遮罩层 */
+.admin-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  /* 允许点击穿透到关闭侧边栏，但不阻止其他交互 */
+  pointer-events: auto;
+}
+
+.admin-overlay-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* PC端：侧边栏打开时禁止内容区域滚动，但允许 body 滚动 */
+body.admin-sidebar-open .admin-main {
+  overflow: hidden;
+}
+
+/* 移动端：侧边栏打开时禁止 body 滚动，侧边栏本身可滚动 */
+@media (max-width: 768px) {
+  /* 侧边栏关闭时，确保 body 恢复正常 */
+  body:not(.admin-sidebar-open) {
+    overflow: auto;
+    position: static;
+  }
+
+  /* 侧边栏打开时，禁止 body 滚动 */
+  body.admin-sidebar-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    /* 确保内容不被遮挡 */
+    height: 100vh;
+  }
+
+  /* 侧边栏打开时，遮罩层阻止点击穿透 */
+  body.admin-sidebar-open .admin-overlay {
+    pointer-events: auto;
+  }
+
+  /* 侧边栏关闭时，移除遮罩层的交互 */
+  body:not(.admin-sidebar-open) .admin-overlay {
+    pointer-events: none;
+  }
+}
+
+/* 移动端响应式 - 768px 断点 */
+@media (max-width: 768px) {
+  .admin-sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 1000;
+  }
+
+  .admin-sidebar-open {
+    transform: translateX(0);
+  }
+
+  .admin-main {
+    margin-left: 0;
+    padding: var(--space-4);
+    padding-top: calc(var(--space-4) + 52px); /* 为顶部切换按钮留空间 */
+    /* 确保移动端可以正常滚动 */
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    /* 防止内容被固定元素遮挡 */
+    min-height: 100vh;
+    height: auto;
+  }
+
+  .admin-mobile-toggle {
+    display: flex;
+  }
+
+  .admin-overlay {
+    display: block;
+  }
+}

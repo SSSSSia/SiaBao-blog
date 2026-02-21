@@ -1,0 +1,73 @@
+/**
+ * 输入框组件样式
+ */
+
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.input-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.input-minimal {
+  width: 100%;
+  padding: var(--space-2) 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--bg-tertiary);
+  transition: border-color 0.3s ease;
+}
+
+.input-minimal:focus {
+  outline: none;
+  border-bottom-color: var(--color-black);
+}
+
+.input-minimal::placeholder {
+  color: var(--text-tertiary);
+}
+
+.input-error {
+  border-bottom-color: var(--color-error);
+}
+
+.input-error:focus {
+  border-bottom-color: var(--color-error);
+}
+
+.input-error-text {
+  font-size: 0.75rem;
+  color: var(--color-error);
+}
+
+.input-minimal:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===================================
+   移动端响应式优化
+   =================================== */
+@media (max-width: 768px) {
+  .input-minimal {
+    padding: var(--space-2) 0;
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  .input-label {
+    font-size: 0.875rem;
+  }
+
+  .input-error-text {
+    font-size: 0.75rem;
+  }
+}

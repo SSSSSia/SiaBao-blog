@@ -1,0 +1,348 @@
+/**
+ * 个人简介页面样式
+ * 极简艺术风格 - 单色调黑白灰系统
+ */
+
+/* ===================================
+   页面布局
+   =================================== */
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  padding: var(--space-6) 0;
+}
+
+.about-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ===================================
+   卡片样式
+   =================================== */
+.about-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-5);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.about-card:hover {
+  border-color: var(--color-gray-400);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+}
+
+/* ===================================
+   个人信息区域
+   =================================== */
+.about-profile {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+/* 头像 */
+.about-avatar {
+  flex-shrink: 0;
+  width: 120px;
+  height: 120px;
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid var(--color-gray-200);
+  transition: transform 0.3s ease;
+}
+
+.avatar-image:hover {
+  transform: scale(1.05);
+}
+
+/* 基本信息区 */
+.about-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.about-name {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.about-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 1rem;
+  color: var(--color-gray-600);
+  font-weight: 500;
+}
+
+.about-bio {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* 元信息 */
+.about-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+}
+
+.about-meta .meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* 社交链接 */
+.about-social {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.about-social .social-link {
+  position: relative;
+}
+
+.about-social a.social-link::after,
+.about-social button.social-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  width: 0;
+  height: 1px;
+  background: var(--color-accent);
+  opacity: 0.8;
+  transition: width 0.3s ease, opacity 0.3s ease;
+}
+
+.about-social a.social-link:hover::after,
+.about-social button.social-link:hover::after,
+.about-social button.social-link:focus-visible::after {
+  width: 100%;
+  opacity: 1;
+}
+
+/* 重置 button 元素默认样式 */
+button.social-link {
+  padding: 0;
+  font: inherit;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  outline: none;
+}
+
+button.social-link:focus {
+  outline: none;
+}
+
+button.social-link svg {
+  pointer-events: none;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.social-link:hover {
+  color: var(--color-black);
+  background: var(--bg-primary);
+  border-color: var(--color-gray-800);
+  transform: translateY(-2px);
+}
+
+.social-link:active {
+  transform: translateY(0);
+}
+
+/* ===================================
+   章节标题
+   =================================== */
+.about-section-title {
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin: 0 0 var(--space-4);
+  color: var(--text-primary);
+}
+
+/* ===================================
+   技能标签
+   =================================== */
+.skills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.skill-tag {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.875rem;
+  color: var(--color-gray-800);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.skill-tag:hover {
+  color: var(--color-white);
+  background: var(--color-gray-800);
+  border-color: var(--color-gray-800);
+  transform: translateY(-1px);
+}
+
+/* ===================================
+   联系方式
+   =================================== */
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.contact-item:hover {
+  border-color: var(--color-gray-600);
+  background: var(--bg-primary);
+}
+
+.contact-item svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-gray-600);
+}
+
+.contact-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.contact-label {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.contact-value {
+  font-size: 1rem;
+  color: var(--text-primary);
+  transition: color 0.2s ease;
+}
+
+.contact-value:hover {
+  color: var(--color-black);
+}
+
+/* ===================================
+   响应式设计
+   =================================== */
+@media (max-width: 640px) {
+  .about-profile {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .about-avatar {
+    width: 100px;
+    height: 100px;
+  }
+
+  .about-info {
+    align-items: center;
+    width: 100%;
+  }
+
+  .about-name {
+    font-size: 1.75rem;
+  }
+
+  .about-bio {
+    font-size: 0.9375rem;
+  }
+
+  .about-meta {
+    justify-content: center;
+  }
+
+  .about-card {
+    padding: var(--space-4);
+  }
+}
+
+/* ===================================
+   动画增强
+   =================================== */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.about-card {
+  animation: slideUp 0.6s ease-out;
+}
+
+.about-card:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.about-card:nth-child(2) {
+  animation-delay: 100ms;
+}
+
+.about-card:nth-child(3) {
+  animation-delay: 200ms;
+}
