@@ -14,7 +14,7 @@
     "avatar": "/public/uploads/general/a7a40b97-a680-479b-9deb-f1ec89bd041c.jpg",
     "location": "中国 • 四川",
     "joined_date": "2026",
-    "email": "1327966204@qq.com",
+    "email": "your-email@example.com",
     "github": "https://github.com/SSSSSia",
     "gitee": "https://gitee.com/sssssia",
     "skills": [
@@ -22,12 +22,14 @@
       "Vue.js",
       "JavaScript",
       "Python",
+      "FastAPI",
       "Docker",
       "Git",
       "UI/UX",
-      "MongoDB",
       "PostgreSQL",
-      "Redis"
+      "MySQL",
+      "Redis",
+      "Java"
     ]
   }
 }
