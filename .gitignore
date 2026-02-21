@@ -1,0 +1,52 @@
+# Claude Code
+.claude/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node / Frontend
+react-ui/node_modules/
+react-ui/dist/
+react-ui/.vite/
+react-ui/.env
+react-ui/.env.local
+react-ui/.env.*.local
+react-ui/npm-debug.log*
+react-ui/yarn-debug.log*
+react-ui/yarn-error.log*
+react-ui/pnpm-debug.log*
+react-ui/package-lock.json.backup
+
+# Python / Backend
+server/__pycache__/
+server/**/*.pyc
+server/**/*.pyo
+server/**/*.pyd
+server/.python-version
+server/.venv/
+server/venv/
+server/ENV/
+server/env/
+server/.env
+server/.env.local
+server/*.egg-info/
+server/.ruff_cache/
+server/.pytest_cache/
+server/uv.lock
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
