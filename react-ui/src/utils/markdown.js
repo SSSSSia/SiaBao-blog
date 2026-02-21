@@ -356,7 +356,11 @@ export function renderMarkdown(markdown) {
     });
 
     return { __html: cleanHtml };
+    }
+
+    return { __html: cleanHtml };
   } catch (error) {
+    markdownStats.generalErrors++;
     console.error('Markdown 渲染失败:', error);
     return { __html: '<p>内容渲染失败</p>' };
   }
