@@ -58,7 +58,7 @@ truncate -s 0 docker/logs/nginx/*.log
 crontab -e
 
 # 添加以下任务：
-0 2 * * * cd /path/to/my-blog && ./scripts/backup.sh          # 每天备份
+0 2 * * * cd /path/to/my-blog && ./scripts/cloud-backup.sh    # 每天备份
 0 3 * * 0 docker system prune -f                             # 每周清理
 0 4 1 * * docker image prune -a -f                           # 每月清理镜像
 */30 * * * * curl -f http://localhost/health || echo "Health check failed" | mail -s "Alert" admin@example.com  # 健康检查
