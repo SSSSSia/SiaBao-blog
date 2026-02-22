@@ -10,16 +10,55 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to server
+      - name: Deploy to server via SSH
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
+          script_stop: true
           script: |
-            cd /path/to/my-blog
+            echo "=== Starting Deployment ==="
+
+            # 进入项目目录
+            cd /opt/blog/sia-blog || exit 1
+
+            # 拉取最新代码
+            echo "Pulling latest code..."
             git pull origin main
-            docker compose pull
+
+            # 拉取私有内容仓库
+            if [ -d "/opt/sia-blog-content" ]; then
+              echo "Pulling content repository..."
+              cd /opt/sia-blog-content
+              git pull origin main
+            fi
+
+            # 返回主项目目录
+            cd /opt/blog/sia-blog
+
+            # 停止现有服务
+            echo "Stopping existing services..."
+            docker compose down
+
+            # 构建并启动服务
+            echo "Building and starting services..."
             docker compose up -d --build
+
+            # 等待服务启动
+            echo "Waiting for services to start..."
+            sleep 10
+
+            # 检查服务状态
+            echo "Checking service status..."
             docker compose ps
+
+            # 健康检查
+            if curl -f http://localhost:5000/api/health > /dev/null 2>&1; then
+              echo "✅ Backend service is healthy"
+            else
+              echo "⚠️  Backend health check failed"
+            fi
+
+            echo "=== Deployment Complete ==="
