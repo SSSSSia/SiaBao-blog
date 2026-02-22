@@ -1,0 +1,13 @@
+# Git Submodule 配置示例
+# 使用此配置将私有内容仓库作为 submodule 添加到公开代码仓库
+
+# 步骤：
+# 1. 将此文件重命名为 .gitmodules
+# 2. 修改下面的 URL 为你的私有仓库地址
+# 3. 运行: git submodule init && git submodule update
+
+[submodule "content"]
+    path = content
+    url = git@github.com:SSSSSia/sia-blog-content.git
+    # 如果使用 HTTPS，使用：
+    # url = https://github.com/SSSSSia/sia-blog-content.git
