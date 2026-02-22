@@ -894,7 +894,13 @@ async def decrement_article_likes(article_id: str) -> int:
         likes_data = _load_likes()
         current_count = likes_data.get(article_id, 0)
         new_count = max(0, current_count - 1)
-        likes_data[article_id] = new_count
+
+        # Remove the key if count reaches 0 to avoid storing zero values
+        if new_count == 0 and article_id in likes_data:
+            del likes_data[article_id]
+        else:
+            likes_data[article_id] = new_count
+
         _save_likes_atomic(likes_data)
         return new_count
 

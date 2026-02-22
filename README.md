@@ -191,8 +191,29 @@ ADMIN_PASSWORD=admin123
 
 ## 部署
 
-### 前端部署
+### 🚀 一键 Docker 部署（推荐）
 
+使用 Docker Compose 可以一键部署前后端到云服务器：
+
+```bash
+# 1. 配置环境变量
+cp server/.env.example server/.env
+vim server/.env  # 修改 SECRET_KEY 和 ADMIN_PASSWORD
+
+# 2. 一键部署
+./scripts/deploy.sh
+
+# 或使用 Docker Compose
+docker compose up -d --build
+```
+
+访问：http://your-server-ip
+
+详细部署指南请查看：[DEPLOYMENT.md](./DEPLOYMENT.md)
+
+### 其他部署方式
+
+#### 传统部署
 前端可部署到任意静态托管服务：
 - Vercel
 - Netlify
@@ -204,20 +225,21 @@ npm run build
 # 将 dist 目录部署到服务器
 ```
 
-### 后端部署
-
-推荐部署平台：
+#### 云平台部署
+后端可部署到：
 - Railway
 - Render
 - Fly.io
-- 或自己的云服务器
 
-使用 Docker 部署（示例）：
-```bash
-cd server
-docker build -t sia-blog-api .
-docker run -p 8000:8000 sia-blog-api
-```
+### 运维维护
+
+部署后的日常维护和功能迭代请参考：[MAINTENANCE.md](./MAINTENANCE.md)
+
+主要功能：
+- 自动备份脚本
+- 监控健康检查
+- 零停机更新
+- 快速回滚
 
 ## 贡献指南
 
@@ -227,10 +249,12 @@ docker run -p 8000:8000 sia-blog-api
 
 MIT License
 
+MIT License
+
 ## 联系方式
 
 - GitHub: [@SSSSSia](https://github.com/SSSSSia)
-- 项目地址: [SiaBao-blog](https://github.com/SSSSSia/SiaBao-blog)
+- 项目地址: <https://github.com/SSSSSia/SiaBao-blog>
 
 ---
 
