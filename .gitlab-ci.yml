@@ -1,0 +1,70 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_HOST: tcp://docker:2375
+
+# 测试阶段
+test:frontend:
+  stage: test
+  image: node:20-alpine
+  cache:
+    paths:
+      - react-ui/node_modules/
+  script:
+    - cd react-ui
+    - npm ci
+    - npm run lint
+    # - npm run test  # 如果有测试
+  only:
+    - merge_requests
+    - main
+
+test:backend:
+  stage: test
+  image: python:3.11-slim
+  cache:
+    paths:
+      - server/.venv/
+  script:
+    - cd server
+    - pip install -r requirements.txt
+    - ruff check app/
+    # - pytest  # 如果有测试
+  only:
+    - merge_requests
+    - main
+
+# 构建阶段
+build:docker:
+  stage: build
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin
+  script:
+    - docker compose -f docker-compose.prod.yml build
+    - docker compose -f docker-compose.prod.yml push
+  only:
+    - main
+
+# 部署阶段
+deploy:production:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan your-server.com >> ~/.ssh/known_hosts
+  script:
+    - ssh user@your-server.com "cd /path/to/my-blog && git pull && docker compose -f docker-compose.prod.yml up -d --build"
+  only:
+    - main
+  when: manual  # 手动触发部署

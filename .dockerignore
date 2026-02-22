@@ -1,0 +1,60 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Docker
+.dockerignore
+docker-compose*.yml
+Dockerfile*
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+react-ui/node_modules
+react-ui/dist
+react-ui/.vite
+react-ui/npm-debug.log*
+react-ui/yarn-debug.log*
+react-ui/yarn-error.log*
+react-ui/package-lock.json
+react-ui/yarn.lock
+
+# Python
+server/__pycache__
+server/.venv
+server/.ruff_cache
+server/.pytest_cache
+server/*.pyc
+server/.Python
+server/.env
+server uv.lock
+
+# 文档
+*.md
+!README.md
+docs
+
+# 测试
+coverage
+.nyc_output
+react-ui/coverage
+
+# 日志
+*.log
+logs/
+docker/logs/
+
+# 临时文件
+*.tmp
+*.temp
+.cache
