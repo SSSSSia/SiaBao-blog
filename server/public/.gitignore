@@ -1,2 +1,3 @@
-uploads/
-uploads/
+# 用户上传的文件
+# 这些文件应存储在私有仓库 (sia-blog-content) 中
+uploads/*

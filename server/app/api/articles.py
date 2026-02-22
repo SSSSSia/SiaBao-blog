@@ -210,41 +210,28 @@ async def import_article(
     file: Annotated[UploadFile, File(description="Markdown file to import")],
     _admin: Annotated[dict, Depends(get_admin_user)],
 ) -> R:
-    """Import article from markdown file (admin only)."""
-    import logging
-    logger = logging.getLogger(__name__)
 
-    logger.info(f"[DEBUG] Starting import for file: {file.filename}")
 
     if not file.filename.lower().endswith(".md"):
-        logger.warning("[DEBUG] File rejected: not .md file")
         return R.fail(message="Only .md files are allowed", data={"detail": "Only .md files are allowed"})
 
     max_file_size = 5 * 1024 * 1024
     content = await file.read(max_file_size + 1)
 
-    logger.info(f"[DEBUG] File size: {len(content)} bytes")
 
     if len(content) > max_file_size:
-        logger.warning("[DEBUG] File rejected: size exceeds limit")
         return R.fail(message="File size exceeds limit", data={"detail": "File size exceeds 5MB limit"})
 
     try:
         content_str = content.decode("utf-8")
-        logger.info(f"[DEBUG] Decoded content successfully, length: {len(content_str)}")
     except UnicodeDecodeError as e:
-        logger.error(f"[DEBUG] Unicode decode error: {e}")
         return R.fail(message="Invalid file encoding", data={"detail": "Please use UTF-8."})
 
-    logger.info(f"[DEBUG] Calling import_article_from_markdown with filename: {file.filename}")
     result = await import_article_from_markdown(content_str, file.filename)
-    logger.info(f"[DEBUG] Import result: {result}")
 
     if "error" in result:
-        logger.error(f"[DEBUG] Import failed with error: {result['error']}")
         return R.fail(message=result["error"])
 
-    logger.info(f"[DEBUG] Import successful, article: {result.get('article')}")
     return R.ok(
         message="Article imported",
         data={"article": result.get("article")},

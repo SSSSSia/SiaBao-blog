@@ -4,6 +4,7 @@ import { Save, FileText, Eye, AlertCircle } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { articleRepository } from '../../repositories/articleRepository'
 import { adminToast } from '../../utils/adminToast'
+import { generateTempArticleId, isTempArticleId } from '../../utils/image'
 import MarkdownEditor from '../../components/article/MarkdownEditor'
 import './ArticleEdit.css'
 
@@ -99,7 +100,15 @@ function ArticleEdit() {
   const [showNavigationModal, setShowNavigationModal] = useState(false)
   const [errors, setErrors] = useState({})
   const [loadError, setLoadError] = useState(null)
+  const [tempArticleId, setTempArticleId] = useState(null)
   const pendingNavigationRef = useRef(null)
+
+  // 为新文章生成临时 ID
+  useEffect(() => {
+    if (!isEdit && !tempArticleId) {
+      setTempArticleId(generateTempArticleId())
+    }
+  }, [isEdit, tempArticleId])
 
   useEffect(() => {
     if (!(isEdit && id)) return
@@ -378,7 +387,9 @@ function ArticleEdit() {
 
         setInitialArticle(response.data)
       } else {
-        const response = await articleRepository.createArticle(articleData)
+        // 新文章：传递临时 ID 用于图片迁移
+        const createData = tempArticleId ? { ...articleData, temp_article_id: tempArticleId } : articleData
+        const response = await articleRepository.createArticle(createData)
         if (response.error) {
           adminToast.saveError(`保存失败: ${response.error.message}`)
           return
@@ -391,6 +402,8 @@ function ArticleEdit() {
         window.__hasUnsavedArticleChanges__ = false
 
         const newArticle = response.data
+        // 清除临时 ID，后续保存不再使用
+        setTempArticleId(null)
         navigate(`/admin/articles/${newArticle.id}/edit`, { replace: true })
       }
     } catch (error) {
@@ -580,7 +593,7 @@ function ArticleEdit() {
             }}
             placeholder='输入文章内容(支持 Markdown)'
             disabled={saving}
-            articleId={id}
+            articleId={isEdit ? id : tempArticleId}
             minHeight='500px'
             error={!!errors.content}
           />

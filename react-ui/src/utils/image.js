@@ -3,6 +3,26 @@
  */
 
 /**
+ * 生成临时文章 ID
+ * 用于新文章创建前的图片上传
+ * @returns {string} 临时文章 ID（格式：temp_<timestamp>_<random>）
+ */
+export function generateTempArticleId() {
+  const timestamp = Date.now()
+  const random = Math.random().toString(36).substring(2, 8)
+  return `temp_${timestamp}_${random}`
+}
+
+/**
+ * 判断是否为临时文章 ID
+ * @param {string} articleId - 文章 ID
+ * @returns {boolean}
+ */
+export function isTempArticleId(articleId) {
+  return articleId && articleId.startsWith('temp_')
+}
+
+/**
  * 获取完整的图片URL
  * @param {string} path - 图片路径（可能是相对路径或绝对路径）
  * @returns {string} 完整的图片URL

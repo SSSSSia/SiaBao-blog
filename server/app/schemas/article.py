@@ -28,7 +28,11 @@ class ArticleBase(BaseModel):
 class ArticleCreate(ArticleBase):
     """Article creation schema."""
 
-    pass
+    temp_article_id: str | None = Field(
+        None,
+        description="临时文章 ID，用于迁移临时上传的图片（如 temp_1234567890_abc123）"
+    )
+    published_at: datetime | None = Field(None, description="发布时间")
 
 
 class ArticleUpdate(BaseModel):

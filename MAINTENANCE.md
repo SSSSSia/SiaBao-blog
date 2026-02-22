@@ -408,6 +408,7 @@ rclone sync /path/to/backups remote:blog-backups
 - 检查备份任务
 - 清理旧日志
 - 查看访问统计
+- 检查图片存储使用情况（可选，系统已自动清理）
 
 ### 每月
 - 更新系统和依赖

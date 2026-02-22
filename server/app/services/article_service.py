@@ -3,7 +3,10 @@
 This module provides the service layer for article operations,
 delegating to the file repository for persistence.
 """
+import logging
 from typing import Literal
+
+logger = logging.getLogger(__name__)
 
 from app.schemas.article import (
     ArticleCreate,
@@ -87,15 +90,26 @@ async def get_article_by_slug(slug: str) -> ArticleResponse | None:
 
 
 async def create_article(article_data: ArticleCreate) -> ArticleResponse:
-    """Create new article."""
-    article = await create_article_in_repo(article_data.model_dump())
+    """Create new article.
+
+    Args:
+        article_data: 文章创建数据，可能包含 temp_article_id 用于图片迁移
+    """
+    # Convert to dict, extract temp_article_id separately
+    # Use mode='json' to serialize datetime objects to ISO format strings
+    article_dict = article_data.model_dump(mode='json')
+    temp_article_id = article_dict.pop("temp_article_id", None)
+
+    # Pass both article data and temp_article_id to repository
+    article = await create_article_in_repo(article_dict, temp_article_id=temp_article_id)
     return _article_to_response(article)
 
 
 async def update_article(article_id: str, article_data: ArticleUpdate) -> ArticleResponse | None:
     """Update existing article."""
     # Convert update schema to dict, excluding None values
-    update_dict = article_data.model_dump(exclude_unset=True)
+    # Use mode='json' to serialize datetime objects to ISO format strings
+    update_dict = article_data.model_dump(exclude_unset=True, mode='json')
     article = await update_article_in_repo(article_id, update_dict)
     if article:
         return _article_to_response(article)

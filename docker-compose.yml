@@ -35,6 +35,7 @@ services:
     volumes:
       # 挂载数据目录，实现数据持久化
       - ./server/data:/app/data
+      - ./server/public:/app/public  # 挂载公共文件目录（上传的图片）
       - ./server/.env:/app/.env:ro  # 只读挂载环境变量文件
     environment:
       - HOST=0.0.0.0

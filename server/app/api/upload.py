@@ -1,8 +1,15 @@
 """File upload API routes.
 
 支持按文章 UUID 分目录存储图片，便于管理和备份。
+使用内容哈希（MD5）作为文件名，自动去重相同内容的图片。
+
+新增功能：
+- 支持临时会话 ID（temp_*）用于新文章创建前的图片上传
+- 文章保存后自动迁移临时目录到正式目录
 """
+import hashlib
 import os
+import shutil
 import uuid
 from pathlib import Path
 from typing import Annotated
@@ -21,6 +28,11 @@ MAX_FILE_SIZE = 5 * 1024 * 1024
 
 # 上传基础目录
 UPLOAD_BASE_DIR = Path(__file__).parent.parent.parent / "public" / "uploads"
+
+
+def calculate_file_hash(content: bytes) -> str:
+    """计算文件内容的 MD5 哈希值."""
+    return hashlib.md5(content).hexdigest()
 
 
 def sanitize_filename(filename: str) -> str:
@@ -58,7 +70,7 @@ async def upload_image(
     """
     上传图片文件（支持 jpg, jpeg, png, gif, svg, webp）
 
-    支持按文章 UUID 分目录存储，便于管理和备份。
+    使用内容哈希（MD5）作为文件名，自动去重相同内容的图片。
     如果提供 article_id，图片将保存到 uploads/{article_id}/ 目录。
 
     Args:
@@ -67,7 +79,7 @@ async def upload_image(
         _admin: 管理员用户（通过依赖注入验证）
 
     Returns:
-        包含文件路径的响应
+        包含文件路径的响应。如果文件内容已存在，返回已有文件的路径。
     """
     import logging
     logger = logging.getLogger(__name__)
@@ -101,45 +113,64 @@ async def upload_image(
             if pattern in content_str.lower():
                 return R.error(message="SVG 文件包含不安全的内容")
 
+    # 计算文件内容哈希
+    file_hash = calculate_file_hash(content)
+
     # 确定上传目录
     if article_id:
         # 按文章 ID 分目录存储
         upload_dir = UPLOAD_BASE_DIR / article_id
-        logger.info(f"[DEBUG] Uploading to article directory: {upload_dir}")
     else:
         # 通用上传目录（用于未关联文章的图片）
         upload_dir = UPLOAD_BASE_DIR / "general"
-        logger.info(f"[DEBUG] Uploading to general directory: {upload_dir}")
 
     # 创建上传目录
     upload_dir.mkdir(parents=True, exist_ok=True)
 
-    # 生成唯一文件名
-    unique_filename = f"{uuid.uuid4()}{ext}"
-    file_path = upload_dir / unique_filename
+    # 使用哈希值作为文件名（加扩展名）
+    hash_filename = f"{file_hash}{ext}"
+    file_path = upload_dir / hash_filename
 
-    # 保存文件
+    # 检查文件是否已存在
+    if file_path.exists():
+        # 文件已存在，直接返回现有文件路径
+        if article_id:
+            relative_path = f"/public/uploads/{article_id}/{hash_filename}"
+        else:
+            relative_path = f"/public/uploads/general/{hash_filename}"
+
+        return R.ok(
+            message="上传成功（文件已存在，使用已有文件）",
+            data={
+                "filename": hash_filename,
+                "path": relative_path,
+                "url": relative_path,
+                "article_id": article_id,
+                "full_path": str(file_path),
+                "deduplicated": True,  # 标记为去重
+            },
+        )
+
+    # 保存新文件
     try:
         with open(file_path, "wb") as f:
             f.write(content)
 
         # 构建相对路径（用于访问）
         if article_id:
-            relative_path = f"/public/uploads/{article_id}/{unique_filename}"
+            relative_path = f"/public/uploads/{article_id}/{hash_filename}"
         else:
-            relative_path = f"/public/uploads/general/{unique_filename}"
-
-        logger.info(f"[DEBUG] File saved successfully: {file_path}")
-        logger.info(f"[DEBUG] Relative path: {relative_path}")
+            relative_path = f"/public/uploads/general/{hash_filename}"
 
         return R.ok(
             message="上传成功",
             data={
-                "filename": unique_filename,
+                "filename": hash_filename,
                 "path": relative_path,
                 "url": relative_path,
                 "article_id": article_id,
-                "full_path": str(file_path)
+                "full_path": str(file_path),
+                "deduplicated": False,  # 新文件
             },
         )
     except Exception as e:
@@ -236,3 +267,66 @@ async def list_article_images(
         })
     except Exception as e:
         return R.error(message=f"获取图片列表失败: {str(e)}")
+
+
+def migrate_temp_images(temp_article_id: str, real_article_id: str) -> dict:
+    """
+    迁移临时目录图片到正式目录.
+
+    在创建新文章后调用，将 temp_* 目录中的图片迁移到正式的文章目录。
+    同时更新文章内容中的图片路径引用。
+
+    Args:
+        temp_article_id: 临时文章 ID（如 temp_1234567890_abc123）
+        real_article_id: 真实的文章 UUID
+
+    Returns:
+        迁移统计信息，包含 migrated_count 和 updated_paths
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    temp_dir = UPLOAD_BASE_DIR / temp_article_id
+    real_dir = UPLOAD_BASE_DIR / real_article_id
+
+    if not temp_dir.exists():
+        return {"migrated_count": 0, "updated_paths": {}}
+
+    try:
+        # 创建正式目录
+        real_dir.mkdir(parents=True, exist_ok=True)
+
+        migrated_count = 0
+        updated_paths = {}
+
+        # 迁移所有文件
+        for file_path in temp_dir.iterdir():
+            if file_path.is_file():
+                dest_path = real_dir / file_path.name
+                shutil.move(str(file_path), str(dest_path))
+                migrated_count += 1
+
+                # 记录路径映射
+                old_path = f"/public/uploads/{temp_article_id}/{file_path.name}"
+                new_path = f"/public/uploads/{real_article_id}/{file_path.name}"
+                updated_paths[old_path] = new_path
+
+
+        # 删除临时目录（使用 rmtree 确保删除整个目录及其内容）
+        try:
+            shutil.rmtree(temp_dir)
+            logger.debug(f"Removed temp directory: {temp_dir}")
+        except OSError as e:
+            logger.warning(f"Could not remove temp directory: {temp_dir}, error: {e}")
+
+        return {
+            "migrated_count": migrated_count,
+            "updated_paths": updated_paths,
+        }
+    except Exception as e:
+        logger.error(f"Migration failed: {str(e)}")
+        return {
+            "migrated_count": 0,
+            "updated_paths": {},
+            "error": str(e),
+        }

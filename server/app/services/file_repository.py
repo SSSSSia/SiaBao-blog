@@ -429,8 +429,13 @@ async def get_article_by_slug(slug: str) -> dict | None:
     return None
 
 
-async def create_article(article_data: dict) -> dict:
-    """Create new article."""
+async def create_article(article_data: dict, temp_article_id: str | None = None) -> dict:
+    """Create new article.
+
+    Args:
+        article_data: 文章数据
+        temp_article_id: 临时文章 ID（可选），用于迁移临时上传的图片
+    """
     async with _index_lock:
         index_data = _load_index()
         existing_slugs = {meta.get("slug", "") for meta in index_data.values()}
@@ -489,12 +494,43 @@ async def create_article(article_data: dict) -> dict:
         index_data[article_id] = article_meta
         _save_index_atomic(index_data)
 
+        # 迁移临时图片（如果有）- 必须在 return 之前执行
+        if temp_article_id and temp_article_id.startswith("temp_"):
+            try:
+                from app.api.upload import migrate_temp_images
+                migration_result = migrate_temp_images(temp_article_id, article_id)
+
+                if migration_result.get("migrated_count", 0) > 0:
+                    logger.info(
+                        f"Migrated {migration_result['migrated_count']} image(s) "
+                        f"from {temp_article_id} to {article_id}"
+                    )
+
+                    # 更新文章内容中的图片路径
+                    if migration_result.get("updated_paths"):
+                        updated_content = content
+                        for old_path, new_path in migration_result["updated_paths"].items():
+                            updated_content = updated_content.replace(old_path, new_path)
+
+                        # 如果路径有更新，重新保存文章
+                        if updated_content != content:
+                            md_file = POSTS_DIR / f"{article_id}.md"
+                            post = _frontmatter_load_file(md_file)
+                            _frontmatter_dump_file(md_file, updated_content, post.metadata)
+                            content = updated_content  # 更新 content 变量
+                            logger.info(f"Updated image paths in article {article_id}")
+            except Exception as e:
+                # Don't fail article creation if migration fails
+                logger.warning(f"Failed to migrate images from {temp_article_id}: {e}")
+
         # Return full article
         return {**article_meta, "content": content}
 
 
 async def update_article(article_id: str, article_data: dict) -> dict | None:
     """Update existing article."""
+    content = None  # Initialize content variable for later use
+
     async with _index_lock:
         index_data = _load_index()
 
@@ -566,12 +602,27 @@ async def update_article(article_id: str, article_data: dict) -> dict | None:
         index_data[article_id] = updated_meta
         _save_index_atomic(index_data)
 
-        # Return full article
-        return {**updated_meta, "content": content}
+        # Build result to return
+        result = {**updated_meta, "content": content}
+
+    # Cleanup unused images for this article (outside the lock to avoid blocking)
+    try:
+        from app.services.image_cleanup import cleanup_article_images
+        cleanup_result = cleanup_article_images(article_id, content)
+        if cleanup_result["deleted_count"] > 0:
+            logger.info(
+                f"Cleaned up {cleanup_result['deleted_count']} unused image(s) "
+                f"for article {article_id}, freed {cleanup_result['freed_space_mb']} MB"
+            )
+    except Exception as e:
+        # Don't fail the article update if cleanup fails
+        logger.warning(f"Failed to cleanup images for article {article_id}: {e}")
+
+    return result
 
 
 async def delete_article(article_id: str) -> bool:
-    """Delete article."""
+    """Delete article and its associated images."""
     async with _index_lock:
         index_data = _load_index()
 
@@ -582,6 +633,10 @@ async def delete_article(article_id: str) -> bool:
         md_file = POSTS_DIR / f"{article_id}.md"
         if md_file.exists():
             md_file.unlink()
+
+        # Delete article's uploaded images directory
+        from app.services.image_cleanup import delete_images_by_article
+        delete_images_by_article(article_id)
 
         # Remove from index
         del index_data[article_id]
@@ -611,21 +666,9 @@ async def import_article_from_markdown(
 
     Returns dict with 'success', 'article' (if success), or 'error' (if failed).
     """
-    import traceback
-
     try:
-        logger.info(f"[DEBUG] import_article_from_markdown called with filename: {filename}")
-        logger.info(f"[DEBUG] Content length: {len(content)}")
-        logger.info(f"[DEBUG] First 200 chars of content: {content[:200]}")
-
         # Parse frontmatter using compatible method
-        logger.info("[DEBUG] Attempting to parse frontmatter...")
         post = _parse_frontmatter_text(content)
-        logger.info("[DEBUG] Frontmatter parsed successfully")
-        logger.info(f"[DEBUG] Metadata type: {type(post.metadata)}")
-        logger.info(f"[DEBUG] Metadata: {post.metadata}")
-        logger.info(f"[DEBUG] Content type: {type(post.content)}")
-        logger.info(f"[DEBUG] Content length: {len(post.content)}")
 
         # Extract metadata
         metadata = post.metadata
@@ -658,18 +701,11 @@ async def import_article_from_markdown(
             if len(excerpt) == 200:
                 excerpt += "..."
 
-        logger.info(f"[DEBUG] Extracted title: {title}")
-        logger.info(f"[DEBUG] Extracted slug: {slug}")
-        logger.info(f"[DEBUG] Extracted tags: {tags}")
-
         # Handle published_at: if missing or empty, use current time
         published_at = metadata.get("published_at")
         if published_at is None or published_at == "":
             now = datetime.utcnow().isoformat()
             published_at = now
-            logger.info(f"[DEBUG] No published_at found, using current time: {published_at}")
-
-        logger.info(f"[DEBUG] Extracted published_at: {published_at}")
 
         # Build article data
         article_data = {
@@ -683,30 +719,16 @@ async def import_article_from_markdown(
             "published_at": published_at,
         }
 
-        logger.info(f"[DEBUG] Article data built: {article_data}")
-
         # Validate required fields
         if not title or title == "未命名文章":
-            logger.warning("[DEBUG] Title validation failed")
             return {"error": "文章标题不能为空"}
 
         # Create article
-        logger.info("[DEBUG] Calling create_article...")
         article = await create_article(article_data)
-        logger.info(f"[DEBUG] Article created successfully: {article}")
         return {"success": True, "article": article}
 
     except Exception as e:
-        error_details = {
-            "error_type": type(e).__name__,
-            "error_message": str(e),
-            "error_args": e.args if hasattr(e, 'args') else None,
-            "traceback": traceback.format_exc()
-        }
-        logger.error("[DEBUG] Exception in import_article_from_markdown:")
-        logger.error(f"[DEBUG] Error type: {error_details['error_type']}")
-        logger.error(f"[DEBUG] Error message: {error_details['error_message']}")
-        logger.error(f"[DEBUG] Traceback:\n{error_details['traceback']}")
+        logger.exception("Failed to import article from markdown: %s", str(e))
         return {"error": f"导入失败: {str(e)}"}
 
 

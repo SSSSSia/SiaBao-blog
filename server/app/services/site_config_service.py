@@ -1,8 +1,11 @@
 """Site configuration service layer for managing homepage settings."""
 import json
+import logging
 from pathlib import Path
 
 from app.schemas.site_config import SiteConfigUpdate
+
+logger = logging.getLogger(__name__)
 
 # Configuration file
 CONFIG_FILE = Path(__file__).parent.parent.parent / "data" / "site_config.json"
@@ -69,9 +72,27 @@ async def update_site_config(config_data: SiteConfigUpdate) -> dict:
         current_config["recent_articles_count"] = config_data.recent_articles_count
 
     if config_data.user_profile is not None:
-        current_config["user_profile"] = config_data.user_profile.model_dump()
+        user_profile_data = config_data.user_profile.model_dump()
+        current_config["user_profile"] = user_profile_data
 
     # Save updated configuration
     _save_config(current_config)
+
+    # Always cleanup old avatar files in general directory when user_profile is updated
+    # This ensures orphaned files are cleaned up even if the avatar hasn't changed
+    if config_data.user_profile is not None:
+        current_avatar = current_config.get("user_profile", {}).get("avatar")
+
+        try:
+            from app.services.image_cleanup import cleanup_old_avatar
+            cleanup_result = cleanup_old_avatar(current_avatar)
+            if cleanup_result["deleted_count"] > 0:
+                logger.info(
+                    f"Cleaned up {cleanup_result['deleted_count']} old avatar(s), "
+                    f"freed {cleanup_result['freed_space_mb']} MB"
+                )
+        except Exception as e:
+            # Don't fail the config update if cleanup fails
+            logger.warning(f"Failed to cleanup old avatar: {e}")
 
     return current_config

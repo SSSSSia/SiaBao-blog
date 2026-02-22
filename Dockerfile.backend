@@ -17,6 +17,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 复制源代码
 COPY server/app/ ./app/
+# 复制公共文件目录（包含上传的图片）
+COPY server/public/ ./public/
 
 # 创建数据目录
 RUN mkdir -p /app/data/posts /app/data/uploads

@@ -100,13 +100,12 @@ export const categoryRepository = {
         const data = tags.length > 0 ? tags : mockTags;
         return createResponse(data);
       } else {
-        // 浠庢枃绔?API 鑱氬悎鏍囩
+        // 从文章 API 聚合标签
         const response = await articleApi.getList({ page: 1, pageSize: 100 });
         const articles = response.articles || [];
         const { tags } = aggregateFromArticles(articles);
-        // 濡傛灉鑱氬悎缁撴灉涓虹┖锛屼娇鐢?mockTags
-        const data = tags.length > 0 ? tags : mockTags;
-        return createResponse(data);
+        // 直接使用聚合结果，没有文章时不显示标签
+        return createResponse(tags);
       }
     } catch (error) {
       return createResponse(null, error);
