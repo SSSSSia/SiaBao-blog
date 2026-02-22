@@ -11,8 +11,8 @@ PROJECT_DIR="${DEPLOY_BASE_DIR}/sia-blog"
 CONTENT_DIR="${DEPLOY_BASE_DIR}/sia-blog-content"
 
 # GitHub 仓库地址（请根据实际情况修改）
-PUBLIC_REPO="git@github.com:YOUR-USERNAME/sia-blog.git"
-PRIVATE_REPO="git@github.com:YOUR-USERNAME/sia-blog-content.git"
+PUBLIC_REPO="git@github.com:SSSSSia/SiaBao-blog.git"
+PRIVATE_REPO="git@github.com:SSSSSia/sia-blog-content.git"
 
 # 日志文件
 LOG_DIR="${PROJECT_DIR}/logs"

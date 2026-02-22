@@ -45,10 +45,24 @@
 
 ### 3. GitHub 仓库准备
 
+本博客使用双仓库架构：
+
+- **代码仓库**: `git@github.com:SSSSSia/SiaBao-blog.git` (公开)
+  - 包含前端、后端代码和配置文件
+  - 可安全公开，不包含敏感数据
+
+- **内容仓库**: `git@github.com:SSSSSia/sia-blog-content.git` (私有)
+  - 包含数据库文件、文章内容和上传的图片
+  - 必须设为私有，保护敏感数据
+
 确保已完成以下操作：
-- ✅ 创建公开仓库 `sia-blog`（代码仓库）
-- ✅ 创建私有仓库 `sia-blog-content`（内容仓库）
+- ✅ 确认代码仓库已创建: `SSSSSia/SiaBao-blog`
+- ✅ 确认内容仓库已创建: `SSSSSia/sia-blog-content`
+- ✅ 内容仓库设置为私有 (Private)
 - ✅ 配置好 SSH 密钥访问 GitHub
+- ⚠️ **重要**: 内容仓库需要包含两个目录的备份:
+  - `server/data/` - 数据库和文章数据
+  - `server/public/` - 图片资源 (目前可能尚未备份)
 
 ---
 
@@ -191,23 +205,23 @@ sudo chown -R $USER:$USER /opt/blog
 ### 步骤 2：克隆代码仓库
 
 ```bash
-# 克隆公开仓库（代码）
-git clone git@github.com:YOUR-USERNAME/sia-blog.git
+# 克隆代码仓库（公开，包含前端和后端代码）
+git clone git@github.com:SSSSSia/SiaBao-blog.git
 
-# 克隆私有仓库（内容）
-git clone git@github.com:YOUR-USERNAME/sia-blog-content.git
+# 克隆内容仓库（私有，包含数据库和图片）
+git clone git@github.com:SSSSSia/sia-blog-content.git
 
 # 验证目录结构
 ls -la
 # 应该看到:
-# sia-blog/
+# SiaBao-blog/
 # sia-blog-content/
 ```
 
 ### 步骤 3：配置环境变量
 
 ```bash
-cd /opt/blog/sia-blog
+cd /opt/blog/SiaBao-blog
 
 # 从私有仓库复制环境配置
 cp ../sia-blog-content/server/.env server/.env
@@ -247,21 +261,40 @@ BLOG_SUBTITLE=个人博客系统
 
 ### 步骤 4：创建数据目录链接
 
-```bash
-# 方案 A：使用符号链接
-cd /opt/blog/sia-blog/server
-ln -s ../../sia-blog-content/server/data data
+双仓库架构需要将内容仓库中的数据目录链接到代码仓库。需要挂载两个目录：
 
-# 方案 B：修改 docker-compose.yml 挂载路径（推荐）
+- **`server/data/`** - 数据库文件、文章数据、上传的文件
+- **`server/public/`** - 图片资源（用户上传的图片）
+
+```bash
+# 方案 A：使用符号链接（开发环境）
+cd /opt/blog/SiaBao-blog/server
+ln -s ../../sia-blog-content/server/data data
+ln -s ../../sia-blog-content/server/public public
+
+# 方案 B：修改 docker-compose.yml 挂载路径（生产环境推荐）
 # 编辑 docker-compose.yml，在 backend 服务中添加：
 # volumes:
-#   - /opt/sia-blog-content/server/data:/app/data:rw
+#   - /opt/blog/sia-blog-content/server/data:/app/server/data:rw
+#   - /opt/blog/sia-blog-content/server/public:/app/server/public:rw
+```
+
+**重要提示**: 如果 `sia-blog-content` 仓库中还没有 `server/public/` 目录，需要先创建并推送：
+
+```bash
+# 在本地创建目录结构并推送到内容仓库
+cd /path/to/sia-blog-content
+mkdir -p server/public/uploads
+echo "# 图片资源目录" > server/public/README.md
+git add server/public/
+git commit -m "feat: add public directory for image storage"
+git push origin main
 ```
 
 ### 步骤 5：配置 docker-compose.yml
 
 ```bash
-cd /opt/blog/sia-blog
+cd /opt/blog/SiaBao-blog
 
 # 编辑 docker-compose.yml
 vim docker-compose.yml
@@ -283,8 +316,12 @@ services:
       - "5000:5000"
     volumes:
       - ./server:/app
-      - /opt/sia-blog-content/server/data:/app/data:rw
-      - /opt/sia-blog-content/server/.env:/app/.env:ro
+      # 挂载数据库和文章数据
+      - /opt/blog/sia-blog-content/server/data:/app/server/data:rw
+      # 挂载图片资源目录
+      - /opt/blog/sia-blog-content/server/public:/app/server/public:rw
+      # 挂载环境配置
+      - /opt/blog/sia-blog-content/server/.env:/app/server/.env:ro
     environment:
       - FLASK_ENV=production
     networks:
@@ -319,6 +356,8 @@ services:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/frontend.conf:/etc/nginx/conf.d/default.conf:ro
       - ./docker/ssl:/etc/nginx/ssl:ro
+      # 挂载图片静态资源（可选，也可以通过后端服务）
+      - /opt/blog/sia-blog-content/server/public:/var/www/public:ro
     depends_on:
       - frontend
       - backend
@@ -329,6 +368,12 @@ networks:
   blog-network:
     driver: bridge
 ```
+
+**重要说明**:
+
+- `server/data` 目录包含 SQLite 数据库和文章数据，必须可读写 (rw)
+- `server/public` 目录包含用户上传的图片，必须可读写 (rw)
+- Nginx 也需要访问 `server/public` 来直接提供图片服务（可选）
 
 ### 步骤 6：启动服务
 
@@ -346,6 +391,27 @@ docker-compose logs -f
 curl http://localhost:5000/api/health
 ```
 
+**首次启动验证清单**:
+
+1. 检查数据目录是否正确挂载:
+
+   ```bash
+   docker-compose exec backend ls -la /app/server/data
+   docker-compose exec backend ls -la /app/server/public
+   ```
+
+2. 检查数据库文件是否存在:
+
+   ```bash
+   docker-compose exec backend ls -la /app/server/data/*.db
+   ```
+
+3. 如果数据库不存在，初始化数据库:
+
+   ```bash
+   docker-compose exec backend python -c "from run import app, init_db; app.app_context().push(); init_db()"
+   ```
+
 ---
 
 ## Nginx 反向代理配置
@@ -354,10 +420,10 @@ curl http://localhost:5000/api/health
 
 ```bash
 # 创建配置目录
-mkdir -p /opt/blog/sia-blog/docker/nginx
+mkdir -p /opt/blog/SiaBao-blog/docker/nginx
 
 # 创建主配置文件
-vim /opt/blog/sia-blog/docker/nginx/nginx.conf
+vim /opt/blog/SiaBao-blog/docker/nginx/nginx.conf
 ```
 
 **nginx.conf 配置：**
@@ -409,7 +475,7 @@ http {
 **frontend.conf 配置：**
 
 ```bash
-vim /opt/blog/sia-blog/docker/nginx/frontend.conf
+vim /opt/blog/SiaBao-blog/docker/nginx/frontend.conf
 ```
 
 ```nginx
@@ -482,6 +548,14 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
+
+    # 静态图片资源（可选，直接通过 Nginx 提供更高效）
+    location /public/ {
+        alias /var/www/public/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
 }
 ```
 
@@ -520,9 +594,9 @@ certbot certonly --standalone \
 # /etc/letsencrypt/live/your-domain.com/privkey.pem
 
 # 复制证书到项目目录
-mkdir -p /opt/blog/sia-blog/docker/ssl
-cp /etc/letsencrypt/live/your-domain.com/fullchain.pem /opt/blog/sia-blog/docker/ssl/
-cp /etc/letsencrypt/live/your-domain.com/privkey.pem /opt/blog/sia-blog/docker/ssl/
+mkdir -p /opt/blog/SiaBao-blog/docker/ssl
+cp /etc/letsencrypt/live/your-domain.com/fullchain.pem /opt/blog/SiaBao-blog/docker/ssl/
+cp /etc/letsencrypt/live/your-domain.com/privkey.pem /opt/blog/SiaBao-blog/docker/ssl/
 
 # 重启 Nginx
 docker-compose start nginx
@@ -538,11 +612,11 @@ cat > /opt/blog/sia-blog/scripts/renew-ssl.sh << 'EOF'
 certbot renew --quiet
 
 # 复制新证书
-cp /etc/letsencrypt/live/your-domain.com/fullchain.pem /opt/blog/sia-blog/docker/ssl/
-cp /etc/letsencrypt/live/your-domain.com/privkey.pem /opt/blog/sia-blog/docker/ssl/
+cp /etc/letsencrypt/live/your-domain.com/fullchain.pem /opt/blog/SiaBao-blog/docker/ssl/
+cp /etc/letsencrypt/live/your-domain.com/privkey.pem /opt/blog/SiaBao-blog/docker/ssl/
 
 # 重启 Nginx
-cd /opt/blog/sia-blog
+cd /opt/blog/SiaBao-blog
 docker-compose restart nginx
 
 echo "SSL certificate renewed at $(date)"
@@ -559,8 +633,8 @@ crontab -e
 
 ```bash
 # 创建 SSL 目录
-mkdir -p /opt/blog/sia-blog/docker/ssl
-cd /opt/blog/sia-blog/docker/ssl
+mkdir -p /opt/blog/SiaBao-blog/docker/ssl
+cd /opt/blog/SiaBao-blog/docker/ssl
 
 # 生成自签名证书
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
@@ -576,8 +650,8 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 ### 创建部署脚本
 
 ```bash
-mkdir -p /opt/blog/sia-blog/scripts
-vim /opt/blog/sia-blog/scripts/deploy.sh
+mkdir -p /opt/blog/SiaBao-blog/scripts
+vim /opt/blog/SiaBao-blog/scripts/deploy.sh
 ```
 
 **deploy.sh 内容：**
@@ -587,17 +661,17 @@ vim /opt/blog/sia-blog/scripts/deploy.sh
 set -e
 
 PROJECT_DIR="/opt/blog"
-PUBLIC_REPO="$PROJECT_DIR/sia-blog"
-PRIVATE_REPO="$PROJECT_DIR/sia-blog-content"
+CODE_REPO="$PROJECT_DIR/SiaBao-blog"
+CONTENT_REPO="$PROJECT_DIR/sia-blog-content"
 
 echo "=========================================="
 echo "  Sia Blog 自动部署脚本"
 echo "=========================================="
 echo ""
 
-# 1. 检查并更新公开仓库（代码）
-echo "📦 拉取公开仓库（代码）..."
-cd $PUBLIC_REPO
+# 1. 检查并更新代码仓库
+echo "📦 拉取代码仓库..."
+cd $CODE_REPO
 git fetch origin
 if [ $(git rev-parse HEAD) != $(git rev-parse origin/main) ]; then
     git pull origin main
@@ -606,40 +680,48 @@ else
     echo "ℹ️  代码已是最新版本"
 fi
 
-# 2. 检查并更新私有仓库（内容）
+# 2. 检查并更新内容仓库（数据库和图片）
 echo ""
-echo "🔒 拉取私有仓库（内容）..."
-cd $PRIVATE_REPO
+echo "🔒 拉取内容仓库..."
+cd $CONTENT_REPO
 git fetch origin
 if [ $(git rev-parse HEAD) != $(git rev-parse origin/main) ]; then
     git pull origin main
-    echo "✅ 内容已更新"
+    echo "✅ 内容已更新（数据库和图片）"
 else
     echo "ℹ️  内容已是最新版本"
 fi
 
-# 3. 停止现有服务
+# 3. 检查数据目录结构
+echo ""
+echo "🔍 检查数据目录结构..."
+mkdir -p $CONTENT_REPO/server/data/posts
+mkdir -p $CONTENT_REPO/server/data/uploads
+mkdir -p $CONTENT_REPO/server/public/uploads
+echo "✅ 数据目录结构完整"
+
+# 4. 停止现有服务
 echo ""
 echo "🛑 停止现有服务..."
-cd $PUBLIC_REPO
+cd $CODE_REPO
 docker-compose down
 
-# 4. 重新构建并启动服务
+# 5. 重新构建并启动服务
 echo ""
 echo "🚀 构建并启动服务..."
 docker-compose up -d --build
 
-# 5. 等待服务启动
+# 6. 等待服务启动
 echo ""
 echo "⏳ 等待服务启动..."
 sleep 10
 
-# 6. 检查服务状态
+# 7. 检查服务状态
 echo ""
 echo "🔍 检查服务状态..."
 docker-compose ps
 
-# 7. 检查服务健康
+# 8. 检查服务健康
 echo ""
 if curl -f http://localhost:5000/api/health > /dev/null 2>&1; then
     echo "✅ 后端服务健康"
@@ -668,30 +750,30 @@ echo "=========================================="
 
 ```bash
 # 添加执行权限
-chmod +x /opt/blog/sia-blog/scripts/deploy.sh
+chmod +x /opt/blog/SiaBao-blog/scripts/deploy.sh
 
 # 测试部署脚本
-/opt/blog/sia-blog/scripts/deploy.sh
+/opt/blog/SiaBao-blog/scripts/deploy.sh
 ```
 
 ### 设置自动更新（可选）
 
 ```bash
 # 创建定时更新脚本
-vim /opt/blog/sia-blog/scripts/auto-update.sh
+vim /opt/blog/SiaBao-blog/scripts/auto-update.sh
 ```
 
 **auto-update.sh 内容：**
 
 ```bash
 #!/bin/bash
-LOG_FILE="/opt/blog/sia-blog/logs/auto-update.log"
+LOG_FILE="/opt/blog/SiaBao-blog/logs/auto-update.log"
 
 echo "========================================" >> $LOG_FILE
 echo "自动更新开始: $(date)" >> $LOG_FILE
 
 # 执行部署
-/opt/blog/sia-blog/scripts/deploy.sh >> $LOG_FILE 2>&1
+/opt/blog/SiaBao-blog/scripts/deploy.sh >> $LOG_FILE 2>&1
 
 echo "自动更新结束: $(date)" >> $LOG_FILE
 echo "========================================" >> $LOG_FILE
@@ -700,7 +782,7 @@ echo "========================================" >> $LOG_FILE
 ```bash
 # 设置定时任务（每天凌晨 2 点执行）
 crontab -e
-# 添加: 0 2 * * * /opt/blog/sia-blog/scripts/auto-update.sh
+# 添加: 0 2 * * * /opt/blog/SiaBao-blog/scripts/auto-update.sh
 ```
 
 ---
@@ -709,10 +791,14 @@ crontab -e
 
 ### 备份数据
 
+数据备份需要包含两个目录：
+- **`server/data/`** - 数据库和文章数据
+- **`server/public/`** - 图片资源
+
 ```bash
 # 使用项目中的备份脚本（推荐）
 # 或创建自定义备份脚本
-vim /opt/blog/sia-blog/scripts/backup.sh
+vim /opt/blog/SiaBao-blog/scripts/backup.sh
 ```
 
 **backup.sh 内容：**
@@ -723,31 +809,139 @@ set -e
 
 BACKUP_DIR="/opt/blog/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
-SOURCE_DIR="/opt/sia-blog-content/server/data"
+CONTENT_REPO="/opt/blog/sia-blog-content"
 
 # 创建备份目录
 mkdir -p $BACKUP_DIR
 
-# 备份数据
+# 备份数据目录（数据库和文章）
 echo "📦 开始备份数据..."
-tar -czf $BACKUP_DIR/data_$DATE.tar.gz -C /opt/sia-blog-content/server data
+tar -czf $BACKUP_DIR/data_$DATE.tar.gz -C $CONTENT_REPO/server data
+
+# 备份图片目录
+echo "🖼️  开始备份图片..."
+tar -czf $BACKUP_DIR/public_$DATE.tar.gz -C $CONTENT_REPO/server public
 
 # 备份数据库（如果使用 SQLite）
-if [ -f "/opt/sia-blog-content/server/data/blog.db" ]; then
-    cp /opt/sia-blog-content/server/data/blog.db $BACKUP_DIR/blog_$DATE.db
+if [ -f "$CONTENT_REPO/server/data/blog.db" ]; then
+    cp $CONTENT_REPO/server/data/blog.db $BACKUP_DIR/blog_$DATE.db
 fi
 
 # 保留最近 7 天的备份
 find $BACKUP_DIR -name "data_*.tar.gz" -mtime +7 -delete
+find $BACKUP_DIR -name "public_*.tar.gz" -mtime +7 -delete
 find $BACKUP_DIR -name "blog_*.db" -mtime +7 -delete
 
-echo "✅ 备份完成: $BACKUP_DIR/data_$DATE.tar.gz"
+echo "✅ 备份完成:"
+echo "  - 数据: $BACKUP_DIR/data_$DATE.tar.gz"
+echo "  - 图片: $BACKUP_DIR/public_$DATE.tar.gz"
+```
+
+### 将备份推送到 GitHub（推荐）
+
+为了数据安全，建议定期将备份推送到 `sia-blog-content` 私有仓库：
+
+```bash
+# 创建同步脚本
+vim /opt/blog/SiaBao-blog/scripts/sync-to-github.sh
+```
+
+**sync-to-github.sh 内容：**
+
+```bash
+#!/bin/bash
+set -e
+
+CONTENT_REPO="/opt/blog/sia-blog-content"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+echo "=========================================="
+echo "  同步数据到 GitHub"
+echo "=========================================="
+echo ""
+
+cd $CONTENT_REPO
+
+# 添加所有数据文件
+echo "📦 添加数据文件..."
+git add server/data/
+
+# 添加图片文件
+echo "🖼️  添加图片文件..."
+git add server/public/
+
+# 提交更改
+echo ""
+echo "💾 提交更改..."
+git commit -m "chore: auto backup data and images - $DATE"
+
+# 推送到 GitHub
+echo ""
+echo "🚀 推送到 GitHub..."
+git push origin main
+
+echo ""
+echo "✅ 同步完成！"
 ```
 
 ```bash
+# 设置执行权限
+chmod +x /opt/blog/SiaBao-blog/scripts/backup.sh
+chmod +x /opt/blog/SiaBao-blog/scripts/sync-to-github.sh
+
 # 设置定时备份（每天凌晨 3 点）
 crontab -e
-# 添加: 0 3 * * * /opt/blog/sia-blog/scripts/cloud-backup.sh
+# 添加: 0 3 * * * /opt/blog/SiaBao-blog/scripts/backup.sh
+# 添加: 0 4 * * * /opt/blog/SiaBao-blog/scripts/sync-to-github.sh
+```
+
+### 初始化内容仓库的图片目录
+
+如果 `sia-blog-content` 仓库中还没有 `server/public/` 目录，需要先创建并推送：
+
+```bash
+# 在本地克隆内容仓库
+git clone git@github.com:SSSSSia/sia-blog-content.git
+cd sia-blog-content
+
+# 创建目录结构
+mkdir -p server/public/uploads
+mkdir -p server/data/posts
+mkdir -p server/data/uploads
+
+# 创建 README 文件
+cat > server/public/README.md << 'EOF'
+# 图片资源目录
+
+此目录用于存储用户上传的图片资源。
+
+## 目录结构
+
+- `uploads/` - 用户上传的图片文件
+
+## 说明
+
+- 此目录的内容由 Docker 容器挂载
+- 图片文件会自动保存到这个目录
+- 定期备份此目录到 GitHub 私有仓库
+EOF
+
+# 提交并推送
+git add server/public/
+git commit -m "feat: add public directory for image storage"
+git push origin main
+```
+```
+
+```bash
+# 设置执行权限
+chmod +x /opt/blog/SiaBao-blog/scripts/backup.sh
+chmod +x /opt/blog/SiaBao-blog/scripts/sync-to-github.sh
+
+# 设置定时备份（每天凌晨 3 点）
+crontab -e
+# 添加: 0 3 * * * /opt/blog/SiaBao-blog/scripts/backup.sh
+# 添加: 0 4 * * * /opt/blog/SiaBao-blog/scripts/sync-to-github.sh
 ```
 
 ### 查看日志
@@ -848,13 +1042,14 @@ docker-compose logs backend
 netstat -tlnp | grep :5000
 
 # 2. 权限问题 - 检查文件权限
-ls -la /opt/sia-blog-content/server/data
+ls -la /opt/blog/sia-blog-content/server/data
 
 # 3. 配置错误 - 检查环境变量
-cat /opt/sia-blog/server/.env
+cat /opt/blog/SiaBao-blog/server/.env
 
 # 4. 数据目录不存在
-mkdir -p /opt/sia-blog-content/server/data/posts
+mkdir -p /opt/blog/sia-blog-content/server/data/posts
+mkdir -p /opt/blog/sia-blog-content/server/public/uploads
 ```
 
 #### 问题 2：API 请求 404
@@ -864,7 +1059,7 @@ mkdir -p /opt/sia-blog-content/server/data/posts
 **解决方案：**
 ```bash
 # 检查 Nginx 配置
-cat /opt/blog/sia-blog/docker/nginx/frontend.conf
+cat /opt/blog/SiaBao-blog/docker/nginx/frontend.conf
 
 # 确保 /api 路由正确配置
 # 检查后端服务是否正常
@@ -881,14 +1076,17 @@ docker-compose restart nginx
 **解决方案：**
 ```bash
 # 检查上传目录权限
-ls -la /opt/sia-blog-content/server/data/uploads
+ls -la /opt/blog/sia-blog-content/server/data/uploads
+ls -la /opt/blog/sia-blog-content/server/public/uploads
 
 # 修改权限
-chmod 755 /opt/sia-blog-content/server/data/uploads
-chown -R $USER:$USER /opt/sia-blog-content/server/data/uploads
+chmod 755 /opt/blog/sia-blog-content/server/data/uploads
+chmod 755 /opt/blog/sia-blog-content/server/public/uploads
+chown -R $USER:$USER /opt/blog/sia-blog-content/server/data/uploads
+chown -R $USER:$USER /opt/blog/sia-blog-content/server/public/uploads
 
 # 检查 Nginx 文件大小限制
-cat /opt/blog/sia-blog/docker/nginx/nginx.conf
+cat /opt/blog/SiaBao-blog/docker/nginx/nginx.conf
 # 确保 client_max_body_size 设置足够大
 ```
 
@@ -899,13 +1097,13 @@ cat /opt/blog/sia-blog/docker/nginx/nginx.conf
 **解决方案：**
 ```bash
 # 检查证书有效期
-openssl x509 -in /opt/blog/sia-blog/docker/ssl/fullchain.pem -noout -dates
+openssl x509 -in /opt/blog/SiaBao-blog/docker/ssl/fullchain.pem -noout -dates
 
 # 检查证书链
 openssl s_client -connect your-domain.com:443 -servername your-domain.com
 
 # 重新获取证书
-/opt/blog/sia-blog/scripts/renew-ssl.sh
+/opt/blog/SiaBao-blog/scripts/renew-ssl.sh
 
 # 重启 Nginx
 docker-compose restart nginx
@@ -918,15 +1116,15 @@ docker-compose restart nginx
 **解决方案：**
 ```bash
 # 检查数据库文件权限
-ls -la /opt/sia-blog-content/server/data/*.db
+ls -la /opt/blog/sia-blog-content/server/data/*.db
 
 # 如果使用 SQLite，检查文件是否损坏
-sqlite3 /opt/sia-blog-content/server/data/blog.db "PRAGMA integrity_check;"
+sqlite3 /opt/blog/sia-blog-content/server/data/blog.db "PRAGMA integrity_check;"
 
 # 备份并重建数据库
 cp /opt/blog/sia-blog-content/server/data/blog.db /opt/blog/sia-blog-content/server/data/blog.db.backup
 # 从备份恢复
-cp /opt/blog/backups/blog_YYYYMMDD_HHMMSS.db /opt/sia-blog-content/server/data/blog.db
+cp /opt/blog/backups/blog_YYYYMMDD_HHMMSS.db /opt/blog/sia-blog-content/server/data/blog.db
 ```
 
 #### 问题 6：内存不足
@@ -1079,11 +1277,11 @@ docker-compose restart          # 重启服务
 docker-compose logs -f          # 查看日志
 
 # 更新部署
-cd /opt/blog/sia-blog
+cd /opt/blog/SiaBao-blog
 git pull origin main            # 更新代码
 cd ../sia-blog-content
 git pull origin main            # 更新内容
-cd ../sia-blog
+cd ../SiaBao-blog
 docker-compose up -d --build    # 重新部署
 
 # 备份恢复
@@ -1103,3 +1301,17 @@ netstat -tlnp                   # 端口占用检查
 - [Nginx 文档](https://nginx.org/en/docs/)
 - [Let's Encrypt 文档](https://letsencrypt.org/docs/)
 - [双仓库架构指南](./DUAL_REPOSITORY_SETUP.md)
+
+### 仓库信息
+
+- **代码仓库**: [SSSSSia/SiaBao-blog](https://github.com/SSSSSia/SiaBao-blog)
+- **内容仓库**: [SSSSSia/sia-blog-content](https://github.com/SSSSSia/sia-blog-content) (私有)
+
+### 数据目录说明
+
+双仓库架构中，`sia-blog-content` 私有仓库需要包含以下目录：
+
+- **`server/data/`** - 数据库文件、文章数据、上传的文件
+- **`server/public/`** - 图片资源（用户上传的图片）
+
+这两个目录需要在部署时正确挂载到 Docker 容器中，并定期备份到 GitHub 私有仓库。
