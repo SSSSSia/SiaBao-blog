@@ -1,5 +1,9 @@
 # 云服务器部署配置（双仓库架构）
 # 使用方法：docker-compose -f docker-compose.prod.yml up -d --build
+#
+# 重要提示：首次部署前，请先设置环境变量 CONTENT_REPO_PATH
+# export CONTENT_REPO_PATH=/path/to/sia-blog-content
+# 或者直接在下面的 volumes 配置中使用绝对路径
 
 version: '3.8'
 
@@ -28,12 +32,14 @@ services:
     volumes:
       # 挂载内容仓库的数据目录（双仓库架构）
       # 注意：后端代码中的数据路径是 /app/data，不是 /app/server/data
-      - ~/blog/sia-blog-content/server/data:/app/data:rw
+      # 请根据实际情况修改此路径为 sia-blog-content 的绝对路径
+      # 例如：/root/sia-blog-content/server/data 或 /home/username/sia-blog-content/server/data
+      - /root/blog/sia-blog-content/server/data:/app/data:rw
       # 挂载内容仓库的图片资源目录
-      - ~/blog/sia-blog-content/server/public:/app/public:rw
+      - /root/blog/sia-blog-content/server/public:/app/public:rw
     # 加载环境变量文件（Docker Compose 会读取 .env 并注入到容器环境变量中）
     env_file:
-      - ~/blog/sia-blog-content/server/.env
+      - /root/blog/sia-blog-content/server/.env
     environment:
       - HOST=0.0.0.0
       - PORT=5000
@@ -52,7 +58,7 @@ services:
       - ./docker/nginx/ssl:/etc/nginx/ssl:ro
       - ./docker/logs/nginx:/var/log/nginx
       # 可选：直接通过 Nginx 提供图片服务（更高效）
-      - ~/blog/sia-blog-content/server/public:/var/www/public:ro
+      - /root/blog/sia-blog-content/server/public:/var/www/public:ro
     networks:
       - blog-network
     depends_on:
