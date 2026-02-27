@@ -272,11 +272,9 @@ cd /opt/blog/SiaBao-blog/server
 ln -s ../../sia-blog-content/server/data data
 ln -s ../../sia-blog-content/server/public public
 
-# 方案 B：修改 docker-compose.yml 挂载路径（生产环境推荐）
-# 编辑 docker-compose.yml，在 backend 服务中添加：
-# volumes:
-#   - /opt/blog/sia-blog-content/server/data:/app/server/data:rw
-#   - /opt/blog/sia-blog-content/server/public:/app/server/public:rw
+# 方案 B：使用生产配置文件（推荐）
+# 项目已提供 docker-compose.prod.yml，专门用于云服务器部署
+# 使用: docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
 **重要提示**: 如果 `sia-blog-content` 仓库中还没有 `server/public/` 目录，需要先创建并推送：
@@ -291,16 +289,30 @@ git commit -m "feat: add public directory for image storage"
 git push origin main
 ```
 
-### 步骤 5：配置 docker-compose.yml
+### 步骤 5：配置 docker-compose
 
 ```bash
 cd /opt/blog/SiaBao-blog
 
-# 编辑 docker-compose.yml
-vim docker-compose.yml
+# 生产环境使用专用配置文件
+# docker-compose.prod.yml 已针对双仓库架构优化
+# 如需自定义配置，可编辑此文件
+vim docker-compose.prod.yml
 ```
 
-**docker-compose.yml 示例：**
+**docker-compose.prod.yml 说明：**
+
+本项目提供两个 Docker Compose 配置文件：
+
+- **docker-compose.yml** - 本地开发环境
+  - 前端端口：5173（可直接访问）
+  - 后端端口：9090（可直接访问）
+  - 数据路径：相对路径 `./server/data`
+
+- **docker-compose.prod.yml** - 云服务器生产环境
+  - 仅暴露 Nginx 80/443 端口
+  - 后端端口：5000（内部通信）
+  - 数据路径：绝对路径 `/opt/blog/sia-blog-content/server/data`
 
 ```yaml
 version: '3.8'
@@ -378,14 +390,14 @@ networks:
 ### 步骤 6：启动服务
 
 ```bash
-# 构建并启动所有服务
-docker-compose up -d --build
+# 使用生产配置构建并启动所有服务
+docker-compose -f docker-compose.prod.yml up -d --build
 
 # 查看服务状态
-docker-compose ps
+docker-compose -f docker-compose.prod.yml ps
 
 # 查看服务日志
-docker-compose logs -f
+docker-compose -f docker-compose.prod.yml logs -f
 
 # 检查服务健康状态
 curl http://localhost:5000/api/health
@@ -396,20 +408,20 @@ curl http://localhost:5000/api/health
 1. 检查数据目录是否正确挂载:
 
    ```bash
-   docker-compose exec backend ls -la /app/server/data
-   docker-compose exec backend ls -la /app/server/public
+   docker-compose -f docker-compose.prod.yml exec backend ls -la /app/server/data
+   docker-compose -f docker-compose.prod.yml exec backend ls -la /app/server/public
    ```
 
 2. 检查数据库文件是否存在:
 
    ```bash
-   docker-compose exec backend ls -la /app/server/data/*.db
+   docker-compose -f docker-compose.prod.yml exec backend ls -la /app/server/data/*.db
    ```
 
 3. 如果数据库不存在，初始化数据库:
 
    ```bash
-   docker-compose exec backend python -c "from run import app, init_db; app.app_context().push(); init_db()"
+   docker-compose -f docker-compose.prod.yml exec backend python -c "from run import app, init_db; app.app_context().push(); init_db()"
    ```
 
 ---
@@ -579,7 +591,7 @@ yum install -y certbot
 
 ```bash
 # 停止 Nginx 容器
-docker-compose stop nginx
+docker-compose -f docker-compose.prod.yml stop nginx
 
 # 获取证书（使用 HTTP-01 验证）
 certbot certonly --standalone \
@@ -599,7 +611,7 @@ cp /etc/letsencrypt/live/your-domain.com/fullchain.pem /opt/blog/SiaBao-blog/doc
 cp /etc/letsencrypt/live/your-domain.com/privkey.pem /opt/blog/SiaBao-blog/docker/ssl/
 
 # 重启 Nginx
-docker-compose start nginx
+docker-compose -f docker-compose.prod.yml start nginx
 ```
 
 #### 设置自动续期
@@ -617,7 +629,7 @@ cp /etc/letsencrypt/live/your-domain.com/privkey.pem /opt/blog/SiaBao-blog/docke
 
 # 重启 Nginx
 cd /opt/blog/SiaBao-blog
-docker-compose restart nginx
+docker-compose -f docker-compose.prod.yml restart nginx
 
 echo "SSL certificate renewed at $(date)"
 EOF
@@ -704,12 +716,12 @@ echo "✅ 数据目录结构完整"
 echo ""
 echo "🛑 停止现有服务..."
 cd $CODE_REPO
-docker-compose down
+docker-compose -f docker-compose.prod.yml down
 
 # 5. 重新构建并启动服务
 echo ""
 echo "🚀 构建并启动服务..."
-docker-compose up -d --build
+docker-compose -f docker-compose.prod.yml up -d --build
 
 # 6. 等待服务启动
 echo ""
@@ -719,7 +731,7 @@ sleep 10
 # 7. 检查服务状态
 echo ""
 echo "🔍 检查服务状态..."
-docker-compose ps
+docker-compose -f docker-compose.prod.yml ps
 
 # 8. 检查服务健康
 echo ""
@@ -948,15 +960,15 @@ crontab -e
 
 ```bash
 # 查看所有服务日志
-docker-compose logs -f
+docker-compose -f docker-compose.prod.yml logs -f
 
 # 查看特定服务日志
-docker-compose logs -f backend
-docker-compose logs -f frontend
-docker-compose logs -f nginx
+docker-compose -f docker-compose.prod.yml logs -f backend
+docker-compose -f docker-compose.prod.yml logs -f frontend
+docker-compose -f docker-compose.prod.yml logs -f nginx
 
 # 查看最近 100 行日志
-docker-compose logs --tail=100 backend
+docker-compose -f docker-compose.prod.yml logs --tail=100 backend
 
 # 查看服务资源使用情况
 docker stats
@@ -1066,7 +1078,7 @@ cat /opt/blog/SiaBao-blog/docker/nginx/frontend.conf
 curl http://localhost:5000/api/health
 
 # 重启 Nginx
-docker-compose restart nginx
+docker-compose -f docker-compose.prod.yml restart nginx
 ```
 
 #### 问题 3：无法上传文件
@@ -1106,7 +1118,7 @@ openssl s_client -connect your-domain.com:443 -servername your-domain.com
 /opt/blog/SiaBao-blog/scripts/renew-ssl.sh
 
 # 重启 Nginx
-docker-compose restart nginx
+docker-compose -f docker-compose.prod.yml restart nginx
 ```
 
 #### 问题 5：数据库连接失败
@@ -1270,11 +1282,11 @@ vim /etc/logrotate.d/docker-compose
 ### 有用的命令速查
 
 ```bash
-# 服务管理
-docker-compose up -d --build    # 构建并启动
-docker-compose down             # 停止并删除容器
-docker-compose restart          # 重启服务
-docker-compose logs -f          # 查看日志
+# 服务管理（云服务器）
+docker-compose -f docker-compose.prod.yml up -d --build    # 构建并启动
+docker-compose -f docker-compose.prod.yml down             # 停止并删除容器
+docker-compose -f docker-compose.prod.yml restart          # 重启服务
+docker-compose -f docker-compose.prod.yml logs -f          # 查看日志
 
 # 更新部署
 cd /opt/blog/SiaBao-blog
@@ -1282,7 +1294,7 @@ git pull origin main            # 更新代码
 cd ../sia-blog-content
 git pull origin main            # 更新内容
 cd ../SiaBao-blog
-docker-compose up -d --build    # 重新部署
+docker-compose -f docker-compose.prod.yml up -d --build    # 重新部署
 
 # 备份恢复
 tar -xzf data_YYYYMMDD.tar.gz   # 解压备份
