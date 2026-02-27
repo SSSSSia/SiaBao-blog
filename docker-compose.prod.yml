@@ -30,8 +30,9 @@ services:
       - ~/blog/sia-blog-content/server/data:/app/server/data:rw
       # 挂载内容仓库的图片资源目录
       - ~/blog/sia-blog-content/server/public:/app/server/public:rw
-      # 挂载环境配置文件（注意：挂载到 /app/.env，因为 WORKDIR 是 /app）
-      - ~/blog/sia-blog-content/server/.env:/app/.env:ro
+    # 加载环境变量文件（Docker Compose 会读取 .env 并注入到容器环境变量中）
+    env_file:
+      - ~/blog/sia-blog-content/server/.env
     environment:
       - HOST=0.0.0.0
       - PORT=5000
