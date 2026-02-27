@@ -1,7 +1,34 @@
-import { Link } from 'react-router-dom'
+﻿import { Link } from 'react-router-dom'
 import { Calendar, Eye, Heart, Clock } from 'lucide-react'
 import dayjs from 'dayjs'
 import './ArticleCard.css'
+
+function resolveArticleRouteId(article) {
+  const { id, slug, article_id: articleId } = article || {}
+
+  if (typeof id === 'string' || typeof id === 'number') {
+    return String(id)
+  }
+
+  if (id && typeof id === 'object') {
+    if (typeof id.id === 'string' || typeof id.id === 'number') {
+      return String(id.id)
+    }
+    if (typeof id.value === 'string' || typeof id.value === 'number') {
+      return String(id.value)
+    }
+  }
+
+  if (typeof articleId === 'string' || typeof articleId === 'number') {
+    return String(articleId)
+  }
+
+  if (typeof slug === 'string' && slug.trim()) {
+    return slug.trim()
+  }
+
+  return ''
+}
 
 export default function ArticleCard({ article, featured = false }) {
   const {
@@ -15,13 +42,16 @@ export default function ArticleCard({ article, featured = false }) {
     readingTime,
   } = article
 
+  const routeId = resolveArticleRouteId(article)
+  const articleUrl = routeId ? `/articles/${encodeURIComponent(routeId)}` : '/articles'
+
   const categoryName = typeof category === 'string' ? category : category?.name
 
   const normalizedTags = (tags || [])
     .map((tag, index) => {
       if (typeof tag === 'string') {
         return {
-          id: `${id}-tag-${index}`,
+          id: `${routeId || id || 'article'}-tag-${index}`,
           name: tag,
         }
       }
@@ -39,7 +69,7 @@ export default function ArticleCard({ article, featured = false }) {
     <article
       className={`article-card ${featured ? 'article-card-featured' : ''}`}
     >
-      <Link to={`/articles/${id}`} className='article-card-link'>
+      <Link to={articleUrl} className='article-card-link'>
         <h2 className='article-card-title'>{title}</h2>
 
         {excerpt && <p className='article-card-excerpt'>{excerpt}</p>}
@@ -58,7 +88,7 @@ export default function ArticleCard({ article, featured = false }) {
             {readingTime && (
               <span className='meta-item'>
                 <Clock size={14} />
-                {readingTime} 分钟
+                {readingTime} 鍒嗛挓
               </span>
             )}
 
