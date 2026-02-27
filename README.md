@@ -126,36 +126,3 @@ pytest
 
 MIT
 
-## 公开发布前检查清单
-
-发布到 GitHub 前，建议逐项确认：
-
-- [ ] 敏感信息检查（Secrets）
-- [ ] 确认未提交 `server/.env`、私钥、Token、云厂商凭据
-- [ ] 检查历史提交中是否出现过密钥（如有泄露需立即轮换）
-- [ ] 确认 `.gitignore` 已覆盖 `node_modules/`、`dist/`、日志与临时文件
-
-- [ ] 许可证（License）
-- [ ] 根目录存在 `LICENSE` 文件并与 README 一致（当前声明为 MIT）
-- [ ] 第三方依赖许可证与项目发布策略兼容
-
-- [ ] 仓库文档
-- [ ] README 中的启动命令和端口与当前代码一致
-- [ ] 部署文档与 `docker-compose.prod.yml` 保持一致
-- [ ] 明确说明哪些目录属于私有内容或持久化数据（如 `server/data`、`server/public`）
-
-- [ ] Issue / PR 模板
-- [ ] 添加 `.github/ISSUE_TEMPLATE/`（Bug、Feature）
-- [ ] 添加 `.github/pull_request_template.md`
-- [ ] 在模板中要求描述变更、测试结果和回滚方案
-
-- [ ] GitHub Actions
-- [ ] 清理不再使用的 CI 配置（已删除 `.gitlab-ci.yml`）
-- [ ] 确认 `.github/workflows/deploy.yml` 的服务器路径、端口、健康检查端点为最新值
-- [ ] 仓库 Secrets（`SERVER_HOST`、`SERVER_USER`、`SSH_PRIVATE_KEY`、`SERVER_PORT`）已在 GitHub 配置
-- [ ] 部署脚本失败时能输出可排障日志
-
-- [ ] 发布前最终验证
-- [ ] 本地执行一次前后端启动与核心功能自测
-- [ ] 执行基础检查（如前端 lint/test、后端 ruff/pytest）
-- [ ] 打一个可回滚版本标签（如 `v1.0.0`）
