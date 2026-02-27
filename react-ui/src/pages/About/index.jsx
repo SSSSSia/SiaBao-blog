@@ -206,8 +206,9 @@ export default function About() {
                     alt={blogger.name}
                     className='avatar-image'
                     onError={(e) => {
-                      // 如果图片加载失败，使用默认头像
-                      e.target.src = '/src/assets/images/avatar.jpg'
+                      // 如果图片加载失败，隐藏图片显示占位符
+                      e.target.style.display = 'none'
+                      e.target.parentElement.classList.add('avatar-placeholder')
                     }}
                   />
                 </div>
