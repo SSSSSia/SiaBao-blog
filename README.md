@@ -1,5 +1,5 @@
-﻿# Sia Blog
-
+﻿# SiaBao Blog
+一个通过Vibe Coding开发的极简风格个人博客项目
 基于 React + FastAPI 的前后端分离博客系统，支持文章管理、评论、点赞、后台管理和图片上传。
 
 ## 核心功能

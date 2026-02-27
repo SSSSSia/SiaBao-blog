@@ -124,12 +124,61 @@ renderer.heading = function({ text, depth, raw }) {
   return `<h${depth} id="${id}" data-heading-id="${id}">${text}</h${depth}>\n`;
 };
 
-// 自定义图片渲染，添加错误处理
-renderer.image = function(href, title, text) {
+function resolveImageHref(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value.trim();
+
+  if (typeof value === 'object') {
+    const candidate =
+      value.href?.href ||
+      value.href?.url ||
+      value.href?.src ||
+      value.href ||
+      value.url ||
+      value.src ||
+      '';
+    return typeof candidate === 'string' ? candidate.trim() : '';
+  }
+
+  return '';
+}
+
+function normalizeImageHref(href) {
+  if (!href) return '';
+  if (
+    href.startsWith('/') ||
+    href.startsWith('data:') ||
+    href.startsWith('http://') ||
+    href.startsWith('https://') ||
+    href.startsWith('//')
+  ) {
+    return href;
+  }
+  return `/${href.replace(/^\.?\//, '')}`;
+}
+
+// 自定义图片渲染，兼容 marked 新旧版本参数签名
+renderer.image = function(imageTokenOrHref, legacyTitle, legacyText) {
+  const isTokenObject =
+    imageTokenOrHref &&
+    typeof imageTokenOrHref === 'object' &&
+    !Array.isArray(imageTokenOrHref);
+
+  const rawHref = isTokenObject
+    ? resolveImageHref(imageTokenOrHref)
+    : resolveImageHref(imageTokenOrHref);
+  const imageHref = normalizeImageHref(rawHref);
+  const title = isTokenObject ? imageTokenOrHref.title : legacyTitle;
+  const text = isTokenObject ? imageTokenOrHref.text : legacyText;
+
+  if (!imageHref) {
+    return '';
+  }
+
   const titleAttr = title ? ` title="${title}"` : '';
   const altAttr = text ? ` alt="${text}"` : ' alt=""';
   // 添加 onerror 处理：图片加载失败时隐藏并显示占位符
-  return `<img src="${href}"${altAttr}${titleAttr} onerror="this.style.display='none';this.alt='图片加载失败'" loading="lazy" />`;
+  return `<img src="${imageHref}"${altAttr}${titleAttr} onerror="this.style.display='none';this.alt='图片加载失败'" loading="lazy" />`;
 };
 
 // 配置 marked 选项
