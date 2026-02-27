@@ -29,13 +29,14 @@ jobs:
             CONTENT_DIR="${{ secrets.SERVER_CONTENT_PATH }}"
 
             if [ -z "$PROJECT_DIR" ]; then
-              PROJECT_DIR="/root/blog/my-blog"
+              PROJECT_DIR="/root/blog/SiaBao-blog"
+            fi
+            if [ -z "$CONTENT_DIR" ]; then
+              CONTENT_DIR="/root/blog/sia-blog-content"
             fi
 
             echo "Using PROJECT_DIR=$PROJECT_DIR"
-            if [ -n "$CONTENT_DIR" ]; then
-              echo "Using CONTENT_DIR=$CONTENT_DIR"
-            fi
+            echo "Using CONTENT_DIR=$CONTENT_DIR"
 
             if [ ! -d "$PROJECT_DIR" ]; then
               echo "Project directory not found: $PROJECT_DIR"
@@ -48,7 +49,7 @@ jobs:
             echo "Pulling latest code..."
             git pull origin main
 
-            if [ -n "$CONTENT_DIR" ] && [ -d "$CONTENT_DIR" ]; then
+            if [ -d "$CONTENT_DIR" ]; then
               echo "Pulling content repository..."
               cd "$CONTENT_DIR"
               git pull origin main
