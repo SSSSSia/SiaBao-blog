@@ -26,6 +26,22 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "${LOG_FILE}"
 }
 
+# 新增：命令执行日志（显示输出）
+log_exec() {
+    local cmd="$1"
+    log "执行命令: $cmd"
+    if eval "$cmd" >> "${LOG_FILE}" 2>&1; then
+        log_success "命令执行成功"
+        return 0
+    else
+        local exit_code=$?
+        log_error "命令执行失败 (退出码: $exit_code)"
+        log "最近 20 行日志:"
+        tail -20 "${LOG_FILE}" | sed 's/^/  /'
+        return $exit_code
+    fi
+}
+
 log_info() {
     echo -e "\033[0;34m[$(date '+%Y-%m-%d %H:%M:%S')]\033[0m [INFO] $1" | tee -a "${LOG_FILE}"
 }

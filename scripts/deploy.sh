@@ -7,6 +7,17 @@ set -e
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${PROJECT_DIR}"
 
+# 解析命令行参数
+DEBUG_MODE=false
+for arg in "$@"; do
+    case $arg in
+        --debug|-d)
+            DEBUG_MODE=true
+            shift
+            ;;
+    esac
+done
+
 # 检测部署环境
 DETECT_ENV() {
     if [ -d "/blog" ] && [ "${PROJECT_DIR}" = "/blog/SiaBao-blog" ]; then
@@ -89,8 +100,8 @@ check_env() {
         # 云服务器环境特殊处理
         if [ "${DEPLOY_ENV}" = "cloud" ]; then
             # 检查私有仓库是否有配置
-            if [ -f "/opt/sia-blog-content/server/.env" ]; then
-                cp /opt/sia-blog-content/server/.env server/.env
+            if [ -f "/blog/sia-blog-content/server/.env" ]; then
+                cp /blog/sia-blog-content/server/.env server/.env
                 log_success "从私有仓库复制环境配置"
             else
                 log_warning "请编辑 server/.env 文件，修改以下配置："
@@ -132,14 +143,35 @@ check_data_directory() {
 build_images() {
     echo ""
     log_info "构建 Docker 镜像..."
-    $COMPOSE_CMD build
+    echo "----------------------------------------"
+    if $COMPOSE_CMD build; then
+        echo -e "${GREEN}✓ 镜像构建成功${NC}"
+    else
+        echo -e "${RED}✗ 镜像构建失败${NC}"
+        echo "请检查 Dockerfile 和依赖项"
+        exit 1
+    fi
+    echo "----------------------------------------"
 }
 
 # 启动服务
 start_services() {
     echo ""
     log_info "启动服务..."
-    $COMPOSE_CMD up -d
+    echo "----------------------------------------"
+    if $COMPOSE_CMD up -d; then
+        echo -e "${GREEN}✓ 服务启动成功${NC}"
+        echo ""
+        echo "当前容器状态:"
+        $COMPOSE_CMD ps
+    else
+        echo -e "${RED}✗ 服务启动失败${NC}"
+        echo ""
+        echo "查看详细错误日志:"
+        $COMPOSE_CMD logs --tail=50
+        exit 1
+    fi
+    echo "----------------------------------------"
 }
 
 # 等待服务就绪
@@ -250,15 +282,67 @@ show_info() {
 
 # 主流程
 main() {
-    check_docker
-    check_docker_compose
-    check_env
-    check_data_directory
-    build_images
-    start_services
-    wait_for_services
-    health_check
-    show_info
+    # 创建日志目录
+    mkdir -p logs
+    local LOG_FILE="logs/deploy_$(date +%Y%m%d_%H%M%S).log"
+
+    echo ""
+    echo "========================================="
+    if [ "$DEBUG_MODE" = true ]; then
+        echo -e "${YELLOW}调试模式已启用${NC}"
+    fi
+    echo "日志文件: $LOG_FILE"
+    echo "========================================="
+    echo ""
+
+    # 调试模式：显示环境信息
+    if [ "$DEBUG_MODE" = true ]; then
+        echo "--- 环境信息 ---"
+        echo "项目目录: $PROJECT_DIR"
+        echo "部署环境: $DEPLOY_ENV"
+        echo "Compose命令: $COMPOSE_CMD"
+        echo "Docker版本:"
+        docker --version
+        docker-compose --version 2>/dev/null || docker compose version
+        echo "当前用户: $(whoami)"
+        echo ""
+
+        # 检查关键文件
+        echo "--- 检查关键文件 ---"
+        echo "docker-compose.prod.yml: $([ -f docker-compose.prod.yml ] && echo '存在' || echo '不存在')"
+        echo "Dockerfile.backend: $([ -f Dockerfile.backend ] && echo '存在' || echo '不存在')"
+        echo "Dockerfile.frontend: $([ -f Dockerfile.frontend ] && echo '存在' || echo '不存在')"
+        echo "server/.env: $([ -f server/.env ] && echo '存在' || echo '不存在')"
+        echo "/blog/sia-blog-content/server/.env: $([ -f /blog/sia-blog-content/server/.env ] && echo '存在' || echo '不存在')"
+        echo ""
+    fi
+
+    # 执行部署并记录日志
+    {
+        check_docker
+        check_docker_compose
+        check_env
+        check_data_directory
+        build_images
+        start_services
+        wait_for_services
+        health_check
+        show_info
+    } 2>&1 | tee "$LOG_FILE"
+
+    echo ""
+    echo "========================================="
+    echo "完整日志已保存到: $LOG_FILE"
+    echo ""
+    echo "查看实时日志命令："
+    echo "  Docker日志: $COMPOSE_CMD logs -f"
+    echo "  后端日志: $COMPOSE_CMD logs -f backend"
+    echo "  前端日志: $COMPOSE_CMD logs -f frontend"
+    echo "  Nginx日志: $COMPOSE_CMD logs -f nginx"
+    echo ""
+    echo "查看部署日志:"
+    echo "  tail -f $LOG_FILE"
+    echo "========================================="
 }
 
-main
+main "$@"
