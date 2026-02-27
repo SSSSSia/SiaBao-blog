@@ -27,11 +27,11 @@ services:
       - blog-network
     volumes:
       # 挂载内容仓库的数据目录（双仓库架构）
-      - /opt/blog/sia-blog-content/server/data:/app/server/data:rw
+      - /blog/sia-blog-content/server/data:/app/server/data:rw
       # 挂载内容仓库的图片资源目录
-      - /opt/blog/sia-blog-content/server/public:/app/server/public:rw
+      - /blog/sia-blog-content/server/public:/app/server/public:rw
       # 挂载环境配置文件
-      - /opt/blog/sia-blog-content/server/.env:/app/server/.env:ro
+      - /blog/sia-blog-content/server/.env:/app/server/.env:ro
     environment:
       - HOST=0.0.0.0
       - PORT=5000
@@ -50,7 +50,7 @@ services:
       - ./docker/nginx/ssl:/etc/nginx/ssl:ro
       - ./docker/logs/nginx:/var/log/nginx
       # 可选：直接通过 Nginx 提供图片服务（更高效）
-      - /opt/blog/sia-blog-content/server/public:/var/www/public:ro
+      - /blog/sia-blog-content/server/public:/var/www/public:ro
     networks:
       - blog-network
     depends_on:

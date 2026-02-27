@@ -13,7 +13,7 @@ DOMAIN_WWW="www.your-domain.com"
 EMAIL="your-email@example.com"
 
 # 项目目录
-PROJECT_DIR="/opt/blog/SiaBao-Blog"
+PROJECT_DIR="/blog/SiaBao-blog"
 SSL_DIR="${PROJECT_DIR}/docker/ssl"
 
 # 证书路径（Let's Encrypt 默认路径）

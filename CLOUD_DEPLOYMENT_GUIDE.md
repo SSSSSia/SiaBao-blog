@@ -195,11 +195,11 @@ su - deploy
 
 ```bash
 # 创建项目根目录
-sudo mkdir -p /opt/blog
-cd /opt/blog
+sudo mkdir -p /blog
+cd /blog
 
 # 设置权限
-sudo chown -R $USER:$USER /opt/blog
+sudo chown -R $USER:$USER /blog
 ```
 
 ### 步骤 2：克隆代码仓库
@@ -221,7 +221,7 @@ ls -la
 ### 步骤 3：配置环境变量
 
 ```bash
-cd /opt/blog/SiaBao-blog
+cd /blog/SiaBao-blog
 
 # 从私有仓库复制环境配置
 cp ../sia-blog-content/server/.env server/.env
@@ -268,7 +268,7 @@ BLOG_SUBTITLE=个人博客系统
 
 ```bash
 # 方案 A：使用符号链接（开发环境）
-cd /opt/blog/SiaBao-blog/server
+cd /blog/SiaBao-blog/server
 ln -s ../../sia-blog-content/server/data data
 ln -s ../../sia-blog-content/server/public public
 
@@ -292,7 +292,7 @@ git push origin main
 ### 步骤 5：配置 docker-compose
 
 ```bash
-cd /opt/blog/SiaBao-blog
+cd /blog/SiaBao-blog
 
 # 生产环境使用专用配置文件
 # docker-compose.prod.yml 已针对双仓库架构优化
@@ -312,7 +312,7 @@ vim docker-compose.prod.yml
 - **docker-compose.prod.yml** - 云服务器生产环境
   - 仅暴露 Nginx 80/443 端口
   - 后端端口：5000（内部通信）
-  - 数据路径：绝对路径 `/opt/blog/sia-blog-content/server/data`
+  - 数据路径：绝对路径 `/blog/sia-blog-content/server/data`
 
 ```yaml
 version: '3.8'
@@ -329,11 +329,11 @@ services:
     volumes:
       - ./server:/app
       # 挂载数据库和文章数据
-      - /opt/blog/sia-blog-content/server/data:/app/server/data:rw
+      - /blog/sia-blog-content/server/data:/app/server/data:rw
       # 挂载图片资源目录
-      - /opt/blog/sia-blog-content/server/public:/app/server/public:rw
+      - /blog/sia-blog-content/server/public:/app/server/public:rw
       # 挂载环境配置
-      - /opt/blog/sia-blog-content/server/.env:/app/server/.env:ro
+      - /blog/sia-blog-content/server/.env:/app/server/.env:ro
     environment:
       - FLASK_ENV=production
     networks:
@@ -369,7 +369,7 @@ services:
       - ./docker/nginx/frontend.conf:/etc/nginx/conf.d/default.conf:ro
       - ./docker/ssl:/etc/nginx/ssl:ro
       # 挂载图片静态资源（可选，也可以通过后端服务）
-      - /opt/blog/sia-blog-content/server/public:/var/www/public:ro
+      - /blog/sia-blog-content/server/public:/var/www/public:ro
     depends_on:
       - frontend
       - backend
@@ -432,10 +432,10 @@ curl http://localhost:5000/api/health
 
 ```bash
 # 创建配置目录
-mkdir -p /opt/blog/SiaBao-blog/docker/nginx
+mkdir -p /blog/SiaBao-blog/docker/nginx
 
 # 创建主配置文件
-vim /opt/blog/SiaBao-blog/docker/nginx/nginx.conf
+vim /blog/SiaBao-blog/docker/nginx/nginx.conf
 ```
 
 **nginx.conf 配置：**
@@ -487,7 +487,7 @@ http {
 **frontend.conf 配置：**
 
 ```bash
-vim /opt/blog/SiaBao-blog/docker/nginx/frontend.conf
+vim /blog/SiaBao-blog/docker/nginx/frontend.conf
 ```
 
 ```nginx
@@ -606,9 +606,9 @@ certbot certonly --standalone \
 # /etc/letsencrypt/live/your-domain.com/privkey.pem
 
 # 复制证书到项目目录
-mkdir -p /opt/blog/SiaBao-blog/docker/ssl
-cp /etc/letsencrypt/live/your-domain.com/fullchain.pem /opt/blog/SiaBao-blog/docker/ssl/
-cp /etc/letsencrypt/live/your-domain.com/privkey.pem /opt/blog/SiaBao-blog/docker/ssl/
+mkdir -p /blog/SiaBao-blog/docker/ssl
+cp /etc/letsencrypt/live/your-domain.com/fullchain.pem /blog/SiaBao-blog/docker/ssl/
+cp /etc/letsencrypt/live/your-domain.com/privkey.pem /blog/SiaBao-blog/docker/ssl/
 
 # 重启 Nginx
 docker-compose -f docker-compose.prod.yml start nginx
@@ -618,35 +618,35 @@ docker-compose -f docker-compose.prod.yml start nginx
 
 ```bash
 # 创建续期脚本
-cat > /opt/blog/sia-blog/scripts/renew-ssl.sh << 'EOF'
+cat > /blog/SiaBao-blog/scripts/renew-ssl.sh << 'EOF'
 #!/bin/bash
 # 续期证书
 certbot renew --quiet
 
 # 复制新证书
-cp /etc/letsencrypt/live/your-domain.com/fullchain.pem /opt/blog/SiaBao-blog/docker/ssl/
-cp /etc/letsencrypt/live/your-domain.com/privkey.pem /opt/blog/SiaBao-blog/docker/ssl/
+cp /etc/letsencrypt/live/your-domain.com/fullchain.pem /blog/SiaBao-blog/docker/ssl/
+cp /etc/letsencrypt/live/your-domain.com/privkey.pem /blog/SiaBao-blog/docker/ssl/
 
 # 重启 Nginx
-cd /opt/blog/SiaBao-blog
+cd /blog/SiaBao-blog
 docker-compose -f docker-compose.prod.yml restart nginx
 
 echo "SSL certificate renewed at $(date)"
 EOF
 
-chmod +x /opt/blog/sia-blog/scripts/renew-ssl.sh
+chmod +x /blog/SiaBao-blog/scripts/renew-ssl.sh
 
 # 添加到 crontab（每月 1 号凌晨 3 点执行）
 crontab -e
-# 添加: 0 3 1 * * /opt/blog/sia-blog/scripts/renew-ssl.sh
+# 添加: 0 3 1 * * /blog/SiaBao-blog/scripts/renew-ssl.sh
 ```
 
 ### 方案 B：使用自签名证书（开发测试）
 
 ```bash
 # 创建 SSL 目录
-mkdir -p /opt/blog/SiaBao-blog/docker/ssl
-cd /opt/blog/SiaBao-blog/docker/ssl
+mkdir -p /blog/SiaBao-blog/docker/ssl
+cd /blog/SiaBao-blog/docker/ssl
 
 # 生成自签名证书
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
@@ -662,8 +662,8 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 ### 创建部署脚本
 
 ```bash
-mkdir -p /opt/blog/SiaBao-blog/scripts
-vim /opt/blog/SiaBao-blog/scripts/deploy.sh
+mkdir -p /blog/SiaBao-blog/scripts
+vim /blog/SiaBao-blog/scripts/deploy.sh
 ```
 
 **deploy.sh 内容：**
@@ -672,7 +672,7 @@ vim /opt/blog/SiaBao-blog/scripts/deploy.sh
 #!/bin/bash
 set -e
 
-PROJECT_DIR="/opt/blog"
+PROJECT_DIR="/blog"
 CODE_REPO="$PROJECT_DIR/SiaBao-blog"
 CONTENT_REPO="$PROJECT_DIR/sia-blog-content"
 
@@ -762,30 +762,30 @@ echo "=========================================="
 
 ```bash
 # 添加执行权限
-chmod +x /opt/blog/SiaBao-blog/scripts/deploy.sh
+chmod +x /blog/SiaBao-blog/scripts/deploy.sh
 
 # 测试部署脚本
-/opt/blog/SiaBao-blog/scripts/deploy.sh
+/blog/SiaBao-blog/scripts/deploy.sh
 ```
 
 ### 设置自动更新（可选）
 
 ```bash
 # 创建定时更新脚本
-vim /opt/blog/SiaBao-blog/scripts/auto-update.sh
+vim /blog/SiaBao-blog/scripts/auto-update.sh
 ```
 
 **auto-update.sh 内容：**
 
 ```bash
 #!/bin/bash
-LOG_FILE="/opt/blog/SiaBao-blog/logs/auto-update.log"
+LOG_FILE="/blog/SiaBao-blog/logs/auto-update.log"
 
 echo "========================================" >> $LOG_FILE
 echo "自动更新开始: $(date)" >> $LOG_FILE
 
 # 执行部署
-/opt/blog/SiaBao-blog/scripts/deploy.sh >> $LOG_FILE 2>&1
+/blog/SiaBao-blog/scripts/deploy.sh >> $LOG_FILE 2>&1
 
 echo "自动更新结束: $(date)" >> $LOG_FILE
 echo "========================================" >> $LOG_FILE
@@ -794,7 +794,7 @@ echo "========================================" >> $LOG_FILE
 ```bash
 # 设置定时任务（每天凌晨 2 点执行）
 crontab -e
-# 添加: 0 2 * * * /opt/blog/SiaBao-blog/scripts/auto-update.sh
+# 添加: 0 2 * * * /blog/SiaBao-blog/scripts/auto-update.sh
 ```
 
 ---
@@ -810,7 +810,7 @@ crontab -e
 ```bash
 # 使用项目中的备份脚本（推荐）
 # 或创建自定义备份脚本
-vim /opt/blog/SiaBao-blog/scripts/backup.sh
+vim /blog/SiaBao-blog/scripts/backup.sh
 ```
 
 **backup.sh 内容：**
@@ -819,9 +819,9 @@ vim /opt/blog/SiaBao-blog/scripts/backup.sh
 #!/bin/bash
 set -e
 
-BACKUP_DIR="/opt/blog/backups"
+BACKUP_DIR="/blog/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
-CONTENT_REPO="/opt/blog/sia-blog-content"
+CONTENT_REPO="/blog/sia-blog-content"
 
 # 创建备份目录
 mkdir -p $BACKUP_DIR
@@ -855,7 +855,7 @@ echo "  - 图片: $BACKUP_DIR/public_$DATE.tar.gz"
 
 ```bash
 # 创建同步脚本
-vim /opt/blog/SiaBao-blog/scripts/sync-to-github.sh
+vim /blog/SiaBao-blog/scripts/sync-to-github.sh
 ```
 
 **sync-to-github.sh 内容：**
@@ -864,7 +864,7 @@ vim /opt/blog/SiaBao-blog/scripts/sync-to-github.sh
 #!/bin/bash
 set -e
 
-CONTENT_REPO="/opt/blog/sia-blog-content"
+CONTENT_REPO="/blog/sia-blog-content"
 DATE=$(date +%Y%m%d_%H%M%S)
 
 echo "=========================================="
@@ -898,13 +898,13 @@ echo "✅ 同步完成！"
 
 ```bash
 # 设置执行权限
-chmod +x /opt/blog/SiaBao-blog/scripts/backup.sh
-chmod +x /opt/blog/SiaBao-blog/scripts/sync-to-github.sh
+chmod +x /blog/SiaBao-blog/scripts/backup.sh
+chmod +x /blog/SiaBao-blog/scripts/sync-to-github.sh
 
 # 设置定时备份（每天凌晨 3 点）
 crontab -e
-# 添加: 0 3 * * * /opt/blog/SiaBao-blog/scripts/backup.sh
-# 添加: 0 4 * * * /opt/blog/SiaBao-blog/scripts/sync-to-github.sh
+# 添加: 0 3 * * * /blog/SiaBao-blog/scripts/backup.sh
+# 添加: 0 4 * * * /blog/SiaBao-blog/scripts/sync-to-github.sh
 ```
 
 ### 初始化内容仓库的图片目录
@@ -947,13 +947,13 @@ git push origin main
 
 ```bash
 # 设置执行权限
-chmod +x /opt/blog/SiaBao-blog/scripts/backup.sh
-chmod +x /opt/blog/SiaBao-blog/scripts/sync-to-github.sh
+chmod +x /blog/SiaBao-blog/scripts/backup.sh
+chmod +x /blog/SiaBao-blog/scripts/sync-to-github.sh
 
 # 设置定时备份（每天凌晨 3 点）
 crontab -e
-# 添加: 0 3 * * * /opt/blog/SiaBao-blog/scripts/backup.sh
-# 添加: 0 4 * * * /opt/blog/SiaBao-blog/scripts/sync-to-github.sh
+# 添加: 0 3 * * * /blog/SiaBao-blog/scripts/backup.sh
+# 添加: 0 4 * * * /blog/SiaBao-blog/scripts/sync-to-github.sh
 ```
 
 ### 查看日志
@@ -994,7 +994,7 @@ docker system prune -a
 
 ```bash
 # 创建健康检查脚本
-vim /opt/blog/sia-blog/scripts/health-check.sh
+vim /blog/SiaBao-blog/scripts/health-check.sh
 ```
 
 **health-check.sh 内容：**
@@ -1054,14 +1054,14 @@ docker-compose logs backend
 netstat -tlnp | grep :5000
 
 # 2. 权限问题 - 检查文件权限
-ls -la /opt/blog/sia-blog-content/server/data
+ls -la /blog/sia-blog-content/server/data
 
 # 3. 配置错误 - 检查环境变量
-cat /opt/blog/SiaBao-blog/server/.env
+cat /blog/SiaBao-blog/server/.env
 
 # 4. 数据目录不存在
-mkdir -p /opt/blog/sia-blog-content/server/data/posts
-mkdir -p /opt/blog/sia-blog-content/server/public/uploads
+mkdir -p /blog/sia-blog-content/server/data/posts
+mkdir -p /blog/sia-blog-content/server/public/uploads
 ```
 
 #### 问题 2：API 请求 404
@@ -1071,7 +1071,7 @@ mkdir -p /opt/blog/sia-blog-content/server/public/uploads
 **解决方案：**
 ```bash
 # 检查 Nginx 配置
-cat /opt/blog/SiaBao-blog/docker/nginx/frontend.conf
+cat /blog/SiaBao-blog/docker/nginx/frontend.conf
 
 # 确保 /api 路由正确配置
 # 检查后端服务是否正常
@@ -1088,17 +1088,17 @@ docker-compose -f docker-compose.prod.yml restart nginx
 **解决方案：**
 ```bash
 # 检查上传目录权限
-ls -la /opt/blog/sia-blog-content/server/data/uploads
-ls -la /opt/blog/sia-blog-content/server/public/uploads
+ls -la /blog/sia-blog-content/server/data/uploads
+ls -la /blog/sia-blog-content/server/public/uploads
 
 # 修改权限
-chmod 755 /opt/blog/sia-blog-content/server/data/uploads
-chmod 755 /opt/blog/sia-blog-content/server/public/uploads
-chown -R $USER:$USER /opt/blog/sia-blog-content/server/data/uploads
-chown -R $USER:$USER /opt/blog/sia-blog-content/server/public/uploads
+chmod 755 /blog/sia-blog-content/server/data/uploads
+chmod 755 /blog/sia-blog-content/server/public/uploads
+chown -R $USER:$USER /blog/sia-blog-content/server/data/uploads
+chown -R $USER:$USER /blog/sia-blog-content/server/public/uploads
 
 # 检查 Nginx 文件大小限制
-cat /opt/blog/SiaBao-blog/docker/nginx/nginx.conf
+cat /blog/SiaBao-blog/docker/nginx/nginx.conf
 # 确保 client_max_body_size 设置足够大
 ```
 
@@ -1109,13 +1109,13 @@ cat /opt/blog/SiaBao-blog/docker/nginx/nginx.conf
 **解决方案：**
 ```bash
 # 检查证书有效期
-openssl x509 -in /opt/blog/SiaBao-blog/docker/ssl/fullchain.pem -noout -dates
+openssl x509 -in /blog/SiaBao-blog/docker/ssl/fullchain.pem -noout -dates
 
 # 检查证书链
 openssl s_client -connect your-domain.com:443 -servername your-domain.com
 
 # 重新获取证书
-/opt/blog/SiaBao-blog/scripts/renew-ssl.sh
+/blog/SiaBao-blog/scripts/renew-ssl.sh
 
 # 重启 Nginx
 docker-compose -f docker-compose.prod.yml restart nginx
@@ -1128,15 +1128,15 @@ docker-compose -f docker-compose.prod.yml restart nginx
 **解决方案：**
 ```bash
 # 检查数据库文件权限
-ls -la /opt/blog/sia-blog-content/server/data/*.db
+ls -la /blog/sia-blog-content/server/data/*.db
 
 # 如果使用 SQLite，检查文件是否损坏
-sqlite3 /opt/blog/sia-blog-content/server/data/blog.db "PRAGMA integrity_check;"
+sqlite3 /blog/sia-blog-content/server/data/blog.db "PRAGMA integrity_check;"
 
 # 备份并重建数据库
-cp /opt/blog/sia-blog-content/server/data/blog.db /opt/blog/sia-blog-content/server/data/blog.db.backup
+cp /blog/sia-blog-content/server/data/blog.db /blog/sia-blog-content/server/data/blog.db.backup
 # 从备份恢复
-cp /opt/blog/backups/blog_YYYYMMDD_HHMMSS.db /opt/blog/sia-blog-content/server/data/blog.db
+cp /blog/backups/blog_YYYYMMDD_HHMMSS.db /blog/sia-blog-content/server/data/blog.db
 ```
 
 #### 问题 6：内存不足
@@ -1201,7 +1201,7 @@ vim /etc/logrotate.d/docker-compose
 **logrotate 配置：**
 
 ```
-/opt/blog/sia-blog/logs/*.log {
+/blog/SiaBao-blog/logs/*.log {
     daily
     rotate 14
     compress
@@ -1229,7 +1229,7 @@ vim /etc/logrotate.d/docker-compose
 - [ ] 域名 DNS 已解析到服务器 IP
 
 ### 代码部署检查
-- [ ] 公开仓库已克隆到 `/opt/blog/sia-blog`
+- [ ] 公开仓库已克隆到 `/blog/SiaBao-blog`
 - [ ] 私有仓库已克隆到 `/opt/sia-blog-content`
 - [ ] 环境变量已正确配置
 - [ ] 数据目录已链接或挂载
@@ -1289,7 +1289,7 @@ docker-compose -f docker-compose.prod.yml restart          # 重启服务
 docker-compose -f docker-compose.prod.yml logs -f          # 查看日志
 
 # 更新部署
-cd /opt/blog/SiaBao-blog
+cd /blog/SiaBao-blog
 git pull origin main            # 更新代码
 cd ../sia-blog-content
 git pull origin main            # 更新内容

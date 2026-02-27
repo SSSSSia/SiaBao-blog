@@ -6,8 +6,8 @@ set -e
 
 # ==================== 配置区域 ====================
 # 项目目录
-DEPLOY_BASE_DIR="/opt/blog"
-PROJECT_DIR="${DEPLOY_BASE_DIR}/SiaBao-Blog"
+DEPLOY_BASE_DIR="/blog"
+PROJECT_DIR="${DEPLOY_BASE_DIR}/SiaBao-blog"
 CONTENT_DIR="${DEPLOY_BASE_DIR}/sia-blog-content"
 
 # 部署脚本路径

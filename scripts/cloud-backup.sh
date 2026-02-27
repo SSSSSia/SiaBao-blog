@@ -6,9 +6,9 @@ set -e
 
 # ==================== 配置区域 ====================
 # 项目目录
-DEPLOY_BASE_DIR="/opt/blog"
+DEPLOY_BASE_DIR="/blog"
 CONTENT_DIR="${DEPLOY_BASE_DIR}/sia-blog-content"
-PROJECT_DIR="${DEPLOY_BASE_DIR}/SiaBao-Blog"
+PROJECT_DIR="${DEPLOY_BASE_DIR}/SiaBao-blog"
 
 # 备份目录
 BACKUP_BASE_DIR="${CONTENT_DIR}/backups"

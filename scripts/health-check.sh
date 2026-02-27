@@ -5,7 +5,7 @@
 set -e
 
 # ==================== 配置区域 ====================
-PROJECT_DIR="/opt/blog/SiaBao-Blog"
+PROJECT_DIR="/blog/SiaBao-blog"
 LOG_DIR="${PROJECT_DIR}/logs"
 LOG_FILE="${LOG_DIR}/health_check_$(date +%Y%m%d_%H%M%S).log"
 mkdir -p "${LOG_DIR}"
@@ -261,8 +261,8 @@ check_data_directory() {
     log_info "检查数据目录..."
 
     local data_dirs=(
-        "/opt/blog/sia-blog-content/server/data/posts"
-        "/opt/blog/sia-blog-content/server/data/uploads"
+        "/blog/sia-blog-content/server/data/posts"
+        "/blog/sia-blog-content/server/data/uploads"
     )
 
     for dir in "${data_dirs[@]}"; do

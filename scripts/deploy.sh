@@ -9,7 +9,7 @@ cd "${PROJECT_DIR}"
 
 # 检测部署环境
 DETECT_ENV() {
-    if [ -d "/opt/blog" ] && [ "${PROJECT_DIR}" = "/opt/blog/SiaBao-Blog" ]; then
+    if [ -d "/blog" ] && [ "${PROJECT_DIR}" = "/blog/SiaBao-blog" ]; then
         echo "cloud"
     else
         echo "local"
@@ -115,7 +115,7 @@ check_data_directory() {
         log_info "检查数据目录配置..."
 
         # 检查是否使用 Docker Volume 挂载
-        if grep -q "/opt/blog/sia-blog-content/server/data:/app/server/data" docker-compose.prod.yml 2>/dev/null; then
+        if grep -q "/blog/sia-blog-content/server/data:/app/server/data" docker-compose.prod.yml 2>/dev/null; then
             log_success "使用生产配置 Docker Volume 挂载方案"
         elif [ -L "server/data" ]; then
             local target=$(readlink -f server/data)

@@ -6,8 +6,8 @@ set -e
 
 # ==================== 配置区域 ====================
 # 项目部署目录
-DEPLOY_BASE_DIR="/opt/blog"
-PROJECT_DIR="${DEPLOY_BASE_DIR}/SiaBao-Blog"
+DEPLOY_BASE_DIR="/blog"
+PROJECT_DIR="${DEPLOY_BASE_DIR}/SiaBao-blog"
 CONTENT_DIR="${DEPLOY_BASE_DIR}/sia-blog-content"
 
 # GitHub 仓库地址（请根据实际情况修改）
@@ -170,7 +170,7 @@ setup_data_link() {
     log_info "配置数据目录..."
 
     # 使用 docker-compose.prod.yml 的 Docker Volume 方案（推荐用于服务器）
-    if grep -q "/opt/blog/sia-blog-content/server/data:/app/server/data" "${PROJECT_DIR}/docker-compose.prod.yml" 2>/dev/null; then
+    if grep -q "/blog/sia-blog-content/server/data:/app/server/data" "${PROJECT_DIR}/docker-compose.prod.yml" 2>/dev/null; then
         log_success "使用生产配置的 Docker Volume 挂载方案"
         return 0
     fi
