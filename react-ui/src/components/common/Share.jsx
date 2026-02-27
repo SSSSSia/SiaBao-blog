@@ -17,11 +17,44 @@ export default function Share({ title, url }) {
   const [showModal, setShowModal] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // 兼容的复制到剪贴板函数
+  const copyToClipboard = async (text) => {
+    try {
+      // 优先使用现代 Clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // 回退方案：使用 document.execCommand
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+        } catch (err) {
+          throw err;
+        } finally {
+          document.body.removeChild(textArea);
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error('复制失败:', error);
+      return false;
+    }
+  };
+
   // 复制链接
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+    copyToClipboard(url).then((success) => {
+      if (success) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
     });
   };
 

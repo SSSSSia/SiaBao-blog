@@ -98,6 +98,37 @@ export default function About() {
     setToast({ visible: true, message })
   }
 
+  // 兼容的复制到剪贴板函数
+  const copyToClipboard = async (text) => {
+    try {
+      // 优先使用现代 Clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        // 回退方案：使用 document.execCommand
+        const textArea = document.createElement('textarea')
+        textArea.value = text
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        textArea.style.top = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        try {
+          document.execCommand('copy')
+        } catch (err) {
+          throw err
+        } finally {
+          document.body.removeChild(textArea)
+        }
+      }
+      return true
+    } catch (error) {
+      console.error('复制失败:', error)
+      return false
+    }
+  }
+
   // 加载用户信息
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -225,8 +256,13 @@ export default function About() {
                     </a>
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(blogger.email)
-                        showToast(`邮箱已复制：${blogger.email}`)
+                        copyToClipboard(blogger.email).then((success) => {
+                          if (success) {
+                            showToast(`邮箱已复制：${blogger.email}`)
+                          } else {
+                            showToast('复制失败，请手动复制')
+                          }
+                        })
                       }}
                       className='social-link'
                       aria-label='Email'
@@ -262,8 +298,13 @@ export default function About() {
                   className='contact-item'
                   style={{ cursor: 'pointer' }}
                   onClick={() => {
-                    navigator.clipboard.writeText(blogger.email)
-                    showToast(`邮箱已复制：${blogger.email}`)
+                    copyToClipboard(blogger.email).then((success) => {
+                      if (success) {
+                        showToast(`邮箱已复制：${blogger.email}`)
+                      } else {
+                        showToast('复制失败，请手动复制')
+                      }
+                    })
                   }}
                   title='点击复制邮箱'
                 >
