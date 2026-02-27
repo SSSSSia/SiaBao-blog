@@ -7,7 +7,7 @@ set -e
 # ==================== 配置区域 ====================
 # 项目部署目录
 DEPLOY_BASE_DIR="/opt/blog"
-PROJECT_DIR="${DEPLOY_BASE_DIR}/sia-blog"
+PROJECT_DIR="${DEPLOY_BASE_DIR}/SiaBao-Blog"
 CONTENT_DIR="${DEPLOY_BASE_DIR}/sia-blog-content"
 
 # GitHub 仓库地址（请根据实际情况修改）
@@ -169,13 +169,13 @@ setup_environment() {
 setup_data_link() {
     log_info "配置数据目录..."
 
-    # 使用 Docker Volume 方案（推荐用于服务器）
-    if grep -q "/opt/sia-blog-content/server/data:/app/data" "${PROJECT_DIR}/docker-compose.yml" 2>/dev/null; then
-        log_success "使用 Docker Volume 方案"
+    # 使用 docker-compose.prod.yml 的 Docker Volume 方案（推荐用于服务器）
+    if grep -q "/opt/blog/sia-blog-content/server/data:/app/server/data" "${PROJECT_DIR}/docker-compose.prod.yml" 2>/dev/null; then
+        log_success "使用生产配置的 Docker Volume 挂载方案"
         return 0
     fi
 
-    # 使用符号链接方案
+    # 使用符号链接方案（备选）
     if [ ! -L "${PROJECT_DIR}/server/data" ] && [ -d "${CONTENT_DIR}/server/data" ]; then
         # 备份现有数据
         if [ -d "${PROJECT_DIR}/server/data" ]; then
@@ -196,8 +196,8 @@ stop_services() {
     log_info "停止现有服务..."
     cd "${PROJECT_DIR}"
 
-    if docker compose ps -q | grep -q .; then
-        docker compose down
+    if docker-compose -f docker-compose.prod.yml ps -q | grep -q .; then
+        docker-compose -f docker-compose.prod.yml down
         log_success "服务已停止"
     else
         log_info "没有运行中的服务"
@@ -208,7 +208,7 @@ start_services() {
     log_info "构建并启动服务..."
     cd "${PROJECT_DIR}"
 
-    docker compose up -d --build
+    docker-compose -f docker-compose.prod.yml up -d --build
     log_success "服务启动完成"
 }
 
@@ -238,13 +238,13 @@ check_services() {
     log_info "检查服务状态..."
     cd "${PROJECT_DIR}"
 
-    if docker compose ps | grep -q "Up"; then
+    if docker-compose -f docker-compose.prod.yml ps | grep -q "Up"; then
         log_success "服务运行正常"
-        docker compose ps
+        docker-compose -f docker-compose.prod.yml ps
     else
         log_error "服务状态异常"
-        docker compose ps
-        docker compose logs --tail=50
+        docker-compose -f docker-compose.prod.yml ps
+        docker-compose -f docker-compose.prod.yml logs --tail=50
         return 1
     fi
 }
@@ -330,18 +330,18 @@ update_only() {
 restart_only() {
     log_info "重启服务..."
     cd "${PROJECT_DIR}"
-    docker compose restart
+    docker-compose -f docker-compose.prod.yml restart
     log_success "服务已重启"
 }
 
 show_status() {
     cd "${PROJECT_DIR}"
-    docker compose ps
+    docker-compose -f docker-compose.prod.yml ps
 }
 
 show_logs() {
     cd "${PROJECT_DIR}"
-    docker compose logs -f --tail=100
+    docker-compose -f docker-compose.prod.yml logs -f --tail=100
 }
 
 # 解析命令行参数

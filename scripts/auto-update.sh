@@ -7,7 +7,7 @@ set -e
 # ==================== 配置区域 ====================
 # 项目目录
 DEPLOY_BASE_DIR="/opt/blog"
-PROJECT_DIR="${DEPLOY_BASE_DIR}/sia-blog"
+PROJECT_DIR="${DEPLOY_BASE_DIR}/SiaBao-Blog"
 CONTENT_DIR="${DEPLOY_BASE_DIR}/sia-blog-content"
 
 # 部署脚本路径
@@ -154,7 +154,7 @@ restart_services() {
 
     cd "${PROJECT_DIR}"
 
-    if docker compose restart >> "${LOG_FILE}" 2>&1; then
+    if docker-compose -f docker-compose.prod.yml restart >> "${LOG_FILE}" 2>&1; then
         log_success "服务重启完成"
     else
         log_error "服务重启失败"

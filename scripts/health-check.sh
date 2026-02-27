@@ -5,7 +5,7 @@
 set -e
 
 # ==================== 配置区域 ====================
-PROJECT_DIR="/opt/blog/sia-blog"
+PROJECT_DIR="/opt/blog/SiaBao-Blog"
 LOG_DIR="${PROJECT_DIR}/logs"
 LOG_FILE="${LOG_DIR}/health_check_$(date +%Y%m%d_%H%M%S).log"
 mkdir -p "${LOG_DIR}"
@@ -73,8 +73,8 @@ check_containers() {
     local all_running=true
 
     for container in "${containers[@]}"; do
-        if docker compose ps -q "$container" | grep -q .; then
-            if docker compose ps "$container" | grep -q "Up"; then
+        if docker-compose -f docker-compose.prod.yml ps -q "$container" | grep -q .; then
+            if docker-compose -f docker-compose.prod.yml ps "$container" | grep -q "Up"; then
                 log_success "容器 $container 运行中"
             else
                 log_error "容器 $container 未运行"
@@ -174,15 +174,15 @@ check_database() {
     cd "${PROJECT_DIR}"
 
     # 检查数据库文件是否存在
-    if docker compose exec -T backend ls /app/data/*.db > /dev/null 2>&1; then
+    if docker-compose -f docker-compose.prod.yml exec -T backend ls /app/server/data/*.db > /dev/null 2>&1; then
         log_success "数据库文件存在"
 
         # 检查数据库完整性（SQLite）
-        if docker compose exec -T backend python -c "
+        if docker-compose -f docker-compose.prod.yml exec -T backend python -c "
 import sqlite3
 import sys
 try:
-    conn = sqlite3.connect('/app/data/blog.db')
+    conn = sqlite3.connect('/app/server/data/blog.db')
     conn.execute('PRAGMA integrity_check')
     conn.close()
     sys.exit(0)
@@ -218,7 +218,7 @@ check_memory_usage() {
     log_info "检查内存使用..."
 
     local mem_total=$(free -m | awk '/Mem:/ {print $2}')
-    local mem_used=$(free -m | awk '/mem:/ {print $3}')
+    local mem_used=$(free -m | awk '/Mem:/ {print $3}')
     local mem_percent=$((mem_used * 100 / mem_total))
 
     if [ "$mem_percent" -lt 80 ]; then
@@ -244,7 +244,7 @@ check_container_logs() {
     local has_errors=false
 
     for container in "${containers[@]}"; do
-        local errors=$(docker compose logs "$container" --tail=50 2>&1 | grep -i "error\|exception\|failed" | tail -5)
+        local errors=$(docker-compose -f docker-compose.prod.yml logs "$container" --tail=50 2>&1 | grep -i "error\|exception\|failed" | tail -5)
         if [ -n "$errors" ]; then
             log_warning "容器 $container 发现错误:"
             echo "$errors" | tee -a "${LOG_FILE}"
@@ -261,8 +261,8 @@ check_data_directory() {
     log_info "检查数据目录..."
 
     local data_dirs=(
-        "/opt/sia-blog-content/server/data/posts"
-        "/opt/sia-blog-content/server/data/uploads"
+        "/opt/blog/sia-blog-content/server/data/posts"
+        "/opt/blog/sia-blog-content/server/data/uploads"
     )
 
     for dir in "${data_dirs[@]}"; do

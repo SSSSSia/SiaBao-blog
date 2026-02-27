@@ -13,7 +13,7 @@ DOMAIN_WWW="www.your-domain.com"
 EMAIL="your-email@example.com"
 
 # 项目目录
-PROJECT_DIR="/opt/blog/sia-blog"
+PROJECT_DIR="/opt/blog/SiaBao-Blog"
 SSL_DIR="${PROJECT_DIR}/docker/ssl"
 
 # 证书路径（Let's Encrypt 默认路径）
@@ -102,7 +102,7 @@ obtain_certificate() {
     # 停止 Nginx 以释放 80/443 端口
     log_info "停止 Nginx 服务..."
     cd "${PROJECT_DIR}"
-    docker compose stop nginx 2>/dev/null || true
+    docker-compose -f docker-compose.prod.yml stop nginx 2>/dev/null || true
 
     # 使用 standalone 模式获取证书
     certbot certonly --standalone \
@@ -122,7 +122,7 @@ renew_certificate() {
     # 停止 Nginx 以释放 80/443 端口
     log_info "停止 Nginx 服务..."
     cd "${PROJECT_DIR}"
-    docker compose stop nginx 2>/dev/null || true
+    docker-compose -f docker-compose.prod.yml stop nginx 2>/dev/null || true
 
     # 续期证书
     certbot renew --quiet --no-self-upgrade
@@ -162,17 +162,17 @@ restart_nginx() {
     cd "${PROJECT_DIR}"
 
     # 启动 Nginx
-    docker compose start nginx
+    docker-compose -f docker-compose.prod.yml start nginx
 
     # 等待 Nginx 启动
     sleep 3
 
     # 验证 Nginx 状态
-    if docker compose ps nginx | grep -q "Up"; then
+    if docker-compose -f docker-compose.prod.yml ps nginx | grep -q "Up"; then
         log_success "Nginx 重启完成"
     else
         log_error "Nginx 启动失败"
-        docker compose logs nginx --tail=50
+        docker-compose -f docker-compose.prod.yml logs nginx --tail=50
         return 1
     fi
 }

@@ -9,7 +9,7 @@ cd "${PROJECT_DIR}"
 
 # 检测部署环境
 DETECT_ENV() {
-    if [ -d "/opt/blog" ] && [ "${PROJECT_DIR}" = "/opt/blog/sia-blog" ]; then
+    if [ -d "/opt/blog" ] && [ "${PROJECT_DIR}" = "/opt/blog/SiaBao-Blog" ]; then
         echo "cloud"
     else
         echo "local"
@@ -17,6 +17,14 @@ DETECT_ENV() {
 }
 
 DEPLOY_ENV=$(DETECT_ENV)
+
+# 根据环境选择 compose 文件
+COMPOSE_FILE="docker-compose.yml"
+COMPOSE_CMD="docker compose"
+if [ "${DEPLOY_ENV}" = "cloud" ]; then
+    COMPOSE_FILE="docker-compose.prod.yml"
+    COMPOSE_CMD="docker-compose -f docker-compose.prod.yml"
+fi
 
 echo "========================================="
 echo "  Sia Blog 快速部署脚本"
@@ -107,8 +115,8 @@ check_data_directory() {
         log_info "检查数据目录配置..."
 
         # 检查是否使用 Docker Volume 挂载
-        if grep -q "/opt/sia-blog-content/server/data:/app/data" docker-compose.yml 2>/dev/null; then
-            log_success "使用 Docker Volume 挂载方案"
+        if grep -q "/opt/blog/sia-blog-content/server/data:/app/server/data" docker-compose.prod.yml 2>/dev/null; then
+            log_success "使用生产配置 Docker Volume 挂载方案"
         elif [ -L "server/data" ]; then
             local target=$(readlink -f server/data)
             log_success "数据符号链接正常 -> ${target}"
@@ -124,14 +132,14 @@ check_data_directory() {
 build_images() {
     echo ""
     log_info "构建 Docker 镜像..."
-    docker compose build
+    $COMPOSE_CMD build
 }
 
 # 启动服务
 start_services() {
     echo ""
     log_info "启动服务..."
-    docker compose up -d
+    $COMPOSE_CMD up -d
 }
 
 # 等待服务就绪
@@ -143,9 +151,9 @@ wait_for_services() {
     local attempt=0
 
     while [ $attempt -lt $max_attempts ]; do
-        if docker compose ps | grep -q "Up"; then
+        if $COMPOSE_CMD ps | grep -q "Up"; then
             echo -e "${GREEN}服务已启动${NC}"
-            docker compose ps
+            $COMPOSE_CMD ps
             return 0
         fi
 
@@ -154,7 +162,7 @@ wait_for_services() {
     done
 
     echo -e "${RED}服务启动失败${NC}"
-    docker compose logs --tail=50
+    $COMPOSE_CMD logs --tail=50
     exit 1
 }
 
@@ -163,22 +171,34 @@ health_check() {
     echo ""
     log_info "执行健康检查..."
 
-    # 检查后端
-    if curl -sf http://localhost:5000/api/health > /dev/null 2>&1; then
-        log_success "后端服务正常"
-    elif curl -sf http://localhost:8000/api/health > /dev/null 2>&1; then
-        log_success "后端服务正常"
-    else
-        log_warning "后端健康检查失败（可能服务仍在启动中）"
-    fi
+    # 根据环境检查不同的端口
+    if [ "${DEPLOY_ENV}" = "cloud" ]; then
+        # 云服务器环境：后端 5000
+        if curl -sf http://localhost:5000/api/health > /dev/null 2>&1; then
+            log_success "后端服务正常"
+        else
+            log_warning "后端健康检查失败（可能服务仍在启动中）"
+        fi
 
-    # 检查前端
-    if curl -sf http://localhost:3000 > /dev/null 2>&1; then
-        log_success "前端服务正常"
-    elif curl -sf http://localhost > /dev/null 2>&1; then
-        log_success "前端服务正常"
+        # 通过 Nginx 检查
+        if curl -sf http://localhost > /dev/null 2>&1; then
+            log_success "前端服务正常（通过 Nginx）"
+        else
+            log_warning "前端健康检查失败（可能服务仍在启动中）"
+        fi
     else
-        log_warning "前端健康检查失败（可能服务仍在启动中）"
+        # 本地开发环境：后端 9090，前端 5173
+        if curl -sf http://localhost:9090/api/health > /dev/null 2>&1; then
+            log_success "后端服务正常"
+        else
+            log_warning "后端健康检查失败（可能服务仍在启动中）"
+        fi
+
+        if curl -sf http://localhost:5173 > /dev/null 2>&1; then
+            log_success "前端服务正常"
+        else
+            log_warning "前端健康检查失败（可能服务仍在启动中）"
+        fi
     fi
 }
 
@@ -206,9 +226,9 @@ show_info() {
         echo "本地开发环境"
         echo ""
         echo "访问地址："
-        echo "  前端: http://localhost:3000"
-        echo "  后端: http://localhost:5000"
-        echo "  管理: http://localhost:5000/admin"
+        echo "  前端: http://localhost:5173"
+        echo "  后端: http://localhost:9090"
+        echo "  管理: http://localhost:9090/admin"
         echo ""
         echo "开发命令："
         echo "  前端开发: cd react-ui && npm run dev"
@@ -217,10 +237,10 @@ show_info() {
 
     echo ""
     echo "常用命令："
-    echo "  查看状态: docker compose ps"
-    echo "  查看日志: docker compose logs -f"
-    echo "  停止服务: docker compose down"
-    echo "  重启服务: docker compose restart"
+    echo "  查看状态: $COMPOSE_CMD ps"
+    echo "  查看日志: $COMPOSE_CMD logs -f"
+    echo "  停止服务: $COMPOSE_CMD down"
+    echo "  重启服务: $COMPOSE_CMD restart"
     echo ""
     echo "更多文档:"
     echo "  云部署指南: CLOUD_DEPLOYMENT_GUIDE.md"

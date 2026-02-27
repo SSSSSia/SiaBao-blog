@@ -8,7 +8,7 @@ set -e
 # 项目目录
 DEPLOY_BASE_DIR="/opt/blog"
 CONTENT_DIR="${DEPLOY_BASE_DIR}/sia-blog-content"
-PROJECT_DIR="${DEPLOY_BASE_DIR}/sia-blog"
+PROJECT_DIR="${DEPLOY_BASE_DIR}/SiaBao-Blog"
 
 # 备份目录
 BACKUP_BASE_DIR="${CONTENT_DIR}/backups"
