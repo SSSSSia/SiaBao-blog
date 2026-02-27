@@ -27,9 +27,10 @@ services:
       - blog-network
     volumes:
       # 挂载内容仓库的数据目录（双仓库架构）
-      - ~/blog/sia-blog-content/server/data:/app/server/data:rw
+      # 注意：后端代码中的数据路径是 /app/data，不是 /app/server/data
+      - ~/blog/sia-blog-content/server/data:/app/data:rw
       # 挂载内容仓库的图片资源目录
-      - ~/blog/sia-blog-content/server/public:/app/server/public:rw
+      - ~/blog/sia-blog-content/server/public:/app/public:rw
     # 加载环境变量文件（Docker Compose 会读取 .env 并注入到容器环境变量中）
     env_file:
       - ~/blog/sia-blog-content/server/.env
