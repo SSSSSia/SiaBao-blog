@@ -68,10 +68,22 @@ jobs:
             echo "Checking service status..."
             docker compose -f docker-compose.prod.yml ps
 
-            if curl -f http://localhost:5000/api/health > /dev/null 2>&1; then
-              echo "Backend service is healthy"
+            echo "Running Nginx health check..."
+            if curl -fsS http://localhost/health > /dev/null 2>&1; then
+              echo "Nginx health check passed"
+            else
+              echo "Nginx health check failed"
+              docker compose -f docker-compose.prod.yml logs --tail=200 nginx
+              exit 1
+            fi
+
+            echo "Running backend health check (inside container)..."
+            if docker compose -f docker-compose.prod.yml exec -T backend python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health'); print('ok')" > /dev/null 2>&1; then
+              echo "Backend health check passed"
             else
               echo "Backend health check failed"
+              docker compose -f docker-compose.prod.yml logs --tail=200 backend
+              exit 1
             fi
 
             echo "=== Deployment Complete ==="
