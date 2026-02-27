@@ -1,261 +1,161 @@
-# Sia Blog
+﻿# Sia Blog
 
-一个现代化的全栈博客系统，采用 React 19 + Vite 作为前端，FastAPI 作为后端。
+基于 React + FastAPI 的前后端分离博客系统，支持文章管理、评论、点赞、后台管理和图片上传。
 
-## 项目简介
+## 技术栈
 
-Sia Blog 是一个轻量级、高性能的个人博客系统，支持 Markdown 编辑、文章管理、评论互动等功能。项目采用前后端分离架构，便于维护和扩展。
+- 前端: React 19, Vite, React Router, Vitest
+- 后端: FastAPI, Uvicorn, Pydantic
+- 部署: Docker, Docker Compose, Nginx
 
-### 技术栈
+## 仓库结构
 
-**前端:**
-- React 19.2.0 - UI 框架
-- Vite 7.3.1 - 构建工具
-- React Router DOM 7 - 路由管理
-- Lucide React - 图标库
-- Marked / Markdown-it - Markdown 渲染
-- KaTeX - 数学公式渲染
-- Highlight.js - 代码高亮
-- DOMPurify - XSS 防护
-- React Toastify - 消息提示
-
-**后端:**
-- FastAPI 0.115+ - Web 框架
-- Uvicorn - ASGI 服务器
-- Pydantic 2.10+ - 数据验证
-- Python-JOSE - JWT 认证
-- Passlib - 密码加密
-- Python-Frontmatter - Markdown 解析
-
-## 功能特性
-
-### 前端功能
-- 文章列表与详情展示
-- 文章搜索与分类筛选
-- Markdown 实时编辑器
-- 文章导入/导出（.md 格式）
-- 评论系统
-- 点赞功能
-- 管理后台
-  - 文章管理（增删改查）
-  - 精选文章配置
-  - 站点配置管理
-  - 图片上传
-- 响应式设计，完美支持移动端
-
-### 后端功能
-- RESTful API 设计
-- JWT 身份认证
-- 文章 CRUD 操作
-- 文件上传服务
-- 站点配置管理
-- 健康检查接口
-- CORS 跨域支持
-
-## 项目结构
-
-```
+```text
 my-blog/
-├── react-ui/           # 前端项目
-│   ├── src/
-│   │   ├── api/        # API 接口层
-│   │   ├── components/ # React 组件
-│   │   ├── pages/      # 页面组件
-│   │   ├── utils/      # 工具函数
-│   │   ├── hooks/      # 自定义 Hooks
-│   │   └── main.jsx    # 应用入口
-│   ├── public/         # 静态资源
-│   ├── package.json
-│   └── vite.config.js
-│
-└── server/             # 后端项目
-    ├── app/
-    │   ├── api/        # API 路由
-    │   ├── core/       # 核心配置
-    │   ├── schemas/    # 数据模型
-    │   ├── services/   # 业务逻辑
-    │   └── main.py     # 应用入口
-    ├── data/           # 数据存储
-    │   ├── posts/      # Markdown 文章
-    │   └── *.json      # 配置文件
-    ├── requirements.txt
-    └── start.py
+|- react-ui/                 # 前端项目
+|- server/                   # 后端项目
+|- docker/                   # Nginx 配置
+|- scripts/                  # 部署/运维脚本
+|- docker-compose.yml        # 本地开发容器编排
+|- docker-compose.prod.yml   # 生产部署容器编排
+|- Dockerfile.frontend
+|- Dockerfile.backend
+|- CLOUD_DEPLOYMENT_GUIDE.md
+`- README.md
 ```
 
-## 快速开始
+## 快速开始（本地开发）
 
-### 环境要求
-
-- Node.js >= 18
-- Python >= 3.10
-
-### 1. 克隆仓库
-
-```bash
-git clone git@github.com:SSSSSia/SiaBao-blog.git
-cd SiaBao-blog
-```
-
-### 2. 启动后端服务
+### 1) 后端
 
 ```bash
 cd server
-
-# 安装依赖（推荐使用 uv）
+cp .env.example .env
 pip install -r requirements.txt
-
-# 或使用 uv
-uv pip install -r requirements.txt
-
-# 启动服务
 python start.py
 ```
 
-后端服务将在 http://localhost:8000 启动
+后端默认地址: `http://localhost:9090`
 
-API 文档访问：
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
-### 3. 启动前端服务
+### 2) 前端
 
 ```bash
 cd react-ui
-
-# 安装依赖
 npm install
-
-# 启动开发服务器
 npm run dev
 ```
 
-前端服务将在 http://localhost:5173 启动
+前端默认地址: `http://localhost:5173`
 
-## 管理员登录
+## 环境变量（`server/.env`）
 
-默认管理员账户：
-```
-用户名: admin
-密码: admin123
-```
+至少需要配置以下字段:
 
-生产环境请务必修改 `server/.env` 文件中的管理员凭据！
-
-## 开发命令
-
-### 前端
-
-```bash
-cd react-ui
-
-npm run dev       # 启动开发服务器
-npm run build     # 构建生产版本
-npm run preview   # 预览生产构建
-npm run lint      # ESLint 代码检查
-npm run test      # 运行测试
-```
-
-### 后端
-
-```bash
-cd server
-
-python start.py           # 启动服务
-ruff check app/          # Lint 检查
-ruff check --fix app/    # 自动修复
-pytest                   # 运行测试
-```
-
-## 环境变量配置
-
-### 后端环境变量 (server/.env)
-
-```bash
-# 服务器配置
+```env
 HOST=0.0.0.0
-PORT=8000
+PORT=9090
 DEBUG=false
 
-# CORS 配置
 CORS_ORIGINS=http://localhost:5173,http://localhost:4173
 
-# JWT 配置
-SECRET_KEY=your-secret-key-change-this-in-production
+SECRET_KEY=your-secret-key
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
-# 管理员凭据
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=admin123
+ADMIN_PASSWORD=change-this-to-a-secure-password
 ```
 
-## 部署
-
-### 🚀 一键 Docker 部署（推荐）
-
-使用 Docker Compose 可以一键部署前后端到云服务器：
+建议生成随机 `SECRET_KEY`:
 
 ```bash
-# 1. 配置环境变量
-cp server/.env.example server/.env
-vim server/.env  # 修改 SECRET_KEY 和 ADMIN_PASSWORD
+openssl rand -hex 32
+```
 
-# 2. 一键部署
-./scripts/deploy.sh
+## Docker 运行
 
-# 或使用 Docker Compose
+### 本地容器模式
+
+```bash
 docker compose up -d --build
 ```
 
-访问：http://your-server-ip
+默认端口:
 
-详细部署指南请查看：[DEPLOYMENT.md](./DEPLOYMENT.md)
+- 前端: `5173`
+- 后端: `9090`
+- Nginx: `80`
 
-### 其他部署方式
-
-#### 传统部署
-前端可部署到任意静态托管服务：
-- Vercel
-- Netlify
-- GitHub Pages
+### 生产容器模式
 
 ```bash
-cd react-ui
-npm run build
-# 将 dist 目录部署到服务器
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-#### 云平台部署
-后端可部署到：
-- Railway
-- Render
-- Fly.io
+详细步骤见: [CLOUD_DEPLOYMENT_GUIDE.md](./CLOUD_DEPLOYMENT_GUIDE.md)
 
-### 运维维护
+## 公开仓库说明
 
-部署后的日常维护和功能迭代请参考：[MAINTENANCE.md](./MAINTENANCE.md)
+为了安全公开仓库，本仓库不应包含:
 
-主要功能：
-- 自动备份脚本
-- 监控健康检查
-- 零停机更新
-- 快速回滚
+- `server/.env`
+- 用户上传文件（`server/public/uploads/`）
+- 线上运行数据与日志
+- 本地依赖/构建产物（如 `node_modules/`, `dist/`）
 
-## 贡献指南
+如果你采用“代码仓库 + 内容私有仓库”模式，建议将 `server/data` 与 `server/public` 放到私有仓库或独立持久化目录。
 
-欢迎提交 Issue 和 Pull Request！
+## 常用命令
+
+```bash
+# 前端
+cd react-ui
+npm run dev
+npm run build
+npm run test
+npm run lint
+
+# 后端
+cd server
+python start.py
+ruff check app/
+pytest
+```
 
 ## 许可证
 
-MIT License
+MIT
 
-MIT License
+## 公开发布前检查清单
 
-## 联系方式
+发布到 GitHub 前，建议逐项确认：
 
-- GitHub: [@SSSSSia](https://github.com/SSSSSia)
-- 项目地址: <https://github.com/SSSSSia/SiaBao-blog>
+- [ ] 敏感信息检查（Secrets）
+- [ ] 确认未提交 `server/.env`、私钥、Token、云厂商凭据
+- [ ] 检查历史提交中是否出现过密钥（如有泄露需立即轮换）
+- [ ] 确认 `.gitignore` 已覆盖 `node_modules/`、`dist/`、日志与临时文件
 
----
+- [ ] 许可证（License）
+- [ ] 根目录存在 `LICENSE` 文件并与 README 一致（当前声明为 MIT）
+- [ ] 第三方依赖许可证与项目发布策略兼容
 
-**注意**: 本项目当前处于开发阶段，部分功能仍在完善中。
+- [ ] 仓库文档
+- [ ] README 中的启动命令和端口与当前代码一致
+- [ ] 部署文档与 `docker-compose.prod.yml` 保持一致
+- [ ] 明确说明哪些目录属于私有内容或持久化数据（如 `server/data`、`server/public`）
+
+- [ ] Issue / PR 模板
+- [ ] 添加 `.github/ISSUE_TEMPLATE/`（Bug、Feature）
+- [ ] 添加 `.github/pull_request_template.md`
+- [ ] 在模板中要求描述变更、测试结果和回滚方案
+
+- [ ] GitHub Actions
+- [ ] 清理不再使用的 CI 配置（已删除 `.gitlab-ci.yml`）
+- [ ] 确认 `.github/workflows/deploy.yml` 的服务器路径、端口、健康检查端点为最新值
+- [ ] 仓库 Secrets（`SERVER_HOST`、`SERVER_USER`、`SSH_PRIVATE_KEY`、`SERVER_PORT`）已在 GitHub 配置
+- [ ] 部署脚本失败时能输出可排障日志
+
+- [ ] 发布前最终验证
+- [ ] 本地执行一次前后端启动与核心功能自测
+- [ ] 执行基础检查（如前端 lint/test、后端 ruff/pytest）
+- [ ] 打一个可回滚版本标签（如 `v1.0.0`）
