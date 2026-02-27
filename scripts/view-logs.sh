@@ -3,10 +3,14 @@
 
 set -e
 
-PROJECT_DIR="/blog/SiaBao-blog"
+# 自动检测项目目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
 cd "${PROJECT_DIR}" 2>/dev/null || {
     echo "错误: 无法进入项目目录 $PROJECT_DIR"
-    echo "请确保在正确的服务器上运行此脚本"
+    echo "当前工作目录: $(pwd)"
+    echo "脚本所在目录: $SCRIPT_DIR"
     exit 1
 }
 

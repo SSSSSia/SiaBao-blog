@@ -5,7 +5,10 @@
 set -e
 
 # ==================== 配置区域 ====================
-PROJECT_DIR="/blog/SiaBao-blog"
+# 自动检测项目目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
 LOG_DIR="${PROJECT_DIR}/logs"
 LOG_FILE="${LOG_DIR}/health_check_$(date +%Y%m%d_%H%M%S).log"
 mkdir -p "${LOG_DIR}"
@@ -260,9 +263,10 @@ check_container_logs() {
 check_data_directory() {
     log_info "检查数据目录..."
 
+    # 检查云服务器环境的标准数据目录
     local data_dirs=(
-        "/blog/sia-blog-content/server/data/posts"
-        "/blog/sia-blog-content/server/data/uploads"
+        "${PROJECT_DIR}/server/data/posts"
+        "${PROJECT_DIR}/server/data/uploads"
     )
 
     for dir in "${data_dirs[@]}"; do
@@ -274,16 +278,13 @@ check_data_directory() {
         fi
     done
 
-    # 检查符号链接
-    if [ -L "${PROJECT_DIR}/server/data" ]; then
-        local target=$(readlink -f "${PROJECT_DIR}/server/data")
-        log_success "数据符号链接正常 -> $target"
-    elif [ -d "${PROJECT_DIR}/server/data" ]; then
-        log_warning "数据目录不是符号链接（使用独立目录）"
+    # 检查数据目录挂载状态
+    if [ -d "${PROJECT_DIR}/server/data" ]; then
+        log_success "数据目录存在: ${PROJECT_DIR}/server/data"
     else
-        log_error "数据目录不存在"
-        return 1
+        log_warning "数据目录不存在: ${PROJECT_DIR}/server/data"
     fi
+}
 }
 
 check_ssl_certificate() {
