@@ -24,7 +24,7 @@ COPY server/public/ ./public/
 RUN mkdir -p /app/data/posts /app/data/uploads
 
 # 暴露端口
-EXPOSE 8000
+EXPOSE 5000
 
-# 启动命令
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# 启动命令（端口由环境变量 PORT 控制，默认 5000）
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-5000}"]
