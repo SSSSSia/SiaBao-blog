@@ -25,30 +25,47 @@ jobs:
           script: |
             echo "=== Starting Deployment ==="
 
-            cd /opt/blog/sia-blog || exit 1
+            PROJECT_DIR="${{ secrets.SERVER_PROJECT_PATH }}"
+            CONTENT_DIR="${{ secrets.SERVER_CONTENT_PATH }}"
+
+            if [ -z "$PROJECT_DIR" ]; then
+              PROJECT_DIR="/root/blog/my-blog"
+            fi
+
+            echo "Using PROJECT_DIR=$PROJECT_DIR"
+            if [ -n "$CONTENT_DIR" ]; then
+              echo "Using CONTENT_DIR=$CONTENT_DIR"
+            fi
+
+            if [ ! -d "$PROJECT_DIR" ]; then
+              echo "Project directory not found: $PROJECT_DIR"
+              echo "Please set secret SERVER_PROJECT_PATH to your real path"
+              exit 1
+            fi
+
+            cd "$PROJECT_DIR"
 
             echo "Pulling latest code..."
             git pull origin main
 
-            if [ -d "/opt/sia-blog-content" ]; then
+            if [ -n "$CONTENT_DIR" ] && [ -d "$CONTENT_DIR" ]; then
               echo "Pulling content repository..."
-              cd /opt/sia-blog-content
+              cd "$CONTENT_DIR"
               git pull origin main
+              cd "$PROJECT_DIR"
             fi
 
-            cd /opt/blog/sia-blog
-
             echo "Stopping existing services..."
-            docker compose down
+            docker compose -f docker-compose.prod.yml down
 
             echo "Building and starting services..."
-            docker compose up -d --build
+            docker compose -f docker-compose.prod.yml up -d --build
 
             echo "Waiting for services to start..."
             sleep 10
 
             echo "Checking service status..."
-            docker compose ps
+            docker compose -f docker-compose.prod.yml ps
 
             if curl -f http://localhost:5000/api/health > /dev/null 2>&1; then
               echo "Backend service is healthy"
