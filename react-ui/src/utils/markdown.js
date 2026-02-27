@@ -124,6 +124,14 @@ renderer.heading = function({ text, depth, raw }) {
   return `<h${depth} id="${id}" data-heading-id="${id}">${text}</h${depth}>\n`;
 };
 
+// 自定义图片渲染，添加错误处理
+renderer.image = function(href, title, text) {
+  const titleAttr = title ? ` title="${title}"` : '';
+  const altAttr = text ? ` alt="${text}"` : ' alt=""';
+  // 添加 onerror 处理：图片加载失败时隐藏并显示占位符
+  return `<img src="${href}"${altAttr}${titleAttr} onerror="this.style.display='none';this.alt='图片加载失败'" loading="lazy" />`;
+};
+
 // 配置 marked 选项
 marked.setOptions({
   renderer: renderer,
@@ -346,6 +354,7 @@ export function renderMarkdown(markdown) {
         'class', 'id',
         'data-*',
         'style', // <--- 【关键修复】添加这一行
+        'onerror', 'loading', // 添加图片错误处理和懒加载属性
         // KaTeX 相关属性
         'xmlns', 'viewBox', 'width', 'height', 'preserveAspectRatio',
         'd', 'stroke', 'stroke-width', 'fill', 'stroke-linecap',
