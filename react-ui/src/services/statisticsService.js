@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Statistics service based on backend article API data.
  */
 

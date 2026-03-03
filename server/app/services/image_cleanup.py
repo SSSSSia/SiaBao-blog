@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Image cleanup service.
 
 This module provides automatic cleanup functionality for images.

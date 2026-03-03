@@ -8,11 +8,24 @@
   gap: var(--space-5);
 }
 
+.sidebar-mobile-toolbar,
+.sidebar-mobile-action-bar {
+  display: none;
+}
+
+.sidebar-mobile-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 .sidebar-section {
   background: var(--bg-primary);
   border: 1px solid var(--bg-tertiary);
   border-radius: var(--radius-sm);
   padding: var(--space-4);
+  width: min(100%, 320px);
+  margin: 0 auto;
 }
 
 .sidebar-title {
@@ -145,12 +158,83 @@
   transform: rotate(180deg);
 }
 
+.sidebar-collapsible {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    max-height 0.3s ease,
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+.sidebar-collapsible-open {
+  max-height: 1200px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* ===================================
    移动端响应式
    =================================== */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .sidebar {
     gap: var(--space-3);
+    padding-bottom: var(--space-2);
+  }
+
+  .sidebar-mobile-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--bg-tertiary);
+    margin-bottom: var(--space-2);
+  }
+
+  .sidebar-mobile-action-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+    padding: var(--space-2) 0 calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
+    margin-top: auto;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--bg-tertiary);
+  }
+
+  .sidebar-action {
+    min-height: 44px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--bg-tertiary);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .sidebar-action.secondary {
+    color: var(--text-secondary);
+  }
+
+  .sidebar-action.primary {
+    background: var(--color-gray-900);
+    border-color: var(--color-gray-900);
+    color: var(--color-white);
+  }
+
+  .sidebar-action:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .sidebar-section {
@@ -187,5 +271,61 @@
   .sidebar-link-button,
   .sidebar-tag-button {
     min-height: 44px;
+  }
+
+  /* 移动端关闭按钮 */
+  .sidebar-mobile-close {
+    display: inline-flex;
+    z-index: 2;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: auto;
+    padding: 0.5rem var(--space-2);
+    margin-bottom: 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    border: 1px solid var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition-base);
+  }
+
+  .sidebar-mobile-close:hover {
+    background: var(--bg-secondary);
+    border-color: var(--color-gray-400);
+  }
+
+  .sidebar-mobile-close:active {
+    transform: scale(0.98);
+  }
+}
+
+/* 桌面端隐藏关闭按钮 */
+@media (min-width: 1025px) {
+  .sidebar-mobile-toolbar,
+  .sidebar-mobile-action-bar,
+  .sidebar-mobile-close {
+    display: none;
+  }
+}
+
+/* ===================================
+ * 移动端抽屉模式（平板及以下）
+ * =================================== */
+@media (max-width: 1024px) {
+  .sidebar-section {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  /* 优化内边距，更紧凑 */
+  .sidebar-list {
+    gap: var(--space-1);
+  }
+
+  .sidebar-tags {
+    gap: var(--space-1);
   }
 }

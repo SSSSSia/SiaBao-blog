@@ -1,15 +1,15 @@
-﻿/**
- * 缁熶竴鏁版嵁璁块棶灞?- 鍒嗙被鍜屾爣绛句粨搴? */
+/**
+ * 统一数据访问层 - 分类和标签仓库 */
 
 import * as articleStorage from '../services/articleStorage';
 import { mockTags } from '../constants/mockData';
 import { articleApi } from '../api/articles';
 
-// 鏁版嵁婧愰厤缃細'mock' | 'real'
+// 数据源配置:'mock' | 'real'
 const DATA_SOURCE = 'real';
 
 /**
- * 鍒涘缓鏍囧噯鍝嶅簲瀵硅薄
+ * 创建标准响应对象
  */
 const createResponse = (data = null, error = null) => ({
   data,
@@ -18,7 +18,8 @@ const createResponse = (data = null, error = null) => ({
 });
 
 /**
- * 浠庢枃绔犱腑鑱氬悎鍒嗙被鍜屾爣绛? */
+ * 从文章中聚合分类和标签
+ */
 const aggregateFromArticles = (articles) => {
   if (!articles || !Array.isArray(articles)) return { categories: [], tags: [] };
 
@@ -26,7 +27,7 @@ const aggregateFromArticles = (articles) => {
   const tagMap = new Map();
 
   articles.forEach((art) => {
-    // 鑱氬悎鍒嗙被
+    // 聚合分类
     if (art.category) {
       const key = art.category;
       if (categoryMap.has(key)) {
@@ -41,7 +42,7 @@ const aggregateFromArticles = (articles) => {
       }
     }
 
-    // 鑱氬悎鏍囩
+    // 聚合标签
     if (art.tags && Array.isArray(art.tags)) {
       art.tags.forEach((tag) => {
         const key = typeof tag === 'string' ? tag : tag.name || tag;
@@ -66,10 +67,11 @@ const aggregateFromArticles = (articles) => {
 };
 
 /**
- * 鍒嗙被鍜屾爣绛句粨搴? */
+ * 分类和标签仓库
+ */
 export const categoryRepository = {
   /**
-   * 鑾峰彇鍒嗙被鍒楄〃
+   * 获取分类列表
    * @returns {ApiResponse<Array>}
    */
   getCategories: async () => {
@@ -78,7 +80,7 @@ export const categoryRepository = {
         const data = articleStorage.getCategories();
         return createResponse(data);
       } else {
-        // 浠庢枃绔?API 鑱氬悎鍒嗙被
+        // 从文章 API 聚合分类
         const response = await articleApi.getList({ page: 1, pageSize: 100 });
         const articles = response.articles || [];
         const { categories } = aggregateFromArticles(articles);
@@ -90,7 +92,7 @@ export const categoryRepository = {
   },
 
   /**
-   * 鑾峰彇鏍囩鍒楄〃
+   * 获取标签列表
    * @returns {ApiResponse<Array>}
    */
   getTags: async () => {
@@ -113,8 +115,8 @@ export const categoryRepository = {
   },
 
   /**
-   * 鏍规嵁 slug 鑾峰彇鍒嗙被
-   * @param {string} slug - 鍒嗙被 slug
+   * 根据 slug 获取分类
+   * @param {string} slug - 分类 slug
    * @returns {ApiResponse<Object>}
    */
   getCategoryBySlug: async (slug) => {
@@ -128,8 +130,8 @@ export const categoryRepository = {
   },
 
   /**
-   * 鏍规嵁 slug 鑾峰彇鏍囩
-   * @param {string} slug - 鏍囩 slug
+   * 根据 slug 获取标签
+   * @param {string} slug - 标签 slug
    * @returns {ApiResponse<Object>}
    */
   getTagBySlug: async (slug) => {
@@ -173,4 +175,3 @@ const getTagsFromArticles = () => {
 };
 
 export default categoryRepository;
-

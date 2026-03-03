@@ -122,7 +122,16 @@ export default function Home() {
             <h1 className='home-title'>SiaBao 的个人博客</h1>
             <p className='home-subtitle'>
               一个通过 Vibe Coding
-              构建的极简风格个人博客，记录技术思考与生活点滴。
+              构建的极简风格个人博客，记录技术思考与生活点滴。{' '}
+              <a
+                href='https://github.com/SSSSSia/SiaBao-blog'
+                target='_blank'
+                rel='noopener noreferrer'
+                className='home-github-link'
+              >
+                项目开源，欢迎交流与贡献
+              </a>
+              。
             </p>
 
             <div className='home-actions'>

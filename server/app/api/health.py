@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Health check API routes."""
 from fastapi import APIRouter
 

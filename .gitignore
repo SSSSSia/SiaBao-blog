@@ -2,7 +2,9 @@
 .claude/
 
 # IDE
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo
@@ -13,6 +15,7 @@
 Thumbs.db
 
 # Node / Frontend
+node_modules/
 react-ui/node_modules/
 react-ui/dist/
 react-ui/.vite/
@@ -40,7 +43,6 @@ server/.env.local
 server/*.egg-info/
 server/.ruff_cache/
 server/.pytest_cache/
-server/uv.lock
 
 # Logs
 *.log

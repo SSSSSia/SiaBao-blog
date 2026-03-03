@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """File upload API routes.
 
 支持按文章 UUID 分目录存储图片，便于管理和备份。

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Article schemas."""
 from datetime import datetime
 from typing import Literal

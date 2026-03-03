@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Authentication service."""
 from secrets import compare_digest
 

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Authentication schemas."""
 from pydantic import BaseModel
 

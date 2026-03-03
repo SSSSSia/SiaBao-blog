@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """FastAPI application entry point."""
 import logging
 from contextlib import asynccontextmanager

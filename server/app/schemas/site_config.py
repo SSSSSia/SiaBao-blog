@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Site configuration schemas for request and response models."""
 from typing import Optional
 

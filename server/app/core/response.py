@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Unified API response format.
 
 This module provides a standardized response structure for all API endpoints,

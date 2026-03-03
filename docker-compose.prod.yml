@@ -1,4 +1,4 @@
-﻿# 浜戞湇鍔″櫒閮ㄧ讲閰嶇疆锛堝弻浠撳簱鏋舵瀯锛?
+# 浜戞湇鍔″櫒閮ㄧ讲閰嶇疆锛堝弻浠撳簱鏋舵瀯锛?
 # 浣跨敤鏂规硶锛歞ocker-compose -f docker-compose.prod.yml up -d --build
 #
 # 閲嶈鎻愮ず锛氶娆￠儴缃插墠锛岃鍏堣缃幆澧冨彉閲?CONTENT_REPO_PATH

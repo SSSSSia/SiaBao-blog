@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """JWT authentication utilities."""
 from datetime import datetime, timedelta
 

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """File-based article repository with Markdown storage.
 
 This module handles article persistence using Markdown files with frontmatter.
@@ -116,10 +117,12 @@ def _load_index() -> dict[str, dict]:
     if not INDEX_FILE.exists():
         return {}
     try:
-        with open(INDEX_FILE, encoding="utf-8") as f:
+        # Use utf-8-sig to handle UTF-8 BOM if present
+        with open(INDEX_FILE, encoding="utf-8-sig") as f:
             data = json.load(f)
         return data
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError) as e:
+        logger.warning("Failed to load index file: %s", e)
         return {}
 
 
@@ -846,10 +849,12 @@ def _load_likes() -> dict[str, int]:
     if not LIKES_FILE.exists():
         return {}
     try:
-        with open(LIKES_FILE, encoding="utf-8") as f:
+        # Use utf-8-sig to handle UTF-8 BOM if present
+        with open(LIKES_FILE, encoding="utf-8-sig") as f:
             data = json.load(f)
         return data
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError) as e:
+        logger.warning("Failed to load likes file: %s", e)
         return {}
 
 
@@ -938,10 +943,12 @@ def _load_views() -> dict[str, int]:
     if not VIEWS_FILE.exists():
         return {}
     try:
-        with open(VIEWS_FILE, encoding="utf-8") as f:
+        # Use utf-8-sig to handle UTF-8 BOM if present
+        with open(VIEWS_FILE, encoding="utf-8-sig") as f:
             data = json.load(f)
         return data
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError) as e:
+        logger.warning("Failed to load views file: %s", e)
         return {}
 
 

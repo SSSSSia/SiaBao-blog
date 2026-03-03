@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Comment service layer for business logic."""
 import json
 from datetime import datetime

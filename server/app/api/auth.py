@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Authentication API routes."""
 from datetime import timedelta
 from typing import Annotated

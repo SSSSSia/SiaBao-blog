@@ -1,6 +1,6 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Tag, FolderOpen, ChevronDown } from 'lucide-react'
+import { Tag, FolderOpen, ChevronDown, X } from 'lucide-react'
 import './Sidebar.css'
 
 export default function Sidebar({
@@ -11,12 +11,30 @@ export default function Sidebar({
   selectedCategory,
   selectedTag,
   filterMode = false,
+  hasActiveFilters = false,
+  hasPendingFilterChanges = false,
+  onApplyFilters,
+  onClearFilters,
+  onMobileClose,
 }) {
   const [isCategoriesExpanded, setIsCategoriesExpanded] = useState(true)
   const [isTagsExpanded, setIsTagsExpanded] = useState(true)
 
   return (
     <aside className='sidebar'>
+      <div className='sidebar-mobile-toolbar'>
+        <h2 className='sidebar-mobile-title'>筛选</h2>
+        <button
+          className='sidebar-mobile-close'
+          onClick={onMobileClose}
+          aria-label='关闭筛选面板'
+          type='button'
+        >
+          <X size={16} />
+          <span>完成</span>
+        </button>
+      </div>
+
       {categories.length > 0 && (
         <div className='sidebar-section'>
           <button
@@ -34,7 +52,12 @@ export default function Sidebar({
               className={`sidebar-chevron ${isCategoriesExpanded ? 'sidebar-chevron-open' : ''}`}
             />
           </button>
-          {isCategoriesExpanded && (
+          <div
+            className={`sidebar-collapsible ${
+              isCategoriesExpanded ? 'sidebar-collapsible-open' : ''
+            }`}
+            aria-hidden={!isCategoriesExpanded}
+          >
             <ul className='sidebar-list'>
               {categories.map((category) => {
                 const isSelected = selectedCategory === category.slug
@@ -55,15 +78,13 @@ export default function Sidebar({
                         onClick={handleClick}
                         aria-label={`筛选分类 ${category.name}`}
                         aria-pressed={isSelected}
+                        type='button'
                       >
                         {category.name}
                         <span className='sidebar-count'>{category.count}</span>
                       </button>
                     ) : (
-                      <Link
-                        to={`/category/${category.slug}`}
-                        className='sidebar-link'
-                      >
+                      <Link to={`/category/${category.slug}`} className='sidebar-link'>
                         {category.name}
                         <span className='sidebar-count'>{category.count}</span>
                       </Link>
@@ -72,7 +93,7 @@ export default function Sidebar({
                 )
               })}
             </ul>
-          )}
+          </div>
         </div>
       )}
 
@@ -93,7 +114,12 @@ export default function Sidebar({
               className={`sidebar-chevron ${isTagsExpanded ? 'sidebar-chevron-open' : ''}`}
             />
           </button>
-          {isTagsExpanded && (
+          <div
+            className={`sidebar-collapsible ${
+              isTagsExpanded ? 'sidebar-collapsible-open' : ''
+            }`}
+            aria-hidden={!isTagsExpanded}
+          >
             <div className='sidebar-tags'>
               {tags.map((tag) => {
                 const isSelected = selectedTag === tag.slug
@@ -114,6 +140,7 @@ export default function Sidebar({
                         onClick={handleClick}
                         aria-label={`筛选标签 ${tag.name}`}
                         aria-pressed={isSelected}
+                        type='button'
                       >
                         #{tag.name}
                       </button>
@@ -126,7 +153,28 @@ export default function Sidebar({
                 )
               })}
             </div>
-          )}
+          </div>
+        </div>
+      )}
+
+      {filterMode && (
+        <div className='sidebar-mobile-action-bar'>
+          <button
+            type='button'
+            className='sidebar-action secondary'
+            onClick={onClearFilters}
+            disabled={!hasActiveFilters}
+          >
+            清空筛选
+          </button>
+          <button
+            type='button'
+            className='sidebar-action primary'
+            onClick={onApplyFilters}
+            disabled={!hasPendingFilterChanges}
+          >
+            应用筛选
+          </button>
         </div>
       )}
     </aside>

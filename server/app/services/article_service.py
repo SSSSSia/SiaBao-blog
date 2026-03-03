@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Article service using file-based storage.
 
 This module provides the service layer for article operations,

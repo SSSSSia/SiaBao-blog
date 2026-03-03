@@ -34,6 +34,16 @@
   max-width: 64ch;
 }
 
+.home-github-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.12s ease;
+}
+
+.home-github-link:hover {
+  color: var(--text-primary);
+}
+
 .home-actions {
   display: flex;
   flex-wrap: wrap;
@@ -50,6 +60,7 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--bg-tertiary);
   font-size: 0.875rem;
+  transition: color 0.12s ease, border-color 0.12s ease;
 }
 
 .home-link-primary {
@@ -59,6 +70,11 @@
 
 .home-link-secondary {
   color: var(--text-secondary);
+}
+
+.home-link-secondary:hover {
+  color: var(--text-primary);
+  border-color: var(--color-gray-500);
 }
 
 .home-topics {

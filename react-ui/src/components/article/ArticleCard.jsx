@@ -1,4 +1,4 @@
-﻿import { Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Calendar, Eye, Heart, Clock } from 'lucide-react'
 import dayjs from 'dayjs'
 import './ArticleCard.css'

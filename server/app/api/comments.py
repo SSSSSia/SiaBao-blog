@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Comments API routes."""
 from typing import Annotated
 

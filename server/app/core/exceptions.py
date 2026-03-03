@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Global exception handlers for unified response format.
 
 This module provides exception handlers that convert all exceptions

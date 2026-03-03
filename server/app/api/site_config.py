@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Site configuration API routes."""
 from typing import Annotated
 

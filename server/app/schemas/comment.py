@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Comment schemas for request and response models."""
 from datetime import datetime
 from typing import Optional

@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+﻿import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { FileText, Filter } from 'lucide-react'
+import { FileText, Filter, SlidersHorizontal, X } from 'lucide-react'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
 import Sidebar from '../../components/layout/Sidebar'
@@ -12,6 +12,7 @@ import { categoryRepository } from '../../repositories/categoryRepository'
 import './ArticleList.css'
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50]
+const MOBILE_FILTER_BREAKPOINT = 1024
 const SORT_OPTIONS = [
   { value: 'latest', label: '最新发布' },
   { value: 'popular', label: '阅读最多' },
@@ -57,6 +58,8 @@ export default function ArticleList() {
   const [isComposing, setIsComposing] = useState(false)
   const [isSortOpen, setIsSortOpen] = useState(false)
   const [isPageSizeOpen, setIsPageSizeOpen] = useState(false)
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
+  const [draftFilters, setDraftFilters] = useState({ category: null, tag: null })
   const sortRef = useRef(null)
   const pageSizeRef = useRef(null)
 
@@ -69,10 +72,58 @@ export default function ArticleList() {
   const selectedTag = tags.find((item) => item.slug === tag)
   const selectedSort =
     SORT_OPTIONS.find((item) => item.value === sort) || SORT_OPTIONS[0]
+  const activeFilterCount = [category, tag, query].filter(Boolean).length
+  const hasPendingFilterChanges =
+    (draftFilters.category || null) !== (category || null) ||
+    (draftFilters.tag || null) !== (tag || null)
 
   useEffect(() => {
     setInputQuery(query)
   }, [query])
+
+  useEffect(() => {
+    if (!isMobileFilterOpen) return undefined
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isMobileFilterOpen])
+
+  useEffect(() => {
+    if (!isMobileFilterOpen) return undefined
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsMobileFilterOpen(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isMobileFilterOpen])
+
+  useEffect(() => {
+    if (!isMobileFilterOpen) return
+    setDraftFilters({
+      category: category || null,
+      tag: tag || null,
+    })
+  }, [isMobileFilterOpen, category, tag])
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > MOBILE_FILTER_BREAKPOINT) {
+        setIsMobileFilterOpen(false)
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
 
   useEffect(() => {
     const loadData = async () => {
@@ -181,6 +232,51 @@ export default function ArticleList() {
     updateSearchParam('tag', tagSlug)
   }
 
+  const handleDraftCategoryClick = (categorySlug) => {
+    setDraftFilters((prev) => ({
+      ...prev,
+      category: categorySlug,
+    }))
+  }
+
+  const handleDraftTagClick = (tagSlug) => {
+    setDraftFilters((prev) => ({
+      ...prev,
+      tag: tagSlug,
+    }))
+  }
+
+  const handleApplyMobileFilters = () => {
+    setCurrentPage(1)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (draftFilters.category) {
+        next.set('category', draftFilters.category)
+      } else {
+        next.delete('category')
+      }
+      if (draftFilters.tag) {
+        next.set('tag', draftFilters.tag)
+      } else {
+        next.delete('tag')
+      }
+      return next
+    })
+    setIsMobileFilterOpen(false)
+  }
+
+  const handleClearMobileFilters = () => {
+    setCurrentPage(1)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('category')
+      next.delete('tag')
+      return next
+    })
+    setDraftFilters({ category: null, tag: null })
+    setIsMobileFilterOpen(false)
+  }
+
   const handleSortSelect = (value) => {
     setCurrentPage(1)
     updateSearchParam('sort', value === 'latest' ? null : value)
@@ -249,7 +345,25 @@ export default function ArticleList() {
         <div className='container main-grid fade-in'>
           <div className='main-content'>
             <div className='page-header'>
-              <h1 className='page-title'>{getPageTitle()}</h1>
+              <div className='page-header-top'>
+                <h1 className='page-title'>{getPageTitle()}</h1>
+                <button
+                  type='button'
+                  className='mobile-filter-toggle'
+                  onClick={() => setIsMobileFilterOpen((prev) => !prev)}
+                  aria-label='切换筛选面板'
+                  aria-expanded={isMobileFilterOpen}
+                  aria-controls='articles-filter-sidebar'
+                >
+                  {isMobileFilterOpen ? <X size={20} /> : <SlidersHorizontal size={20} />}
+                  <span>筛选</span>
+                  {activeFilterCount > 0 && (
+                    <span className='mobile-filter-badge' aria-hidden='true'>
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+              </div>
 
               <div className='list-tools'>
                 <label className='search-field' htmlFor='article-search'>
@@ -279,9 +393,7 @@ export default function ArticleList() {
                     aria-expanded={isSortOpen}
                   >
                     <span>{selectedSort.label}</span>
-                    <span
-                      className={`sort-caret ${isSortOpen ? 'sort-caret-open' : ''}`}
-                    />
+                    <span className={`sort-caret ${isSortOpen ? 'sort-caret-open' : ''}`} />
                   </button>
 
                   {isSortOpen && (
@@ -394,7 +506,7 @@ export default function ArticleList() {
 
               {!isLoading && articles.length > 0 && (
                 <p className='result-count'>
-                  共找到 <strong>{total}</strong> 篇文章
+                  共找到<strong>{total}</strong> 篇文章
                 </p>
               )}
             </div>
@@ -441,17 +553,38 @@ export default function ArticleList() {
             )}
           </div>
 
-          <aside className='main-sidebar'>
+          <aside
+            id='articles-filter-sidebar'
+            className={`main-sidebar ${isMobileFilterOpen ? 'main-sidebar-open' : ''}`}
+            role={isMobileFilterOpen ? 'dialog' : undefined}
+            aria-modal={isMobileFilterOpen ? 'true' : undefined}
+            aria-label='筛选面板'
+          >
             <Sidebar
               categories={categories}
               tags={tags}
-              onCategoryClick={handleCategoryClick}
-              onTagClick={handleTagClick}
-              selectedCategory={category}
-              selectedTag={tag}
+              onCategoryClick={
+                isMobileFilterOpen ? handleDraftCategoryClick : handleCategoryClick
+              }
+              onTagClick={isMobileFilterOpen ? handleDraftTagClick : handleTagClick}
+              selectedCategory={isMobileFilterOpen ? draftFilters.category : category}
+              selectedTag={isMobileFilterOpen ? draftFilters.tag : tag}
               filterMode
+              hasActiveFilters={Boolean(draftFilters.category || draftFilters.tag)}
+              hasPendingFilterChanges={hasPendingFilterChanges}
+              onApplyFilters={handleApplyMobileFilters}
+              onClearFilters={handleClearMobileFilters}
+              onMobileClose={() => setIsMobileFilterOpen(false)}
             />
           </aside>
+
+          {isMobileFilterOpen && (
+            <div
+              className='sidebar-overlay'
+              onClick={() => setIsMobileFilterOpen(false)}
+              aria-hidden='true'
+            />
+          )}
         </div>
       </main>
 

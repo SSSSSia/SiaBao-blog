@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Articles API routes."""
 from typing import Annotated
 from urllib.parse import quote

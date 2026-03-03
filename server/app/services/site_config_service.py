@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Site configuration service layer for managing homepage settings."""
 import json
 import logging
