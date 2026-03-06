@@ -47,16 +47,10 @@ jobs:
 
             cd "$PROJECT_DIR"
 
-            echo "Pulling latest code..."
-            git pull origin main
-
-            # 处理私有内容仓库（包含 .env、文章、图片等）
-            if [ -z "$CONTENT_DIR" ]; then
-              CONTENT_DIR="/root/blog/sia-blog-content"
-            fi
-
+            # 先处理私有内容仓库（包含 .env、文章、图片等）
+            # 优先拉取用户数据，避免被代码仓库覆盖
             if [ -d "$CONTENT_DIR" ]; then
-              echo "Pulling content repository..."
+              echo "Pulling content repository first (user data priority)..."
               cd "$CONTENT_DIR"
               # 放弃本地更改，强制使用远程版本
               if git reset --hard HEAD && git clean -fd && git pull origin main; then
@@ -69,6 +63,13 @@ jobs:
             else
               echo "⚠️  Content repository not found: $CONTENT_DIR"
               echo "Skipping private repository sync"
+            fi
+
+            echo "Pulling latest code..."
+            # 使用 --ff-only 确保是快进合并，避免冲突
+            if ! git pull origin main --ff-only; then
+              echo "⚠️  Fast-forward pull failed, trying regular pull..."
+              git pull origin main
             fi
 
             # 验证 .env 文件是否存在

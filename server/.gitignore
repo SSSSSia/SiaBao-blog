@@ -25,10 +25,11 @@ htmlcov/
 *.swp
 *.swo
 
-# Data
-data/*.md
-data/index.json
+# Data - 用户数据文件存储在私有仓库
+data/
 !data/.gitkeep
+!data/*.example
+!data/*.example.json
 
 # OS
 .DS_Store

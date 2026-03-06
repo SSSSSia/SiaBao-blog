@@ -1,0 +1,23 @@
+{
+  "featured_article_ids": [
+    "example-article-id-1",
+    "example-article-id-2"
+  ],
+  "recent_articles_count": 3,
+  "user_profile": {
+    "name": "Your Name",
+    "title": "Your Title",
+    "bio": "请在这里填写个人简介...",
+    "avatar": "/public/uploads/general/default-avatar.jpg",
+    "location": "中国 • 城市",
+    "joined_date": "2024",
+    "email": "your.email@example.com",
+    "github": "https://github.com/yourusername",
+    "gitee": "",
+    "skills": [
+      "React",
+      "Vue.js",
+      "Python"
+    ]
+  }
+}
