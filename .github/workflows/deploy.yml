@@ -57,7 +57,8 @@ jobs:
             if [ -d "$CONTENT_DIR" ]; then
               echo "Pulling content repository..."
               cd "$CONTENT_DIR"
-              if git pull origin main; then
+              # 放弃本地更改，强制使用远程版本
+              if git reset --hard HEAD && git clean -fd && git pull origin main; then
                 echo "✓ Content repository updated successfully"
               else
                 echo "❌ Error: Failed to pull content repository"
