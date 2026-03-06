@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     admin_username: str
     admin_password: str
 
+    # AI/LLM Settings
+    siliconflow_api_key: str = ""
+    siliconflow_base_url: str = "https://api.siliconflow.cn/v1"
+    siliconflow_model: str = "Qwen/Qwen2.5-7B-Instruct"
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": False,

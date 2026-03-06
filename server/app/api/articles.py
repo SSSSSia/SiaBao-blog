@@ -27,6 +27,7 @@ from app.services.article_service import (
     unlike_article,
     update_article,
 )
+from app.services.ai_summary_service import generate_summary
 
 router = APIRouter(prefix="/articles", tags=["Articles"])
 settings = get_settings()
@@ -270,3 +271,37 @@ async def unlike_article_endpoint(article_id: str) -> R:
     """Unlike an article."""
     new_count = await unlike_article(article_id)
     return R.ok(message="Unliked", data={"likes": new_count})
+
+
+@router.post("/{article_id}/ai-summary")
+async def generate_ai_summary_endpoint(
+    article_id: str,
+    _admin: Annotated[dict, Depends(get_admin_user)],
+) -> R:
+    """Generate AI summary for an article (admin only)."""
+    # Get article first
+    article = await get_article_by_id(article_id)
+    if not article:
+        return not_found_response(message="Article not found")
+
+    try:
+        # Convert ArticleResponse to dict
+        article_dict = article.model_dump()
+
+        # Generate summary using AI service
+        summary = await generate_summary(
+            title=article_dict.get("title", ""),
+            content=article_dict.get("content", "")
+        )
+
+        if not summary:
+            return R.fail(message="Generated summary is empty")
+
+        return R.ok(
+            message="Summary generated successfully",
+            data={"summary": summary}
+        )
+    except ValueError as e:
+        return R.fail(message=str(e))
+    except Exception as e:
+        return R.fail(message=f"Failed to generate summary: {str(e)}")

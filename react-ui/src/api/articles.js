@@ -162,6 +162,16 @@ export const articleApi = {
   getTags: () => {
     return get(`${API_BASE}/articles/tags`);
   },
+
+  /**
+   * 生成AI摘要
+   * @param {number|string} id - 文章 ID
+   * @returns {Promise}
+   */
+  generateAISummary: (article_id) => {
+    // Use 60 second timeout for AI generation (can take longer)
+    return post(`${API_BASE}/articles/${article_id}/ai-summary`, {}, {}, 60000);
+  },
 };
 
 export default articleApi;

@@ -7,6 +7,8 @@
   border: 1px solid var(--bg-tertiary);
   border-radius: var(--radius-sm);
   padding: var(--space-4);
+  position: relative;
+  z-index: 1;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -14,6 +16,7 @@
   border-color: var(--color-gray-400);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transform: translateY(-2px);
+  z-index: 2;
 }
 
 .article-card-featured {

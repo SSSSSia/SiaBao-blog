@@ -167,12 +167,12 @@ export function get(url, params = {}, options = {}) {
 /**
  * POST 请求
  */
-export function post(url, data = {}, options = {}) {
+export function post(url, data = {}, options = {}, timeout = DEFAULT_TIMEOUT) {
   return request(url, {
     ...options,
     method: 'POST',
     body: JSON.stringify(data),
-  });
+  }, timeout);
 }
 
 /**

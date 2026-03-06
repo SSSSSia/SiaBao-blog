@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { Save, FileText, Eye, AlertCircle } from 'lucide-react'
+import { Save, FileText, Eye, AlertCircle, Sparkles } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { articleRepository } from '../../repositories/articleRepository'
+import { articleApi } from '../../api/articles'
 import { adminToast } from '../../utils/adminToast'
 import { generateTempArticleId, isTempArticleId } from '../../utils/image'
 import MarkdownEditor from '../../components/article/MarkdownEditor'
@@ -102,6 +103,11 @@ function ArticleEdit() {
   const [loadError, setLoadError] = useState(null)
   const [tempArticleId, setTempArticleId] = useState(null)
   const pendingNavigationRef = useRef(null)
+
+  // AI Summary states
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false)
+  const [generatedSummary, setGeneratedSummary] = useState('')
+  const [showAISummaryModal, setShowAISummaryModal] = useState(false)
 
   // 为新文章生成临时 ID
   useEffect(() => {
@@ -432,6 +438,61 @@ function ArticleEdit() {
     setShowNavigationModal(false)
   }
 
+  const handleGenerateAISummary = async () => {
+    // 检查是否有未保存的更改
+    if (hasUnsavedChanges) {
+      adminToast.saveInfo('请先保存文章后再生成AI摘要')
+      return
+    }
+
+    // 检查是否是新文章（没有ID）
+    const articleId = isEdit ? id : tempArticleId
+    if (!articleId || isTempArticleId(articleId)) {
+      adminToast.saveInfo('请先保存文章后再生成AI摘要')
+      return
+    }
+
+    setAiSummaryLoading(true)
+
+    try {
+      const response = await articleApi.generateAISummary(articleId)
+
+      if (response.error) {
+        adminToast.saveError(`生成摘要失败: ${response.error.message}`)
+        return
+      }
+
+      const summary = response.summary
+      if (!summary) {
+        adminToast.saveError('生成摘要失败: 未返回摘要内容')
+        return
+      }
+
+      setGeneratedSummary(summary)
+      setShowAISummaryModal(true)
+    } catch (error) {
+      console.error('生成AI摘要失败:', error)
+      adminToast.saveError('生成摘要失败，请重试')
+    } finally {
+      setAiSummaryLoading(false)
+    }
+  }
+
+  const handleApplyAISummary = () => {
+    setFormData((prev) => ({
+      ...prev,
+      excerpt: generatedSummary,
+    }))
+    setShowAISummaryModal(false)
+    setGeneratedSummary('')
+    adminToast.saveSuccess('已应用AI摘要')
+  }
+
+  const handleCancelAISummary = () => {
+    setShowAISummaryModal(false)
+    setGeneratedSummary('')
+  }
+
   if (loading) {
     return (
       <div className='article-edit-page fade-in'>
@@ -526,16 +587,32 @@ function ArticleEdit() {
 
         <div className='form-group'>
           <label htmlFor='excerpt'>摘要</label>
-          <input
-            id='excerpt'
-            type='text'
-            name='excerpt'
-            className='input-minimal'
-            value={formData.excerpt}
-            onChange={handleChange}
-            placeholder='简短描述（可选，默认取文章前 100 字）'
-            disabled={saving}
-          />
+          <div className='input-wrapper'>
+            <input
+              id='excerpt'
+              type='text'
+              name='excerpt'
+              className='input-minimal'
+              value={formData.excerpt}
+              onChange={handleChange}
+              placeholder='简短描述（可选，默认取文章前 100 字）'
+              disabled={saving}
+              style={{ paddingRight: '48px' }}
+            />
+            <button
+              type='button'
+              className='btn-icon-ai'
+              onClick={handleGenerateAISummary}
+              disabled={saving || aiSummaryLoading}
+              title='使用AI生成摘要'
+            >
+              {aiSummaryLoading ? (
+                <span className='spinner-small'></span>
+              ) : (
+                <Sparkles size={16} />
+              )}
+            </button>
+          </div>
         </div>
 
         <div className='form-group'>
@@ -641,6 +718,28 @@ function ArticleEdit() {
                 onClick={handleNavigationConfirm}
               >
                 离开
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAISummaryModal && (
+        <div className='navigation-block-modal'>
+          <div className='navigation-block-content'>
+            <h3>AI摘要已生成</h3>
+            <div className='ai-summary-preview'>
+              {generatedSummary}
+            </div>
+            <div className='navigation-block-actions'>
+              <button className='btn' onClick={handleCancelAISummary}>
+                取消
+              </button>
+              <button
+                className='btn btn-primary'
+                onClick={handleApplyAISummary}
+              >
+                应用摘要
               </button>
             </div>
           </div>
