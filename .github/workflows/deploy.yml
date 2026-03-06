@@ -19,10 +19,11 @@ jobs:
           port: ${{ secrets.SERVER_PORT }}
           # 如果私钥设置了密码，请在仓库 Secrets 添加 SSH_PASSPHRASE 并取消下一行注释
           # passphrase: ${{ secrets.SSH_PASSPHRASE }}
-          script_stop: true
-          timeout: 60s
+          script_stop: false
+          timeout: 15m
           command_timeout: 30m
           script: |
+            set -e  # Exit immediately if a command exits with a non-zero status
             echo "=== Starting Deployment ==="
 
             PROJECT_DIR="${{ secrets.SERVER_PROJECT_PATH }}"
