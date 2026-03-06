@@ -38,14 +38,14 @@ fi
 echo "✓ Content directory found: $CONTENT_DIR"
 
 # 创建 cron 任务
-# 每周日凌晨 2:00 执行备份
+# 每天凌晨 1:00 执行备份
 echo "Creating cron job..."
 cat > "$CRON_FILE" <<EOF
 # 内容仓库自动备份任务
-# 每周日凌晨 2:00 执行
+# 每天凌晨 1:00 执行
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-0 2 * * 0 root $BACKUP_SCRIPT >> /var/log/content-backup.log 2>&1
+0 1 * * * root $BACKUP_SCRIPT >> /var/log/content-backup.log 2>&1
 EOF
 
 # 设置正确的权限
@@ -76,7 +76,7 @@ echo "=========================================="
 echo "✓ Setup Complete!"
 echo ""
 echo "Cron job details:"
-echo "  - Schedule: Every Sunday at 2:00 AM"
+echo "  - Schedule: Every day at 1:00 AM"
 echo "  - Script: $BACKUP_SCRIPT"
 echo "  - Log: /var/log/content-backup.log"
 echo ""

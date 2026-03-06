@@ -173,7 +173,7 @@ sudo tail -f /var/log/content-backup.log
 sudo bash /root/blog/SiaBao-blog/scripts/setup-cron-backup.sh
 ```
 
-**默认计划：** 每周日凌晨 2:00 自动执行备份
+**默认计划：** 每天凌晨 1:00 自动执行备份
 
 ---
 
