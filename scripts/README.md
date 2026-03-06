@@ -189,7 +189,7 @@ sudo bash /root/blog/SiaBao-blog/scripts/setup-cron-backup.sh
 - 自动配置 cron 定时任务
 - 设置备份脚本执行权限
 - 配置日志记录
-- 默认每周日凌晨 2:00 执行
+- 默认每天凌晨 1:00 执行
 
 **管理定时任务：**
 ```bash
