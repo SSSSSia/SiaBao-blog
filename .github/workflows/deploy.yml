@@ -66,10 +66,16 @@ jobs:
             fi
 
             echo "Pulling latest code..."
-            # 使用 --ff-only 确保是快进合并，避免冲突
-            if ! git pull origin main --ff-only; then
-              echo "⚠️  Fast-forward pull failed, trying regular pull..."
-              git pull origin main
+            # 使用 fetch + reset 确保与远程完全同步
+            # 这样可以避免分支分歧和合并冲突
+            # 云服务器上的代码不应该有本地修改
+            if git fetch origin main && git reset --hard origin/main; then
+              echo "✓ Code repository updated successfully"
+              # 清理未跟踪的文件（可选，保持环境干净）
+              git clean -fd || true
+            else
+              echo "❌ Error: Failed to pull code repository"
+              exit 1
             fi
 
             # 验证 .env 文件是否存在
