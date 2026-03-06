@@ -149,6 +149,64 @@ bash scripts/deploy.sh
 
 ---
 
+#### `backup-content.sh` - 内容仓库自动备份脚本
+**用途：** 自动备份文章、图片等内容到 GitHub 私有仓库
+
+```bash
+# 手动执行备份
+sudo bash /root/blog/SiaBao-blog/scripts/backup-content.sh
+
+# 查看备份日志
+sudo tail -f /var/log/content-backup.log
+```
+
+**功能：**
+- 自动检测并提交内容仓库的更改
+- 拉取远程最新版本（避免冲突）
+- 冲突时自动使用远程版本
+- 详细的备份日志记录
+- 推送到 GitHub 私有仓库
+
+**自动安装定时任务：**
+```bash
+# 运行安装脚本（自动配置每周备份）
+sudo bash /root/blog/SiaBao-blog/scripts/setup-cron-backup.sh
+```
+
+**默认计划：** 每周日凌晨 2:00 自动执行备份
+
+---
+
+#### `setup-cron-backup.sh` - 定时备份安装脚本
+**用途：** 一键安装内容仓库自动备份定时任务
+
+```bash
+# 安装定时备份任务
+sudo bash /root/blog/SiaBao-blog/scripts/setup-cron-backup.sh
+```
+
+**功能：**
+- 自动配置 cron 定时任务
+- 设置备份脚本执行权限
+- 配置日志记录
+- 默认每周日凌晨 2:00 执行
+
+**管理定时任务：**
+```bash
+# 查看已安装的 cron 任务
+sudo cat /etc/cron.d/content-backup
+
+# 编辑备份时间
+sudo nano /etc/cron.d/content-backup
+# 修改后重载: sudo systemctl reload cron
+
+# 停用自动备份
+sudo rm /etc/cron.d/content-backup
+sudo systemctl reload cron
+```
+
+---
+
 #### `auto-update.sh` - 自动更新脚本
 **用途：** 配合 crontab 实现定时自动更新
 
