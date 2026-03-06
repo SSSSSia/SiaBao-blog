@@ -54,14 +54,42 @@ jobs:
               CONTENT_DIR="/root/blog/sia-blog-content"
             fi
 
+            # 检查 SSH 密钥配置
+            echo "Checking SSH configuration..."
+            if [ ! -f ~/.ssh/id_rsa ]; then
+              echo "⚠️  Warning: SSH private key not found on server"
+              echo "Will attempt to use HTTPS with token instead"
+              USE_HTTPS=true
+            else
+              echo "✓ SSH key found"
+              USE_HTTPS=false
+            fi
+
             if [ ! -d "$CONTENT_DIR" ]; then
               echo "Content repository not found: $CONTENT_DIR"
               echo "Cloning content repository..."
-              git clone git@github.com:SSSSSia/sia-blog-content.git "$CONTENT_DIR"
+              if [ "$USE_HTTPS" = true ]; then
+                # 使用 HTTPS + GitHub Token（需要在 Secrets 中添加 GITHUB_TOKEN）
+                if [ -n "$GITHUB_TOKEN" ]; then
+                  git clone https://$GITHUB_TOKEN@github.com/SSSSSia/sia-blog-content.git "$CONTENT_DIR"
+                else
+                  echo "❌ Error: GITHUB_TOKEN not configured"
+                  echo "Please add GITHUB_TOKEN to your repository Secrets"
+                  exit 1
+                fi
+              else
+                git clone git@github.com:SSSSSia/sia-blog-content.git "$CONTENT_DIR"
+              fi
             else
               echo "Pulling content repository..."
               cd "$CONTENT_DIR"
-              git pull origin main
+              if git pull origin main; then
+                echo "✓ Content repository updated successfully"
+              else
+                echo "❌ Error: Failed to pull content repository"
+                echo "Please check SSH key configuration or GITHUB_TOKEN"
+                exit 1
+              fi
               cd "$PROJECT_DIR"
             fi
 
