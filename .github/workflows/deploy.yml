@@ -49,11 +49,28 @@ jobs:
             echo "Pulling latest code..."
             git pull origin main
 
-            if [ -d "$CONTENT_DIR" ]; then
+            # 处理私有内容仓库（包含 .env、文章、图片等）
+            if [ -z "$CONTENT_DIR" ]; then
+              CONTENT_DIR="/root/blog/sia-blog-content"
+            fi
+
+            if [ ! -d "$CONTENT_DIR" ]; then
+              echo "Content repository not found: $CONTENT_DIR"
+              echo "Cloning content repository..."
+              git clone git@github.com:SSSSSia/sia-blog-content.git "$CONTENT_DIR"
+            else
               echo "Pulling content repository..."
               cd "$CONTENT_DIR"
               git pull origin main
               cd "$PROJECT_DIR"
+            fi
+
+            # 验证 .env 文件是否存在
+            if [ ! -f "$CONTENT_DIR/server/.env" ]; then
+              echo "⚠️  Warning: .env file not found in $CONTENT_DIR/server/.env"
+              echo "Please ensure the .env file exists in your private repository"
+            else
+              echo "✓ .env file found in content repository"
             fi
 
             echo "Stopping existing services..."
