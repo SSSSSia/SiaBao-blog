@@ -8,12 +8,29 @@
  * - 自动保存草稿
  */
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { X } from 'lucide-react'
 import { uploadImage } from '../../api/upload'
 import { toast } from 'react-toastify'
 import { renderMarkdown } from '../../utils/markdown'
 import './MarkdownEditor.css'
+
+// 防抖 Hook
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+
+    return () => {
+      clearTimeout(handler)
+    }
+  }, [value, delay])
+
+  return debouncedValue
+}
 
 // Markdown 编辑器组件
 function MarkdownEditor({
@@ -32,6 +49,9 @@ function MarkdownEditor({
   const textareaRef = useRef(null)
   const dropZoneRef = useRef(null)
   const fileInputRef = useRef(null)
+
+  // 使用防抖优化预览渲染（500ms 延迟）
+  const debouncedContent = useDebounce(content, 500)
 
   // 同步外部 value 变化
   useEffect(() => {
@@ -326,20 +346,24 @@ function MarkdownEditor({
     },
   ]
 
+  // 使用 useMemo 缓存渲染后的 HTML
+  const renderedHtml = useMemo(() => {
+    if (!debouncedContent) {
+      return null
+    }
+    return renderMarkdown(debouncedContent)
+  }, [debouncedContent])
+
   // 渲染预览内容（使用专业的 Markdown 渲染器）
   const renderPreview = () => {
-    if (!content) {
+    if (!renderedHtml) {
       return <div className='preview-empty'>暂无内容</div>
     }
-
-    // 使用与文章详情页相同的渲染函数
-    // 支持：代码高亮、数学公式、表格、XSS 防护
-    const html = renderMarkdown(content)
 
     return (
       <div
         className='preview-content prose'
-        dangerouslySetInnerHTML={html}
+        dangerouslySetInnerHTML={renderedHtml}
       />
     )
   }

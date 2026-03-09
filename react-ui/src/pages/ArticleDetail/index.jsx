@@ -17,6 +17,7 @@ import Share from '../../components/common/Share'
 import Comment from '../../components/common/Comment'
 import ArticleCard from '../../components/article/ArticleCard'
 import Loading from '../../components/ui/Loading'
+import { ArticleDetailSkeleton } from '../../components/ui/Skeleton'
 import { renderMarkdown, estimateReadingTime } from '../../utils/markdown'
 import { mockComments } from '../../constants/mockData'
 import { articleRepository } from '../../repositories/articleRepository'
@@ -100,13 +101,74 @@ export default function ArticleDetail() {
         // 从 localStorage 读取点赞状态
         setIsLiked(isArticleLiked(currentArticle.id))
 
-        // 增加浏览量
-        try {
-          await articleRepository.incrementViews(currentArticle.id)
-          setViewCount((count) => count + 1)
-        } catch (error) {
-          console.error('增加浏览量失败:', error)
-        }
+        // 立即结束加载状态，显示文章内容
+        setLoading(false)
+
+        // 异步执行非关键操作
+        startTransition(async () => {
+          // 增加浏览量（非关键）
+          try {
+            await articleRepository.incrementViews(currentArticle.id)
+            setViewCount((count) => count + 1)
+          } catch (error) {
+            console.error('增加浏览量失败:', error)
+          }
+
+          // 加载相关文章（延迟加载，优先显示主要内容）
+          try {
+            await new Promise(resolve => setTimeout(resolve, 100)) // 稍微延迟，让主要内容先渲染
+
+            const listResponse = await articleRepository.getArticleList({
+              status: 'published',
+            })
+
+            if (listResponse.data) {
+              const currentTags = (currentArticle.tags || []).map(getTagName)
+              const currentCategory = getCategorySlug(currentArticle)
+
+              // 过滤掉当前文章
+              const otherArticles = listResponse.data.filter(
+                (item) => item.id !== currentArticle.id
+              )
+
+              // 1. 优先找相同标签的文章（按标签匹配数量降序排序）
+              const withTagScores = otherArticles.map(item => {
+                const itemTags = (item.tags || []).map(getTagName)
+                const matchingTags = currentTags.filter(tag => itemTags.includes(tag))
+                return {
+                  article: item,
+                  score: matchingTags.length
+                }
+              }).filter(item => item.score > 0)
+
+              // 按标签匹配数量降序排序
+              withTagScores.sort((a, b) => b.score - a.score)
+              const tagRelated = withTagScores.map(item => item.article)
+
+              // 2. 如果相同标签的文章数量很多（>3），限制为3篇；否则全部展示
+              let related = tagRelated.length > 3 ? tagRelated.slice(0, 3) : tagRelated
+
+              // 3. 如果相同标签的文章不足3篇，用相同分类的文章补充
+              if (related.length < 3) {
+                const categoryRelated = otherArticles.filter(
+                  (item) =>
+                    !related.find(r => r.id === item.id) &&
+                    getCategorySlug(item) === currentCategory
+                )
+                const remaining = 3 - related.length
+                // 如果相同分类的文章也很多，只取需要的数量
+                const toAdd = categoryRelated.length > remaining
+                  ? categoryRelated.slice(0, remaining)
+                  : categoryRelated
+                related = [...related, ...toAdd]
+              }
+
+              setRelatedArticles(related)
+            }
+          } catch (error) {
+            console.error('加载相关文章失败:', error)
+          }
+        })
 
         if (COMMENT_FEATURE_ENABLED) {
           const articleComments = mockComments.filter(
@@ -114,57 +176,8 @@ export default function ArticleDetail() {
           )
           setComments(articleComments)
         }
-
-        const listResponse = await articleRepository.getArticleList({
-          status: 'published',
-        })
-
-        if (listResponse.data) {
-          const currentTags = (currentArticle.tags || []).map(getTagName)
-          const currentCategory = getCategorySlug(currentArticle)
-
-          // 过滤掉当前文章
-          const otherArticles = listResponse.data.filter(
-            (item) => item.id !== currentArticle.id
-          )
-
-          // 1. 优先找相同标签的文章（按标签匹配数量降序排序）
-          const withTagScores = otherArticles.map(item => {
-            const itemTags = (item.tags || []).map(getTagName)
-            const matchingTags = currentTags.filter(tag => itemTags.includes(tag))
-            return {
-              article: item,
-              score: matchingTags.length
-            }
-          }).filter(item => item.score > 0)
-
-          // 按标签匹配数量降序排序
-          withTagScores.sort((a, b) => b.score - a.score)
-          const tagRelated = withTagScores.map(item => item.article)
-
-          // 2. 如果相同标签的文章数量很多（>3），限制为3篇；否则全部展示
-          let related = tagRelated.length > 3 ? tagRelated.slice(0, 3) : tagRelated
-
-          // 3. 如果相同标签的文章不足3篇，用相同分类的文章补充
-          if (related.length < 3) {
-            const categoryRelated = otherArticles.filter(
-              (item) =>
-                !related.find(r => r.id === item.id) &&
-                getCategorySlug(item) === currentCategory
-            )
-            const remaining = 3 - related.length
-            // 如果相同分类的文章也很多，只取需要的数量
-            const toAdd = categoryRelated.length > remaining
-              ? categoryRelated.slice(0, remaining)
-              : categoryRelated
-            related = [...related, ...toAdd]
-          }
-
-          setRelatedArticles(related)
-        }
       } catch (err) {
         setError(err)
-      } finally {
         setLoading(false)
       }
     }
@@ -349,9 +362,10 @@ export default function ArticleDetail() {
         <Header />
         <main className='main article-detail-main'>
           <div className='container'>
-            <Loading text='加载中...' />
+            <ArticleDetailSkeleton />
           </div>
         </main>
+        <Footer />
       </div>
     )
   }

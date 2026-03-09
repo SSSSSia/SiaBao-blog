@@ -7,6 +7,7 @@ import { articleApi } from '../../api/articles'
 import { adminToast } from '../../utils/adminToast'
 import { generateTempArticleId, isTempArticleId } from '../../utils/image'
 import MarkdownEditor from '../../components/article/MarkdownEditor'
+import { EditorSkeleton } from '../../components/ui/Skeleton'
 import './ArticleEdit.css'
 
 const generateSlug = (title) => {
@@ -496,10 +497,10 @@ function ArticleEdit() {
   if (loading) {
     return (
       <div className='article-edit-page fade-in'>
-        <div className='loading-state'>
-          <FileText size={32} />
-          <p>加载中..</p>
+        <div className='page-title-bar'>
+          <h1>{isEdit ? '编辑文章' : '新建文章'}</h1>
         </div>
+        <EditorSkeleton />
       </div>
     )
   }

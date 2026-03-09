@@ -1,0 +1,122 @@
+/* 骨架屏动画和样式 */
+@keyframes skeleton-loading {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.skeleton-line {
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.skeleton-text {
+  padding: 16px 0;
+}
+
+.skeleton-title {
+  height: 32px;
+  width: 60%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.skeleton-block {
+  height: 200px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 8px;
+  margin: 24px 0;
+}
+
+.skeleton-card {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: white;
+}
+
+.skeleton-card-image {
+  width: 200px;
+  height: 120px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+.skeleton-card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* 文章详情骨架屏 */
+.article-detail-skeleton {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+.skeleton-detail-header {
+  margin-bottom: 32px;
+}
+
+.skeleton-detail-title {
+  height: 48px;
+  width: 80%;
+  margin-bottom: 24px;
+}
+
+.skeleton-detail-meta {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.skeleton-detail-content {
+  padding: 32px 0;
+}
+
+/* 编辑器骨架屏 */
+.skeleton-editor {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.skeleton-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f9f9f9;
+}
+
+.skeleton-toolbar-btn {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+.skeleton-editor-content {
+  padding: 24px;
+}
