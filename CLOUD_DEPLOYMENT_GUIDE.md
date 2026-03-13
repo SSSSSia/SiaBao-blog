@@ -55,7 +55,7 @@ vim server/.env
 openssl rand -hex 32
 ```
 
-## 5. 数据目录策略（重要）
+## 5. 数据目录策略
 
 当前生产编排文件 `docker-compose.prod.yml` 采用宿主机挂载：
 （示例目录）
@@ -70,6 +70,12 @@ openssl rand -hex 32
 2. 修改 `docker-compose.prod.yml` 中的绝对路径为你的实际路径。
 
 建议将 `server/data` 与 `server/public` 放在私有内容仓库或独立备份目录，不放公开代码仓库。
+
+**建议阅读：**
+| 文档 | 说明 |
+|-----|------|
+| [数据迁移](./MIGRATION_GUIDE.md) | 双仓库迁移指南 |
+| [数据备份](./AUTO_BACKUP_TO_GITHUB.md) | 设置定时任务自动备份用户数据 |
 
 ## 6. 启动生产服务
 

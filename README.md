@@ -228,6 +228,8 @@ openssl rand -hex 32
 | [云部署指南](./CLOUD_DEPLOYMENT_GUIDE.md) | 生产环境部署教程 |
 | [CI/CD 配置](./GITHUB_ACTIONS_SETUP.md) | GitHub Actions 设置 |
 | [数据迁移](./MIGRATION_GUIDE.md) | 双仓库迁移指南 |
+| [数据备份](./AUTO_BACKUP_TO_GITHUB.md) | 用户数据自动备份指南 |
+
 
 ---
 
