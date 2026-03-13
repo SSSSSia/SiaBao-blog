@@ -87,32 +87,32 @@ jobs:
             fi
 
             echo "Stopping existing services..."
-            docker compose -f docker-compose.prod.yml down
+            docker compose -f docker-compose.prod.yml --env-file "$CONTENT_DIR/server/.env" down
 
             echo "Building and starting services..."
-            docker compose -f docker-compose.prod.yml up -d --build
+            docker compose -f docker-compose.prod.yml --env-file "$CONTENT_DIR/server/.env" up -d --build
 
             echo "Waiting for services to start..."
             sleep 10
 
             echo "Checking service status..."
-            docker compose -f docker-compose.prod.yml ps
+            docker compose -f docker-compose.prod.yml --env-file "$CONTENT_DIR/server/.env" ps
 
             echo "Running Nginx health check..."
             if curl -fsS http://localhost/health > /dev/null 2>&1; then
               echo "Nginx health check passed"
             else
               echo "Nginx health check failed"
-              docker compose -f docker-compose.prod.yml logs --tail=200 nginx
+              docker compose -f docker-compose.prod.yml --env-file "$CONTENT_DIR/server/.env" logs --tail=200 nginx
               exit 1
             fi
 
             echo "Running backend health check (inside container)..."
-            if docker compose -f docker-compose.prod.yml exec -T backend python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health'); print('ok')" > /dev/null 2>&1; then
+            if docker compose -f docker-compose.prod.yml --env-file "$CONTENT_DIR/server/.env" exec -T backend python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health'); print('ok')" > /dev/null 2>&1; then
               echo "Backend health check passed"
             else
               echo "Backend health check failed"
-              docker compose -f docker-compose.prod.yml logs --tail=200 backend
+              docker compose -f docker-compose.prod.yml --env-file "$CONTENT_DIR/server/.env" logs --tail=200 backend
               exit 1
             fi
 
