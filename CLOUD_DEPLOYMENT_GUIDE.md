@@ -60,7 +60,7 @@ openssl rand -hex 32
 
 - `/root/blog/sia-blog-content/server/data -> /app/data`
 - `/root/blog/sia-blog-content/server/public -> /app/public`
-- `/root/blog/sia-blog-content/server/.env -> 容器环境变量`
+
 
 你有两种选择:
 

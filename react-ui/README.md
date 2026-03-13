@@ -1,8 +1,28 @@
 # SiaBao Blog - React UI
 
-博客系统的前端应用，基于 **React 19 + Vite 7** 构建的现代化单页应用，提供完整的博客浏览和管理功能。
+<p align="center">
+  <strong>博客系统前端应用</strong>
+</p>
 
-## 技术栈
+<p align="center">
+  基于 React 19 + Vite 7 构建的现代化单页应用，提供完整的博客浏览和管理功能
+</p>
+
+---
+
+## 📋 目录
+
+- [技术栈](#-技术栈)
+- [功能特性](#-功能特性)
+- [快速开始](#-快速开始)
+- [项目结构](#-项目结构)
+- [路由配置](#-路由配置)
+- [开发指南](#-开发指南)
+- [部署](#-部署)
+
+---
+
+## 🛠 技术栈
 
 | 技术 | 版本 | 用途 |
 |-----|------|------|
@@ -11,131 +31,49 @@
 | React Router DOM | 7.13.0 | 路由管理 |
 | Lucide React | 0.563.0 | 图标库 |
 | Marked | 17.0.3 | Markdown 渲染 |
-| Markdown-it | 14.1.1 | Markdown 解析 |
-| Highlight.js | 11.11.1 | 代码语法高亮 |
-| KaTeX | 0.16.28 | 数学公式渲染 |
+| Highlight.js | 11.11.1 | 代码高亮 |
+| KaTeX | 0.16.28 | 数学公式 |
 | DOMPurify | 3.3.1 | XSS 防护 |
-| React Toastify | 11.0.5 | 消息提示 |
-| Day.js | 1.11.19 | 日期处理 |
-| React Markdown Editor Lite | 1.4.2 | Markdown 编辑器 |
-| Vitest | 4.0.18 | 单元测试框架 |
-| Testing Library | 16.3.2 | React 测试工具 |
+| Vitest | 4.0.18 | 单元测试 |
 
-## 功能特性
+---
+
+## ✨ 功能特性
 
 ### 公开页面
 
-| 页面 | 路由 | 功能描述 |
-|-----|------|---------|
-| 首页 | `/` | 精选文章展示、最新文章列表、站点介绍 |
-| 文章列表 | `/articles` | 分页浏览、分类筛选、排序功能 |
-| 文章详情 | `/articles/:id` | Markdown 渲染、代码高亮、数学公式、评论互动 |
-| 分类页面 | `/category/:slug` | 按分类浏览文章 |
-| 标签页面 | `/tag/:slug` | 按标签浏览文章 |
-| 搜索页面 | `/search` | 全文搜索、关键词高亮 |
-| 关于页面 | `/about` | 个人介绍、社交链接 |
+| 页面 | 路由 | 功能 |
+|-----|------|------|
+| 首页 | `/` | 精选文章、最新文章、站点介绍 |
+| 文章列表 | `/articles` | 分页浏览、分类筛选、排序 |
+| 文章详情 | `/articles/:id` | Markdown 渲染、代码高亮、评论 |
+| 分类页面 | `/category/:slug` | 按分类浏览 |
+| 标签页面 | `/tag/:slug` | 按标签浏览 |
+| 搜索页面 | `/search` | 全文搜索 |
+| 关于页面 | `/about` | 个人介绍 |
 
 ### 管理后台
 
-| 页面 | 路由 | 功能描述 |
-|-----|------|---------|
+| 页面 | 路由 | 功能 |
+|-----|------|------|
 | 登录 | `/admin/login` | 管理员认证 |
-| 仪表盘 | `/admin/dashboard` | 数据统计、文章概览 |
+| 仪表盘 | `/admin/dashboard` | 数据统计 |
 | 文章管理 | `/admin/articles` | 文章列表、搜索筛选 |
-| 新建文章 | `/admin/articles/new` | Markdown 编辑器、实时预览、图片上传 |
+| 新建文章 | `/admin/articles/new` | Markdown 编辑器、实时预览 |
 | 编辑文章 | `/admin/articles/:id/edit` | 文章编辑、导入导出 |
-| 站点设置 | `/admin/settings` | 站点信息、Logo、社交链接配置 |
+| 站点设置 | `/admin/settings` | 站点信息、Logo、社交链接 |
 
 ### 核心组件
 
 - **Markdown 渲染器** - 支持 GFM、代码高亮、数学公式
-- **实时预览编辑器** - 所见即所得的 Markdown 编辑体验
-- **响应式布局** - 移动端友好的自适应设计
-- **懒加载** - 路由级代码分割，优化首屏加载
-- **错误边界** - 优雅的错误处理和用户提示
+- **实时预览编辑器** - 所见即所得的编辑体验
+- **响应式布局** - 移动端友好
+- **懒加载** - 路由级代码分割
+- **错误边界** - 优雅的错误处理
 
-## 项目结构
+---
 
-```
-react-ui/
-├── src/
-│   ├── api/                     # API 接口层
-│   │   ├── articles.js          # 文章相关接口
-│   │   ├── auth.js              # 认证接口
-│   │   ├── categories.js        # 分类接口
-│   │   ├── comments.js          # 评论接口
-│   │   ├── siteConfig.js        # 站点配置接口
-│   │   ├── statistics.js        # 统计数据接口
-│   │   └── upload.js            # 文件上传接口
-│   │
-│   ├── components/              # React 组件
-│   │   ├── article/             # 文章相关组件
-│   │   │   ├── ArticleCard      # 文章卡片
-│   │   │   ├── ArticleContent   # 文章内容渲染
-│   │   │   ├── ArticleMeta      # 文章元信息
-│   │   │   └── ArticleToolbar   # 文章工具栏
-│   │   ├── auth/                # 认证组件
-│   │   │   └── ProtectedRoute   # 路由守卫
-│   │   ├── common/              # 通用组件
-│   │   │   ├── ErrorBoundary    # 错误边界
-│   │   │   ├── Loading          # 加载状态
-│   │   │   ├── Pagination       # 分页组件
-│   │   │   └── ScrollToTop      # 滚动复位
-│   │   ├── layout/              # 布局组件
-│   │   │   ├── Header           # 页头导航
-│   │   │   ├── Footer           # 页脚
-│   │   │   ├── Sidebar          # 侧边栏
-│   │   │   └── AdminLayout      # 后台布局
-│   │   └── ui/                  # UI 基础组件
-│   │       ├── Button           # 按钮
-│   │       ├── Input            # 输入框
-│   │       ├── Modal            # 弹窗
-│   │       └── Toast            # 消息提示
-│   │
-│   ├── pages/                   # 页面组件
-│   │   ├── Home/                # 首页
-│   │   ├── About/               # 关于页面
-│   │   ├── ArticleList/         # 文章列表
-│   │   ├── ArticleDetail/       # 文章详情
-│   │   ├── Category/            # 分类页面
-│   │   ├── Tag/                 # 标签页面
-│   │   ├── Search/              # 搜索页面
-│   │   └── Admin/               # 管理后台
-│   │       ├── Admin            # 后台布局
-│   │       ├── Login            # 登录页
-│   │       ├── Dashboard        # 仪表盘
-│   │       ├── ArticleManage    # 文章管理
-│   │       ├── ArticleEdit      # 文章编辑
-│   │       └── Settings         # 站点设置
-│   │
-│   ├── providers/               # Context Provider
-│   │   └── AuthProvider         # 认证状态管理
-│   │
-│   ├── hooks/                   # 自定义 Hooks
-│   ├── contexts/                # React Context
-│   ├── reducers/                # State Reducers
-│   ├── repositories/            # 数据访问层
-│   ├── services/                # 服务层
-│   ├── utils/                   # 工具函数
-│   ├── constants/               # 常量定义
-│   ├── test/                    # 测试配置
-│   │
-│   ├── App.jsx                  # 应用根组件
-│   ├── App.css                  # 应用样式
-│   ├── main.jsx                 # 应用入口
-│   └── index.css                # 全局样式
-│
-├── public/                      # 静态资源
-│   └── vite.svg                 # 网站图标
-│
-├── index.html                   # HTML 模板
-├── vite.config.js               # Vite 配置
-├── eslint.config.js             # ESLint 配置
-├── package.json                 # 项目配置
-└── package-lock.json            # 依赖锁定
-```
-
-## 快速开始
+## 🚀 快速开始
 
 ### 环境要求
 
@@ -171,19 +109,60 @@ npm run build
 npm run preview
 ```
 
-## 可用脚本
+---
 
-| 命令 | 说明 |
-|-----|------|
-| `npm run dev` | 启动开发服务器（热重载） |
-| `npm run build` | 构建生产版本 |
-| `npm run preview` | 预览生产构建 |
-| `npm run lint` | ESLint 代码检查 |
-| `npm run test` | 运行单元测试 |
-| `npm run test:ui` | 启动测试 UI 界面 |
-| `npm run test:coverage` | 生成测试覆盖率报告 |
+## 📁 项目结构
 
-## 路由配置
+```
+react-ui/
+├── src/
+│   ├── api/                 # API 接口层
+│   │   ├── articles.js      # 文章接口
+│   │   ├── auth.js          # 认证接口
+│   │   ├── comments.js      # 评论接口
+│   │   ├── siteConfig.js    # 站点配置
+│   │   └── upload.js        # 文件上传
+│   │
+│   ├── components/          # React 组件
+│   │   ├── article/         # 文章相关
+│   │   ├── auth/            # 认证组件
+│   │   ├── common/          # 通用组件
+│   │   ├── layout/          # 布局组件
+│   │   └── ui/              # UI 基础组件
+│   │
+│   ├── pages/               # 页面组件
+│   │   ├── Home/            # 首页
+│   │   ├── About/           # 关于页面
+│   │   ├── ArticleList/     # 文章列表
+│   │   ├── ArticleDetail/   # 文章详情
+│   │   ├── Category/        # 分类页面
+│   │   ├── Tag/             # 标签页面
+│   │   ├── Search/          # 搜索页面
+│   │   └── Admin/           # 管理后台
+│   │
+│   ├── providers/           # Context Provider
+│   ├── hooks/               # 自定义 Hooks
+│   ├── contexts/            # React Context
+│   ├── repositories/        # 数据访问层
+│   ├── services/            # 服务层
+│   ├── utils/               # 工具函数
+│   ├── constants/           # 常量定义
+│   │
+│   ├── App.jsx              # 应用根组件
+│   ├── App.css              # 应用样式
+│   ├── main.jsx             # 应用入口
+│   └── index.css            # 全局样式
+│
+├── public/                  # 静态资源
+├── index.html               # HTML 模板
+├── vite.config.js           # Vite 配置
+├── eslint.config.js         # ESLint 配置
+└── package.json             # 项目配置
+```
+
+---
+
+## 🔀 路由配置
 
 ### 公开路由
 
@@ -197,58 +176,37 @@ npm run preview
 | `/tag/:slug` | `Tag` | 标签页面 |
 | `/search` | `Search` | 搜索页面 |
 
-### 管理后台路由（需认证）
+### 管理后台路由
 
 | 路径 | 组件 | 说明 |
 |-----|------|------|
 | `/admin/login` | `Login` | 登录页面 |
-| `/admin` | → `/admin/dashboard` | 重定向到仪表盘 |
+| `/admin` | → `/admin/dashboard` | 重定向 |
 | `/admin/dashboard` | `Dashboard` | 仪表盘 |
 | `/admin/articles` | `ArticleManage` | 文章管理 |
 | `/admin/articles/new` | `ArticleEdit` | 新建文章 |
 | `/admin/articles/:id/edit` | `ArticleEdit` | 编辑文章 |
 | `/admin/settings` | `Settings` | 站点设置 |
 
-## API 接口
+---
 
-### 接口模块
+## 🔧 开发指南
 
-```javascript
-// 文章接口
-import { articles } from './api/articles'
-articles.getList(params)      // 获取文章列表
-articles.getById(id)          // 获取文章详情
-articles.create(data)         // 创建文章
-articles.update(id, data)     // 更新文章
-articles.delete(id)           // 删除文章
-articles.like(id)             // 点赞文章
-articles.export(id)           // 导出 Markdown
-articles.import(file)         // 导入 Markdown
+### 可用脚本
 
-// 认证接口
-import { auth } from './api/auth'
-auth.login(username, password) // 登录
-auth.refresh()                 // 刷新 Token
-auth.me()                      // 获取当前用户
+| 命令 | 说明 |
+|-----|------|
+| `npm run dev` | 启动开发服务器 |
+| `npm run build` | 构建生产版本 |
+| `npm run preview` | 预览生产构建 |
+| `npm run lint` | ESLint 代码检查 |
+| `npm run test` | 运行单元测试 |
+| `npm run test:ui` | 启动测试 UI |
+| `npm run test:coverage` | 测试覆盖率报告 |
 
-// 评论接口
-import { comments } from './api/comments'
-comments.getList(articleId)    // 获取评论列表
-comments.create(data)          // 创建评论
+### 开发代理
 
-// 站点配置
-import { siteConfig } from './api/siteConfig'
-siteConfig.get()               // 获取配置
-siteConfig.update(data)        // 更新配置
-
-// 文件上传
-import { upload } from './api/upload'
-upload.image(file)             // 上传图片
-```
-
-## 开发代理
-
-开发环境下，Vite 自动代理 API 请求到后端服务：
+开发环境下，Vite 自动代理 API 请求：
 
 ```javascript
 // vite.config.js
@@ -266,53 +224,50 @@ server: {
 }
 ```
 
-### 自定义代理目标
-
-创建 `.env` 文件：
+自定义代理目标，创建 `.env` 文件：
 
 ```env
-VITE_API_PROXY_TARGET=http://your-backend-server:9090
+VITE_API_PROXY_TARGET=http://your-backend:9090
 ```
 
-## 环境变量
+### API 使用
 
-| 变量名 | 说明 | 默认值 |
-|-------|------|--------|
-| `VITE_API_PROXY_TARGET` | API 代理目标地址 | `http://localhost:9090` |
+```javascript
+// 文章接口
+import { articles } from './api/articles'
+articles.getList(params)      // 获取文章列表
+articles.getById(id)          // 获取文章详情
+articles.create(data)         // 创建文章
+articles.update(id, data)     // 更新文章
+articles.delete(id)           // 删除文章
 
-## Markdown 渲染
+// 认证接口
+import { auth } from './api/auth'
+auth.login(username, password) // 登录
+auth.refresh()                 // 刷新 Token
 
-### 支持的语法
+// 文件上传
+import { upload } from './api/upload'
+upload.image(file)             // 上传图片
+```
 
-- **GFM (GitHub Flavored Markdown)**
-  - 表格
-  - 任务列表
-  - 删除线
-  - 自动链接
+### Markdown 支持
 
-- **代码高亮**
-  - 支持所有主流编程语言
-  - 行号显示
-  - 主题样式
+**支持的语法**
 
-- **数学公式 (KaTeX)**
-  - 行内公式：`$E = mc^2$`
-  - 块级公式：`$$\sum_{i=1}^{n} x_i$$`
+- **GFM** - 表格、任务列表、删除线、自动链接
+- **代码高亮** - 支持所有主流编程语言
+- **数学公式** - KaTeX 渲染
+  - 行内：`$E = mc^2$`
+  - 块级：`$$\sum_{i=1}^{n} x_i$$`
+- **安全处理** - DOMPurify XSS 过滤
 
-- **安全处理**
-  - DOMPurify XSS 过滤
-  - 安全的 HTML 渲染
+### 样式系统
 
-## 样式系统
-
-### CSS 架构
-
-- 使用原生 CSS（无 CSS-in-JS）
+- 原生 CSS（无 CSS-in-JS）
 - CSS 变量实现主题定制
 - 响应式断点设计
 - BEM 命名规范
-
-### CSS 变量
 
 ```css
 :root {
@@ -320,43 +275,12 @@ VITE_API_PROXY_TARGET=http://your-backend-server:9090
   --secondary-color: #64748b;
   --background-color: #ffffff;
   --text-color: #1e293b;
-  --border-color: #e2e8f0;
-  /* ... */
 }
 ```
 
-## 测试
+---
 
-### 单元测试
-
-```bash
-# 运行测试
-npm run test
-
-# 测试 UI
-npm run test:ui
-
-# 覆盖率报告
-npm run test:coverage
-```
-
-### 测试配置
-
-```javascript
-// vite.config.js
-test: {
-  globals: true,
-  environment: 'jsdom',
-  setupFiles: './src/test/setup.js',
-  css: true,
-  coverage: {
-    provider: 'v8',
-    reporter: ['text', 'json', 'html'],
-  },
-}
-```
-
-## 部署
+## 🐳 部署
 
 ### 静态托管
 
@@ -367,9 +291,9 @@ test: {
 | Vercel | 自动部署、边缘网络 |
 | Netlify | 拖拽部署、表单处理 |
 | GitHub Pages | 免费托管、自定义域名 |
-| Cloudflare Pages | 全球 CDN、快速部署 |
+| Cloudflare Pages | 全球 CDN |
 
-### Nginx 配置示例
+### Nginx 配置
 
 ```nginx
 server {
@@ -386,8 +310,6 @@ server {
     location /api {
         proxy_pass http://localhost:9090;
         proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
     # 静态资源代理
@@ -400,45 +322,34 @@ server {
 ### Docker 构建
 
 ```bash
-# 构建 Docker 镜像
-docker build -f Dockerfile.frontend -t my-blog-frontend .
+# 构建镜像
+docker build -f Dockerfile.frontend -t my-blog-frontend ..
 
 # 运行容器
 docker run -d -p 80:80 my-blog-frontend
 ```
 
-## 默认管理员账户
+---
 
-```
-用户名: admin
-密码: admin123
-```
-
-**注意:** 生产环境请务必修改默认密码！
-
-## 浏览器支持
+## 🌐 浏览器支持
 
 | 浏览器 | 最低版本 |
-|--------|---------|
+|--------|:-------:|
 | Chrome | 90+ |
 | Firefox | 88+ |
 | Safari | 14+ |
 | Edge | 90+ |
 
-## 性能优化
+---
 
-- **路由懒加载** - 页面级代码分割
-- **资源压缩** - Vite 生产构建优化
-- **图片懒加载** - 按需加载图片资源
-- **Tree Shaking** - 自动移除未使用代码
-- **Gzip 压缩** - Nginx 启用压缩
-
-## 相关文档
+## 📖 相关文档
 
 - [项目主文档](../README.md)
 - [后端文档](../server/README.md)
 - [部署指南](../CLOUD_DEPLOYMENT_GUIDE.md)
 
-## 许可证
+---
+
+## 📄 许可证
 
 MIT License
