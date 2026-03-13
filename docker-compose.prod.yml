@@ -38,7 +38,7 @@ services:
       - /root/blog/sia-blog-content/server/public:/app/public:rw
     # 加载环境变量文件（docker Compose 会读取 .env 并注入到容器环境变量中）
     env_file:
-      - /root/blog/SiaBao-blog/server/.env
+      - /root/blog/sia-blog-content/server/.env
     environment:
       - HOST=0.0.0.0
       - PORT=5000
