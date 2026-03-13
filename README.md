@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.siabao.top/">访问博客</a>
+  <a href="https://www.siabao.top/" target="_blank">访问博客</a>
 </p>
 
 <p align="center">
