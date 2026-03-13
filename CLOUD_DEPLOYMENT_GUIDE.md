@@ -1,4 +1,4 @@
-# 云服务器部署指南（生产）
+# 云服务器部署指南
 
 本文档基于当前仓库实际配置（React + FastAPI + Docker + Nginx），用于在 Linux 云服务器部署生产环境。
 
@@ -7,7 +7,8 @@
 - 系统: Ubuntu 22.04+（其他 Linux 发行版同理）
 - 资源建议: 2 vCPU / 2 GB RAM / 20 GB 磁盘
 - 已开放端口: `22`, `80`, `443`
-- 域名已解析到服务器（可选，但建议）
+- 已创建自己的代码仓库
+- 域名（可选，支持通过 IP 直接访问）
 
 ## 2. 安装 Docker 与 Compose
 
@@ -57,6 +58,7 @@ openssl rand -hex 32
 ## 5. 数据目录策略（重要）
 
 当前生产编排文件 `docker-compose.prod.yml` 采用宿主机挂载：
+（示例目录）
 
 - `/root/blog/sia-blog-content/server/data -> /app/data`
 - `/root/blog/sia-blog-content/server/public -> /app/public`
@@ -97,15 +99,59 @@ Nginx 健康检查:
 curl -f http://127.0.0.1/health
 ```
 
-## 8. 域名与 HTTPS（建议）
+## 8. 域名与 HTTPS（可选）
 
-部署验证完成后，建议配置 SSL 证书。
+项目支持两种访问模式：
 
-常见做法:
+| 模式 | 访问方式 | 说明 |
+|------|----------|------|
+| 无域名 | `http://服务器IP` | 仅 HTTP，适合快速部署或测试 |
+| 有域名 | `https://your-domain.com` | HTTPS 加密，更安全，推荐生产使用 |
 
-- 使用 `certbot` 在宿主机签发证书
-- 将证书挂载到 `docker/nginx/ssl/`
-- 在 `docker/nginx/nginx.conf` 启用 `443` 的 server 块
+### 无域名模式
+
+不设置 `DOMAIN` 环境变量，部署后直接通过 `http://服务器IP` 访问。
+
+### 有域名模式
+
+1. **配置 DNS 解析**
+
+   在域名服务商处添加 A 记录，将域名指向服务器 IP。
+
+2. **设置 DOMAIN 环境变量**
+
+   在 `server/.env` 中添加：
+   ```
+   DOMAIN=your-domain.com
+   ```
+
+3. **申请 SSL 证书**
+
+   ```bash
+   # 安装 certbot
+   sudo apt install certbot
+
+   # 申请证书（先停止服务）
+   cd /root/blog/my-blog
+   docker compose -f docker-compose.prod.yml down
+
+   # 申请证书
+   sudo certbot certonly --standalone -d your-domain.com -d www.your-domain.com
+
+   # 重新启动服务
+   docker compose -f docker-compose.prod.yml up -d --build
+   ```
+
+4. **自动续期**
+
+   ```bash
+   # 添加定时任务
+   sudo crontab -e
+   # 添加以下行
+   0 3 * * * certbot renew --quiet && cd /root/blog/my-blog && docker compose -f docker-compose.prod.yml restart nginx
+   ```
+
+> **提示：** 后续想切换到有域名模式，只需在 `.env` 中设置 `DOMAIN` 并重新部署即可。
 
 ## 9. 更新发布流程
 
@@ -114,31 +160,8 @@ cd /root/blog/my-blog
 git pull origin main
 docker compose -f docker-compose.prod.yml up -d --build
 ```
-
 如使用私有内容仓库，也需同步拉取内容仓库最新数据。
 
-## 10. 回滚建议
-
-- 保留最近可用镜像 tag
-- 每次发布前备份 `server/data` 与 `server/public`
-- 发布失败时回退到上一版本代码并重新 `up -d --build`
-
-## 11. 常见问题排查
-
-1. 前端可访问但 API 404/502
-- 检查 `docker compose ... ps` 中 `backend` 是否正常
-- 检查 Nginx 配置中的 `proxy_pass` 与后端端口是否一致
-
-2. 上传图片后访问 404
-- 检查 `server/public` 的宿主机挂载路径是否正确
-- 检查容器内 `/app/public` 是否有文件
-
-3. 登录失败
-- 检查 `server/.env` 中 `ADMIN_USERNAME`/`ADMIN_PASSWORD`
-- 检查后端日志是否有认证错误
-
-4. 跨域问题
-- 检查 `CORS_ORIGINS` 是否包含实际前端访问地址
 
 ---
 

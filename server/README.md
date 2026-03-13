@@ -99,7 +99,7 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # 编辑配置文件
-nano .env  # 或使用其他编辑器
+vim .env 
 ```
 
 ### 启动服务

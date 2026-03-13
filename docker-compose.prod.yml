@@ -53,10 +53,11 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf.template:ro
+      - ./docker/nginx/nginx.http-only.conf:/etc/nginx/nginx.http-only.conf:ro
+      - ./docker/nginx/nginx.https.conf:/etc/nginx/nginx.https.conf:ro
       - ./docker/nginx/ssl:/etc/nginx/ssl:ro
       - ./docker/logs/nginx:/var/log/nginx
-      # Let's Encrypt SSL 证书挂载
+      # Let's Encrypt SSL 证书挂载（有域名时需要）
       - /etc/letsencrypt:/etc/letsencrypt:ro
       # 可选：直接通过 Nginx 提供图片服务（更高效）
       - /root/blog/sia-blog-content/server/public:/var/www/public:ro
@@ -65,14 +66,22 @@ services:
     depends_on:
       - frontend
       - backend
-    # 使用 envsubst 替换环境变量后启动 nginx
-    # DOMAIN 变量需要在 .env 文件中定义
+    # 根据是否设置 DOMAIN 选择不同的配置文件
+    # - 有域名：使用 HTTPS 配置，HTTP 重定向到 HTTPS
+    # - 无域名：使用仅 HTTP 配置，通过 IP 直接访问
     environment:
       - DOMAIN=${DOMAIN}
     entrypoint: /bin/sh
     command: >
-      -c "envsubst '$$DOMAIN' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf &&
-          exec nginx -g 'daemon off;'"
+      -c "if [ -n \"$$DOMAIN\" ]; then
+            echo 'Using HTTPS configuration for domain: '$$DOMAIN &&
+            envsubst '$$DOMAIN' < /etc/nginx/nginx.https.conf > /etc/nginx/nginx.conf &&
+            exec nginx -g 'daemon off;';
+          else
+            echo 'Using HTTP-only configuration (no domain set)' &&
+            cp /etc/nginx/nginx.http-only.conf /etc/nginx/nginx.conf &&
+            exec nginx -g 'daemon off;';
+          fi"
 
 networks:
   blog-network:

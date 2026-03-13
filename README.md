@@ -1,11 +1,11 @@
 # SiaBao Blog
 
 <p align="center">
-  <strong>一个现代化的个人博客系统</strong>
+  <strong>一个极简风格个人博客系统</strong>
 </p>
 
 <p align="center">
-  基于 React 19 + FastAPI 构建的前后端分离博客平台，支持 Markdown 写作、Docker 部署、GitHub Actions 自动化
+  本项目通过 vibe coding 开发，基于 React 19 + FastAPI 构建的前后端分离博客平台，支持 Markdown 写作、Docker 部署、GitHub Actions 自动化
 </p>
 
 <p align="center">
@@ -86,7 +86,7 @@
 **1. 克隆项目**
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/my-blog.git
+git clone https://github.com/SSSSSia/my-blog.git
 cd my-blog
 ```
 
@@ -238,7 +238,6 @@ my-blog/
 │   ├── data/                # 数据存储
 │   └── requirements.txt
 │
-├── scripts/                 # 运维脚本
 ├── .github/workflows/       # CI/CD 配置
 ├── docker-compose.yml       # 开发环境编排
 └── docker-compose.prod.yml  # 生产环境编排
@@ -268,9 +267,8 @@ my-blog/
 
 ---
 
-## 🙏 致谢
 
-本项目通过 Vibe Coding 方式开发，感谢 AI 辅助编程工具的支持。
+
 
 <p align="center">
   Made with ❤️ by SiaBao
