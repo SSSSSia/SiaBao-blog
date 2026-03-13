@@ -58,7 +58,4 @@ logs/
 server/public/uploads/*
 !server/public/uploads/.gitkeep
 
-# ==================== 生产环境配置 ====================
-docker/nginx/nginx.conf
-docker-compose.prod.yml
 
