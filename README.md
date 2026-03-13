@@ -6,7 +6,10 @@
 
 <p align="center">
   本项目通过 vibe coding 开发，基于 React 19 + FastAPI 构建的前后端分离博客平台，支持 Markdown 写作、Docker 部署、GitHub Actions 自动化
-  [博客网址](https://www.siabao.top/)
+</p>
+
+<p align="center">
+  <a href="https://www.siabao.top/">访问博客</a>
 </p>
 
 <p align="center">
@@ -62,10 +65,6 @@
 
 ### 前台页面
 
-| 首页 | 文章详情 |
-|:---:|:---:|
-| 简洁的文章展示 | Markdown 渲染、代码高亮、数学公式 |
-
 ![主页](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/home.png)
 
 ![文章列表页](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/article.png)
@@ -76,15 +75,11 @@
 
 ### 后台管理
 
-| 仪表盘 | 文章编辑 |
-|:---:|:---:|
-| 数据统计概览 | 实时预览 Markdown 编辑器 |
-
 ![后台仪表盘](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/admin_dashboard.png)
 
 ![后台文章管理页](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/admin_article.png)
 
-![后台编辑文章页](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/admin_eidtArticle.png)
+![后台编辑文章页](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/admin_editArticle.png)
 
 ![后台站点配置页1](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/admin_settings1.png)
 
