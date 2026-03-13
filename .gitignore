@@ -57,3 +57,8 @@ logs/
 # 排除用户上传的文件（图片、附件等）
 server/public/uploads/*
 !server/public/uploads/.gitkeep
+
+# ==================== 生产环境配置 ====================
+docker/nginx/nginx.conf
+docker-compose.prod.yml
+
