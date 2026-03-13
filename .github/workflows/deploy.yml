@@ -27,17 +27,12 @@ jobs:
             echo "=== Starting Deployment ==="
 
             PROJECT_DIR="${{ secrets.SERVER_PROJECT_PATH }}"
-            CONTENT_DIR="${{ secrets.SERVER_CONTENT_PATH }}"
 
             if [ -z "$PROJECT_DIR" ]; then
               PROJECT_DIR="/root/blog/SiaBao-blog"
             fi
-            if [ -z "$CONTENT_DIR" ]; then
-              CONTENT_DIR="/root/blog/sia-blog-content"
-            fi
 
             echo "Using PROJECT_DIR=$PROJECT_DIR"
-            echo "Using CONTENT_DIR=$CONTENT_DIR"
 
             if [ ! -d "$PROJECT_DIR" ]; then
               echo "Project directory not found: $PROJECT_DIR"
@@ -46,24 +41,6 @@ jobs:
             fi
 
             cd "$PROJECT_DIR"
-
-            # 先处理私有内容仓库（包含 .env、文章、图片等）
-            # 优先拉取用户数据，避免被代码仓库覆盖
-            if [ -d "$CONTENT_DIR" ]; then
-              echo "Pulling content repository first (user data priority)..."
-              cd "$CONTENT_DIR"
-              # 放弃本地更改，强制使用远程版本
-              if git reset --hard HEAD && git clean -fd && git pull origin main; then
-                echo "✓ Content repository updated successfully"
-              else
-                echo "❌ Error: Failed to pull content repository"
-                exit 1
-              fi
-              cd "$PROJECT_DIR"
-            else
-              echo "⚠️  Content repository not found: $CONTENT_DIR"
-              echo "Skipping private repository sync"
-            fi
 
             echo "Pulling latest code..."
             # 使用 fetch + reset 确保与远程完全同步
@@ -79,40 +56,41 @@ jobs:
             fi
 
             # 验证 .env 文件是否存在
-            if [ ! -f "$CONTENT_DIR/server/.env" ]; then
-              echo "⚠️  Warning: .env file not found in $CONTENT_DIR/server/.env"
-              echo "Please ensure the .env file exists in your private repository"
+            if [ ! -f "$PROJECT_DIR/server/.env" ]; then
+              echo "❌ Error: .env file not found in $PROJECT_DIR/server/.env"
+              echo "Please create the .env file on the server"
+              exit 1
             else
-              echo "✓ .env file found in content repository"
+              echo "✓ .env file found"
             fi
 
             echo "Stopping existing services..."
-            docker compose -f docker-compose.prod.yml --env-file "$CONTENT_DIR/server/.env" down
+            docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" down
 
             echo "Building and starting services..."
-            docker compose -f docker-compose.prod.yml --env-file "$CONTENT_DIR/server/.env" up -d --build
+            docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" up -d --build
 
             echo "Waiting for services to start..."
             sleep 10
 
             echo "Checking service status..."
-            docker compose -f docker-compose.prod.yml --env-file "$CONTENT_DIR/server/.env" ps
+            docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" ps
 
             echo "Running Nginx health check..."
             if curl -fsS http://localhost/health > /dev/null 2>&1; then
               echo "Nginx health check passed"
             else
               echo "Nginx health check failed"
-              docker compose -f docker-compose.prod.yml --env-file "$CONTENT_DIR/server/.env" logs --tail=200 nginx
+              docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" logs --tail=200 nginx
               exit 1
             fi
 
             echo "Running backend health check (inside container)..."
-            if docker compose -f docker-compose.prod.yml --env-file "$CONTENT_DIR/server/.env" exec -T backend python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health'); print('ok')" > /dev/null 2>&1; then
+            if docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" exec -T backend python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health'); print('ok')" > /dev/null 2>&1; then
               echo "Backend health check passed"
             else
               echo "Backend health check failed"
-              docker compose -f docker-compose.prod.yml --env-file "$CONTENT_DIR/server/.env" logs --tail=200 backend
+              docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" logs --tail=200 backend
               exit 1
             fi
 
