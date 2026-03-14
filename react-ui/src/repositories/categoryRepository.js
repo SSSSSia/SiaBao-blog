@@ -72,16 +72,18 @@ const aggregateFromArticles = (articles) => {
 export const categoryRepository = {
   /**
    * 获取分类列表
+   * @param {Object} options - 查询选项
+   * @param {string} options.status - 文章状态过滤 ('published' | 'draft')
    * @returns {ApiResponse<Array>}
    */
-  getCategories: async () => {
+  getCategories: async ({ status } = {}) => {
     try {
       if (DATA_SOURCE === 'mock') {
         const data = articleStorage.getCategories();
         return createResponse(data);
       } else {
         // 从文章 API 聚合分类
-        const response = await articleApi.getList({ page: 1, pageSize: 100 });
+        const response = await articleApi.getList({ page: 1, pageSize: 100, status });
         const articles = response.articles || [];
         const { categories } = aggregateFromArticles(articles);
         return createResponse(categories);
@@ -93,9 +95,11 @@ export const categoryRepository = {
 
   /**
    * 获取标签列表
+   * @param {Object} options - 查询选项
+   * @param {string} options.status - 文章状态过滤 ('published' | 'draft')
    * @returns {ApiResponse<Array>}
    */
-  getTags: async () => {
+  getTags: async ({ status } = {}) => {
     try {
       if (DATA_SOURCE === 'mock') {
         const tags = getTagsFromArticles();
@@ -103,7 +107,7 @@ export const categoryRepository = {
         return createResponse(data);
       } else {
         // 从文章 API 聚合标签
-        const response = await articleApi.getList({ page: 1, pageSize: 100 });
+        const response = await articleApi.getList({ page: 1, pageSize: 100, status });
         const articles = response.articles || [];
         const { tags } = aggregateFromArticles(articles);
         // 直接使用聚合结果，没有文章时不显示标签
@@ -117,11 +121,13 @@ export const categoryRepository = {
   /**
    * 根据 slug 获取分类
    * @param {string} slug - 分类 slug
+   * @param {Object} options - 查询选项
+   * @param {string} options.status - 文章状态过滤 ('published' | 'draft')
    * @returns {ApiResponse<Object>}
    */
-  getCategoryBySlug: async (slug) => {
+  getCategoryBySlug: async (slug, { status } = {}) => {
     try {
-      const { data: categories } = await categoryRepository.getCategories();
+      const { data: categories } = await categoryRepository.getCategories({ status });
       const category = categories?.find((c) => c.slug === slug);
       return createResponse(category || null);
     } catch (error) {
@@ -132,11 +138,13 @@ export const categoryRepository = {
   /**
    * 根据 slug 获取标签
    * @param {string} slug - 标签 slug
+   * @param {Object} options - 查询选项
+   * @param {string} options.status - 文章状态过滤 ('published' | 'draft')
    * @returns {ApiResponse<Object>}
    */
-  getTagBySlug: async (slug) => {
+  getTagBySlug: async (slug, { status } = {}) => {
     try {
-      const { data: tags } = await categoryRepository.getTags();
+      const { data: tags } = await categoryRepository.getTags({ status });
       const tag = tags?.find((t) => t.slug === slug);
       return createResponse(tag || null);
     } catch (error) {

@@ -13,7 +13,7 @@ import ArticleCard from '../../components/article/ArticleCard'
 import Pagination from '../../components/ui/Pagination'
 import Loading from '../../components/ui/Loading'
 import { articleApi } from '../../api/articles'
-import { categoriesApi } from '../../api/categories'
+import { categoryRepository } from '../../repositories/categoryRepository'
 import './Search.css'
 
 const PAGE_SIZE = 10
@@ -91,12 +91,11 @@ export default function Search() {
     const fetchSidebarData = async () => {
       try {
         const [categoriesRes, tagsRes] = await Promise.all([
-          categoriesApi.getCategories(),
-          categoriesApi.getTags(),
+          categoryRepository.getCategories({ status: 'published' }),
+          categoryRepository.getTags({ status: 'published' }),
         ])
-        // 转换后端数据格式为前端需要的格式
-        setCategories((categoriesRes.categories || []).map(cat => ({ name: cat, count: 0 })))
-        setTags(tagsRes.tags || [])
+        setCategories(categoriesRes.data || [])
+        setTags(tagsRes.data || [])
       } catch (err) {
         console.error('获取分类标签失败:', err)
         // 使用空数组，不影响主功能

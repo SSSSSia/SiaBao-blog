@@ -32,8 +32,8 @@ export default function Category() {
     const loadSidebarData = async () => {
       try {
         const [categoriesRes, tagsRes] = await Promise.all([
-          categoryRepository.getCategories(),
-          categoryRepository.getTags(),
+          categoryRepository.getCategories({ status: 'published' }),
+          categoryRepository.getTags({ status: 'published' }),
         ])
         setCategories(categoriesRes.data || [])
         setTags(tagsRes.data || [])

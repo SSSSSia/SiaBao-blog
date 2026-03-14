@@ -22,7 +22,7 @@ export default function Home() {
         setLoading(true)
         const [articlesRes, categoriesRes, configRes] = await Promise.all([
           articleRepository.getArticleList({ status: 'published' }),
-          categoryRepository.getCategories(),
+          categoryRepository.getCategories({ status: 'published' }),
           siteConfigApi.getConfig(),
         ])
 

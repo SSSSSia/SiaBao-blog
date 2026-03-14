@@ -131,8 +131,8 @@ export default function ArticleList() {
       try {
         const [articlesRes, categoriesRes, tagsRes] = await Promise.all([
           articleRepository.getArticleList({ status: 'published' }),
-          categoryRepository.getCategories(),
-          categoryRepository.getTags(),
+          categoryRepository.getCategories({ status: 'published' }),
+          categoryRepository.getTags({ status: 'published' }),
         ])
 
         setArticles(articlesRes.data || [])
