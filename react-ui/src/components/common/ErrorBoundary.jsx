@@ -1,6 +1,9 @@
 import { Component } from 'react'
 import './ErrorBoundary.css'
 
+const CHUNK_RETRY_KEY = 'chunk-reload-retried'
+const CHUNK_LOAD_PATTERN = /Failed to fetch dynamically imported module/
+
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
@@ -9,6 +12,13 @@ class ErrorBoundary extends Component {
 
   // eslint-disable-next-line no-unused-vars
   static getDerivedStateFromError(error) {
+    // JS chunk 加载失败（部署后旧文件被删除），不渲染错误 UI，直接刷新
+    if (CHUNK_LOAD_PATTERN.test(error?.message)) {
+      if (!sessionStorage.getItem(CHUNK_RETRY_KEY)) {
+        sessionStorage.setItem(CHUNK_RETRY_KEY, '1')
+        window.location.reload()
+      }
+    }
     return { hasError: true }
   }
 
@@ -17,7 +27,6 @@ class ErrorBoundary extends Component {
       error: error,
       errorInfo: errorInfo
     })
-    // 可以在这里添加错误日志上报
     console.error('ErrorBoundary caught an error:', error, errorInfo)
   }
 
