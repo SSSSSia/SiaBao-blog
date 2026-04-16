@@ -35,12 +35,10 @@ window.addEventListener('vite:preloadError', (event) => {
   if (/Unable to preload CSS for/.test(event.payload?.message)) {
     // CSS 预加载失败不影响页面加载，CSS 会在 JS chunk 执行时自动导入
     event.preventDefault()
-  } else if (canReload()) {
-    // JS chunk 加载失败（部署后旧文件被删除），自动刷新获取最新版本
-    sessionStorage.setItem(CHUNK_RETRY_KEY, Date.now().toString())
-    event.preventDefault()
-    window.location.reload()
   }
+  // JS chunk 预加载失败不调用 preventDefault()：
+  // preventDefault 会让 Vite 将模块解析为 undefined，导致 React.lazy 报 TypeError
+  // 错误会自然传播到 retryLazy 的 catch 处理器进行重试/刷新
 })
 
 createRoot(document.getElementById('root')).render(
