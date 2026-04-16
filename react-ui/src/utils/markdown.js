@@ -331,9 +331,11 @@ function autoFixMarkdownGaps(markdown) {
     // 检查上一行是否是空行
     const prevLine = i > 0 ? lines[i - 1] : '';
     const prevLineIsContent = prevLine.trim() !== '';
+    const prevLineIsBlockquote = prevLine.trim().startsWith('>');
 
     // 如果当前行是块级元素开始，且上一行有内容但没有空行，插入空行
-    if ((isHeading || isListStart || isBlockquote) && prevLineIsContent) {
+    // 注意：连续的引用行（>）之间不应插入空行，否则会拆分为多个独立引用块
+    if ((isHeading || isListStart || (isBlockquote && !prevLineIsBlockquote)) && prevLineIsContent) {
       result.push('');
     }
 
