@@ -12,17 +12,18 @@ class ErrorBoundary extends Component {
 
   // eslint-disable-next-line no-unused-vars
   static getDerivedStateFromError(error) {
-    // JS chunk 加载失败（部署后旧文件被删除），不渲染错误 UI，直接刷新
-    if (CHUNK_LOAD_PATTERN.test(error?.message)) {
-      if (!sessionStorage.getItem(CHUNK_RETRY_KEY)) {
-        sessionStorage.setItem(CHUNK_RETRY_KEY, '1')
-        window.location.reload()
-      }
-    }
     return { hasError: true }
   }
 
   componentDidCatch(error, errorInfo) {
+    // JS chunk 加载失败（部署后旧文件被删除），自动刷新获取最新版本
+    if (CHUNK_LOAD_PATTERN.test(error?.message)) {
+      if (!sessionStorage.getItem(CHUNK_RETRY_KEY)) {
+        sessionStorage.setItem(CHUNK_RETRY_KEY, '1')
+        window.location.reload()
+        return
+      }
+    }
     this.setState({
       error: error,
       errorInfo: errorInfo

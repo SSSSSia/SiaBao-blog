@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import ScrollToTop from './components/common/ScrollToTop'
@@ -6,24 +6,25 @@ import Loading from './components/ui/Loading'
 import { AuthProvider } from './providers/AuthProvider'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import { ToastContainer } from 'react-toastify'
+import { retryLazy } from './utils/retryLazy'
 import 'react-toastify/dist/ReactToastify.css'
 
-// 懒加载页面组件
-const Home = lazy(() => import('./pages/Home'))
-const About = lazy(() => import('./pages/About'))
-const ArticleList = lazy(() => import('./pages/ArticleList'))
-const ArticleDetail = lazy(() => import('./pages/ArticleDetail'))
-const Category = lazy(() => import('./pages/Category'))
-const Tag = lazy(() => import('./pages/Tag'))
-const Search = lazy(() => import('./pages/Search'))
+// 懒加载页面组件（带重试机制，部署后旧 chunk 失效时自动恢复）
+const Home = retryLazy(() => import('./pages/Home'))
+const About = retryLazy(() => import('./pages/About'))
+const ArticleList = retryLazy(() => import('./pages/ArticleList'))
+const ArticleDetail = retryLazy(() => import('./pages/ArticleDetail'))
+const Category = retryLazy(() => import('./pages/Category'))
+const Tag = retryLazy(() => import('./pages/Tag'))
+const Search = retryLazy(() => import('./pages/Search'))
 
 // 后台管理页面
-const Admin = lazy(() => import('./pages/Admin/Admin'))
-const Login = lazy(() => import('./pages/Admin/Login'))
-const Dashboard = lazy(() => import('./pages/Admin/Dashboard'))
-const ArticleManage = lazy(() => import('./pages/Admin/ArticleManage'))
-const ArticleEdit = lazy(() => import('./pages/Admin/ArticleEdit'))
-const Settings = lazy(() => import('./pages/Admin/Settings'))
+const Admin = retryLazy(() => import('./pages/Admin/Admin'))
+const Login = retryLazy(() => import('./pages/Admin/Login'))
+const Dashboard = retryLazy(() => import('./pages/Admin/Dashboard'))
+const ArticleManage = retryLazy(() => import('./pages/Admin/ArticleManage'))
+const ArticleEdit = retryLazy(() => import('./pages/Admin/ArticleEdit'))
+const Settings = retryLazy(() => import('./pages/Admin/Settings'))
 
 // 加载中组件
 const PageLoader = () => (
