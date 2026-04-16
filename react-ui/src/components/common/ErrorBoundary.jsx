@@ -4,6 +4,15 @@ import './ErrorBoundary.css'
 const CHUNK_RETRY_KEY = 'chunk-reload-retried'
 const CHUNK_LOAD_PATTERN = /Failed to fetch dynamically imported module/
 
+/**
+ * 检查是否可以安全刷新页面（10 秒内不重复刷新）
+ */
+function canReload() {
+  const lastRetry = sessionStorage.getItem(CHUNK_RETRY_KEY)
+  if (!lastRetry) return true
+  return Date.now() - parseInt(lastRetry, 10) > 10000
+}
+
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
@@ -18,8 +27,8 @@ class ErrorBoundary extends Component {
   componentDidCatch(error, errorInfo) {
     // JS chunk 加载失败（部署后旧文件被删除），自动刷新获取最新版本
     if (CHUNK_LOAD_PATTERN.test(error?.message)) {
-      if (!sessionStorage.getItem(CHUNK_RETRY_KEY)) {
-        sessionStorage.setItem(CHUNK_RETRY_KEY, '1')
+      if (canReload()) {
+        sessionStorage.setItem(CHUNK_RETRY_KEY, Date.now().toString())
         window.location.reload()
         return
       }
