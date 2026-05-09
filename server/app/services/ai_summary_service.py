@@ -55,7 +55,7 @@ async def generate_summary(title: str, content: str) -> str:
         content: Article content
 
     Returns:
-        str: Generated summary (50-100 characters)
+        str: Generated summary (70-120 characters)
 
     Raises:
         ValueError: If API key is not configured
@@ -67,7 +67,7 @@ async def generate_summary(title: str, content: str) -> str:
         summary_source = _prepare_summary_content(content)
 
         # Create prompt for summary generation
-        prompt = f"""请为以下文章生成一个简短的摘要（50-100字）：
+        prompt = f"""请为以下博客文章生成一个简短的摘要（70-120字）：
 
 标题：{title}
 
@@ -76,7 +76,7 @@ async def generate_summary(title: str, content: str) -> str:
 要求：
 1. 突出文章的核心观点和要点
 2. 语言简洁明了
-3. 长度严格控制在50字以内
+3. 长度严格控制在70-120字以内
 4. 使用中文回答
 
 摘要："""
