@@ -169,8 +169,8 @@ export const articleApi = {
    * @returns {Promise}
    */
   generateAISummary: (article_id) => {
-    // Use 60 second timeout for AI generation (can take longer)
-    return post(`${API_BASE}/articles/${article_id}/ai-summary`, {}, {}, 60000);
+    // AI generation can be slower on cloud servers.
+    return post(`${API_BASE}/articles/${article_id}/ai-summary`, {}, {}, 180000);
   },
 };
 

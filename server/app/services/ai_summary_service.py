@@ -10,6 +10,16 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+MAX_SUMMARY_SOURCE_CHARS = 12000
+
+
+def _prepare_summary_content(content: str) -> str:
+    """Keep summary prompts bounded so cloud requests finish predictably."""
+    normalized = (content or "").strip()
+    if len(normalized) <= MAX_SUMMARY_SOURCE_CHARS:
+        return normalized
+    return f"{normalized[:MAX_SUMMARY_SOURCE_CHARS]}\n\n[Content truncated for summary generation.]"
+
 
 def get_ai_model() -> BaseChatModel:
     """
@@ -31,7 +41,7 @@ def get_ai_model() -> BaseChatModel:
         base_url=settings.siliconflow_base_url,
         api_key=api_key,
         temperature=0.7,
-        max_tokens=4096,
+        max_tokens=512,
         timeout=120.0,  # Increased timeout for AI generation
     )
 
@@ -54,12 +64,14 @@ async def generate_summary(title: str, content: str) -> str:
     try:
         model = get_ai_model()
 
+        summary_source = _prepare_summary_content(content)
+
         # Create prompt for summary generation
         prompt = f"""请为以下文章生成一个简短的摘要（50-100字）：
 
 标题：{title}
 
-内容：{content}
+内容：{summary_source}
 
 要求：
 1. 突出文章的核心观点和要点
@@ -70,7 +82,7 @@ async def generate_summary(title: str, content: str) -> str:
 摘要："""
 
         # Generate summary
-        response = model.invoke(prompt)
+        response = await model.ainvoke(prompt)
 
         # Clean up the response
         summary = response.content.strip()
