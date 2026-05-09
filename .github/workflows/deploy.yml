@@ -67,6 +67,17 @@ jobs:
             echo "Building images..."
             docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" build --progress=plain
 
+            echo "Stopping existing services after successful build..."
+            docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" down --remove-orphans || true
+
+            echo "Port usage before starting services..."
+            if command -v ss >/dev/null 2>&1; then
+              ss -ltnp '( sport = :80 or sport = :443 )' || true
+            else
+              netstat -ltnp 2>/dev/null | grep -E ':(80|443)\s' || true
+            fi
+            docker ps --format 'table {{.Names}}\t{{.Ports}}' | grep -E '(:80->|:443->)' || true
+
             echo "Starting updated services..."
             docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" up -d --remove-orphans
 
