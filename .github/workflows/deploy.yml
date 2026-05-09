@@ -72,11 +72,31 @@ jobs:
 
             echo "Port usage before starting services..."
             if command -v ss >/dev/null 2>&1; then
-              ss -ltnp '( sport = :80 or sport = :443 )' || true
+              PORT_LISTENERS="$(ss -ltnp '( sport = :80 or sport = :443 )' 2>/dev/null || true)"
+              echo "$PORT_LISTENERS"
             else
-              netstat -ltnp 2>/dev/null | grep -E ':(80|443)\s' || true
+              PORT_LISTENERS="$(netstat -ltnp 2>/dev/null | grep -E ':(80|443)\s' || true)"
+              echo "$PORT_LISTENERS"
             fi
             docker ps --format 'table {{.Names}}\t{{.Ports}}' | grep -E '(:80->|:443->)' || true
+
+            if echo "$PORT_LISTENERS" | grep -E 'users:\(\("(nginx|apache2|httpd)"' >/dev/null 2>&1; then
+              echo "Detected host web server on port 80/443; stopping it so Docker nginx can bind ports..."
+              if [ "$(id -u)" -eq 0 ]; then
+                systemctl stop nginx apache2 httpd 2>/dev/null || true
+                service nginx stop 2>/dev/null || true
+                service apache2 stop 2>/dev/null || true
+                service httpd stop 2>/dev/null || true
+              elif sudo -n true 2>/dev/null; then
+                sudo systemctl stop nginx apache2 httpd 2>/dev/null || true
+                sudo service nginx stop 2>/dev/null || true
+                sudo service apache2 stop 2>/dev/null || true
+                sudo service httpd stop 2>/dev/null || true
+              else
+                echo "Host web server is using port 80/443, but this SSH user cannot stop it without sudo."
+                exit 1
+              fi
+            fi
 
             echo "Starting updated services..."
             docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" up -d --remove-orphans
