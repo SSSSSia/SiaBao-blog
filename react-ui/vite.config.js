@@ -26,6 +26,8 @@ export default defineConfig(({ mode }) => {
     build: {
       // 确保 KaTeX 的字体文件被正确处理
       assetsInlineLimit: 4096,
+      chunkSizeWarningLimit: 1500,
+      reportCompressedSize: false,
       // 禁止在 HTML 中为 CSS 生成 <link rel="modulepreload"> 标签
       // CSS 会在 JS chunk 执行时自动导入，无需单独预加载
       modulePreload: {
@@ -35,6 +37,16 @@ export default defineConfig(({ mode }) => {
             return dependencies.filter((dep) => !dep.endsWith('.css'))
           }
           return dependencies
+        },
+      },
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            react: ['react', 'react-dom', 'react-router-dom'],
+            markdown: ['marked', 'dompurify', 'highlight.js'],
+            katex: ['katex'],
+            mermaid: ['mermaid'],
+          },
         },
       },
     },

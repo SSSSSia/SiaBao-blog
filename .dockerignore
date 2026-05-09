@@ -26,7 +26,6 @@ react-ui/.vite
 react-ui/npm-debug.log*
 react-ui/yarn-debug.log*
 react-ui/yarn-error.log*
-react-ui/package-lock.json
 react-ui/yarn.lock
 
 # Python

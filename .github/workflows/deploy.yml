@@ -64,11 +64,11 @@ jobs:
               echo "✓ .env file found"
             fi
 
-            echo "Stopping existing services..."
-            docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" down
+            echo "Building images..."
+            docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" build --progress=plain
 
-            echo "Building and starting services..."
-            docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" up -d --build
+            echo "Starting updated services..."
+            docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" up -d --remove-orphans
 
             echo "Waiting for services to start..."
             sleep 10
