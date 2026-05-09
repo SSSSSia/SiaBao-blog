@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import dayjs from 'dayjs'
 import {
@@ -59,6 +59,51 @@ const getPublishedDate = (article) => {
   return isNaN(parsed.getTime()) ? null : date
 }
 
+const fitMermaidSvgToContent = (svg) => {
+  if (!svg || typeof svg.getBBox !== 'function') return
+
+  try {
+    const bbox = svg.getBBox()
+    if (!bbox || bbox.width === 0 || bbox.height === 0) return
+
+    const viewBoxParts = (svg.getAttribute('viewBox') || '')
+      .trim()
+      .split(/\s+/)
+      .map(Number)
+    const hasViewBox = viewBoxParts.length === 4 && viewBoxParts.every(Number.isFinite)
+    const current = hasViewBox
+      ? {
+          x: viewBoxParts[0],
+          y: viewBoxParts[1],
+          width: viewBoxParts[2],
+          height: viewBoxParts[3],
+        }
+      : {
+          x: bbox.x,
+          y: bbox.y,
+          width: bbox.width,
+          height: bbox.height,
+        }
+
+    const padding = 16
+    const minX = Math.min(current.x, bbox.x - padding)
+    const minY = Math.min(current.y, bbox.y - padding)
+    const maxX = Math.max(current.x + current.width, bbox.x + bbox.width + padding)
+    const maxY = Math.max(current.y + current.height, bbox.y + bbox.height + padding)
+    const width = Math.ceil(maxX - minX)
+    const height = Math.ceil(maxY - minY)
+
+    svg.setAttribute('viewBox', `${Math.floor(minX)} ${Math.floor(minY)} ${width} ${height}`)
+    svg.setAttribute('width', String(width))
+    svg.setAttribute('height', String(height))
+    svg.style.maxWidth = 'none'
+    svg.style.height = 'auto'
+    svg.style.overflow = 'visible'
+  } catch (error) {
+    console.warn('Failed to normalize Mermaid SVG bounds:', error)
+  }
+}
+
 export default function ArticleDetail() {
   const { id } = useParams()
   const [, startTransition] = useTransition()
@@ -74,6 +119,9 @@ export default function ArticleDetail() {
   const [comments, setComments] = useState([])
   const [relatedArticles, setRelatedArticles] = useState([])
   const [isMobileTocOpen, setIsMobileTocOpen] = useState(false)
+
+  const contentRef = useRef(null)
+  const renderedContent = useMemo(() => renderMarkdown(article?.content || ''), [article?.content])
 
   useEffect(() => {
     const loadArticle = async () => {
@@ -190,7 +238,7 @@ export default function ArticleDetail() {
 
     // 延迟执行，确保 DOM 完全渲染
     const timer = setTimeout(() => {
-      const contentRoot = document.querySelector('.article-content')
+      const contentRoot = contentRef.current
       if (!contentRoot) return
 
       const titleElements = Array.from(contentRoot.querySelectorAll('h1, h2, h3'))
@@ -210,7 +258,81 @@ export default function ArticleDetail() {
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [article, loading, error])
+  }, [article, loading, error, renderedContent])
+
+  // 设置文章内容 HTML（仅在 renderedContent 变化时执行，避免覆盖 mermaid SVG）
+  useEffect(() => {
+    if (contentRef.current && renderedContent.__html) {
+      contentRef.current.innerHTML = renderedContent.__html
+    }
+  }, [renderedContent])
+
+  // 渲染 Mermaid 图表
+  useEffect(() => {
+    const contentRoot = contentRef.current;
+    if (!contentRoot || !article) return;
+
+    const mermaidElements = contentRoot.querySelectorAll('.mermaid-src');
+    if (mermaidElements.length === 0) return;
+
+    let cancelled = false;
+
+    const renderDiagrams = async () => {
+      try {
+        const mermaidModule = await import('mermaid');
+        const mermaid = mermaidModule.default;
+
+        if (cancelled) return;
+
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: 'default',
+          securityLevel: 'loose',
+          flowchart: {
+            nodeSpacing: 30,
+            rankSpacing: 45,
+          },
+        });
+
+        const elements = contentRoot.querySelectorAll('.mermaid-src');
+        for (let i = 0; i < elements.length; i++) {
+          if (cancelled) return;
+
+          const el = elements[i];
+          const encodedSource = el.getAttribute('data-mermaid-source');
+          if (!encodedSource) continue;
+
+          const source = decodeURIComponent(escape(atob(encodedSource)));
+          const id = `mermaid-diagram-${article.id}-${i}`;
+
+          try {
+            const { svg } = await mermaid.render(id, source);
+            if (!cancelled) {
+              const container = document.createElement('div');
+              container.className = 'mermaid-container';
+              container.innerHTML = svg;
+              el.replaceWith(container);
+              fitMermaidSvgToContent(container.querySelector('svg'));
+            }
+          } catch (renderError) {
+            console.error(`Mermaid rendering failed for diagram ${i}:`, renderError);
+            if (!cancelled) {
+              const errorDiv = document.createElement('div');
+              errorDiv.className = 'mermaid-error';
+              errorDiv.innerHTML = `<p>图表渲染失败</p><pre><code>${source.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
+              el.replaceWith(errorDiv);
+            }
+          }
+        }
+      } catch (importError) {
+        console.error('Failed to load mermaid:', importError);
+      }
+    };
+
+    renderDiagrams();
+
+    return () => { cancelled = true };
+  }, [article, renderedContent]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -478,8 +600,8 @@ export default function ArticleDetail() {
               </header>
 
               <div
+                ref={contentRef}
                 className='article-content prose'
-                dangerouslySetInnerHTML={renderMarkdown(article.content || '')}
               />
 
               <footer className='article-footer'>

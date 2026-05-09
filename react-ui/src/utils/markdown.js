@@ -181,20 +181,24 @@ renderer.image = function(imageTokenOrHref, legacyTitle, legacyText) {
   return `<img src="${imageHref}"${altAttr}${titleAttr} onerror="this.style.display='none';this.alt='图片加载失败'" loading="lazy" />`;
 };
 
+// 自定义代码块渲染：mermaid 图表输出占位 div，其他代码块使用 hljs 高亮
+renderer.code = function({ text, lang }) {
+  if (lang === 'mermaid') {
+    const encoded = btoa(unescape(encodeURIComponent(text)));
+    return `<div class="mermaid-src" data-mermaid-source="${encoded}"></div>`;
+  }
+  if (lang && hljs.getLanguage(lang)) {
+    try {
+      const highlighted = hljs.highlight(text, { language: lang }).value;
+      return `<pre><code class="hljs language-${lang}">${highlighted}</code></pre>`;
+    } catch (_) {}
+  }
+  return `<pre><code class="hljs">${hljs.highlightAuto(text).value}</code></pre>`;
+};
+
 // 配置 marked 选项
 marked.setOptions({
   renderer: renderer,
-  highlight: function(code, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      try {
-        return hljs.highlight(code, { language: lang }).value;
-      } catch (err) {
-        console.error('代码高亮失败:', err);
-      }
-    }
-    return hljs.highlightAuto(code).value;
-  },
-  langPrefix: 'hljs language-',
   breaks: true,
   gfm: true,
 });

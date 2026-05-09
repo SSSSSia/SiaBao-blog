@@ -289,6 +289,52 @@
 }
 
 /* ===================================
+   Mermaid 图表样式
+   =================================== */
+.article-content .mermaid-container {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background-color: var(--bg-secondary, #f6f8fa);
+  border: 1px solid var(--bg-tertiary, #e2e8f0);
+  border-radius: var(--radius-sm, 6px);
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  text-align: center;
+  -webkit-overflow-scrolling: touch;
+}
+
+.article-content .mermaid-container svg {
+  display: block;
+  max-width: none;
+  height: auto;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.article-content .mermaid-error {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background-color: #fff5f5;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-sm, 6px);
+  color: #dc2626;
+}
+
+.article-content .mermaid-error p {
+  margin-bottom: var(--space-2);
+  font-weight: 500;
+}
+
+.article-content .mermaid-error pre {
+  background: transparent;
+  border: none;
+  padding: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ===================================
    表格样式 (Markdown Table)
    =================================== */
 .article-content table {

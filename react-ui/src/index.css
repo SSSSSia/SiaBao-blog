@@ -296,6 +296,21 @@ code {
   padding: 0.2em 0.4em;
 }
 
+/* Mermaid 编辑器预览占位 */
+.mermaid-src:empty::after {
+  content: 'Mermaid 图表（文章页面可见）';
+  display: block;
+  padding: var(--space-3);
+  text-align: center;
+  color: var(--text-tertiary, #9ca3af);
+  font-size: 0.875rem;
+  font-style: italic;
+  background: var(--bg-secondary);
+  border: 1px dashed var(--bg-tertiary);
+  border-radius: var(--radius-sm, 6px);
+  margin: var(--space-3) 0;
+}
+
 /* ===================================
    12. 标签样式
    =================================== */
