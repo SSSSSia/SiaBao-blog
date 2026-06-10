@@ -292,19 +292,23 @@
    Mermaid 图表样式
    =================================== */
 .article-content .mermaid-container {
+  position: relative;
   margin: var(--space-4) 0;
-  padding: var(--space-4);
   background-color: var(--bg-secondary, #f6f8fa);
   border: 1px solid var(--bg-tertiary, #e2e8f0);
   border-radius: var(--radius-sm, 6px);
   max-width: 100%;
+  text-align: center;
+}
+
+.article-content .mermaid-scroll-area {
+  padding: var(--space-4);
   overflow-x: auto;
   overflow-y: visible;
-  text-align: center;
   -webkit-overflow-scrolling: touch;
 }
 
-.article-content .mermaid-container svg {
+.article-content .mermaid-scroll-area svg {
   display: block;
   max-width: none;
   height: auto;
@@ -332,6 +336,42 @@
   padding: var(--space-2);
   font-size: 0.8125rem;
   color: var(--text-secondary, #6b7280);
+}
+
+/* Mermaid 全屏查看按钮 */
+.article-content .mermaid-fullscreen-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--bg-tertiary, #e2e8f0);
+  border-radius: var(--radius-sm, 2px);
+  color: var(--text-tertiary, #9ca3af);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease-out, color 0.2s ease-out, background 0.2s ease-out;
+}
+
+.article-content .mermaid-container:hover .mermaid-fullscreen-btn {
+  opacity: 1;
+}
+
+.article-content .mermaid-fullscreen-btn:hover {
+  color: var(--text-primary, #111827);
+  background: var(--bg-secondary, #f6f8fa);
+  border-color: var(--color-gray-400, #9ca3af);
+}
+
+@media (max-width: 640px) {
+  .article-content .mermaid-fullscreen-btn {
+    opacity: 0.5;
+  }
 }
 
 /* ===================================

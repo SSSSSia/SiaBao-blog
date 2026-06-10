@@ -18,6 +18,7 @@ import Comment from '../../components/common/Comment'
 import ArticleCard from '../../components/article/ArticleCard'
 import Loading from '../../components/ui/Loading'
 import { ArticleDetailSkeleton } from '../../components/ui/Skeleton'
+import MermaidLightbox from '../../components/ui/MermaidLightbox'
 import { renderMarkdown, estimateReadingTime } from '../../utils/markdown'
 import { mockComments } from '../../constants/mockData'
 import { articleRepository } from '../../repositories/articleRepository'
@@ -119,6 +120,7 @@ export default function ArticleDetail() {
   const [comments, setComments] = useState([])
   const [relatedArticles, setRelatedArticles] = useState([])
   const [isMobileTocOpen, setIsMobileTocOpen] = useState(false)
+  const [lightboxState, setLightboxState] = useState({ isOpen: false, svgHtml: '' })
 
   const contentRef = useRef(null)
   const renderedContent = useMemo(() => renderMarkdown(article?.content || ''), [article?.content])
@@ -308,11 +310,32 @@ export default function ArticleDetail() {
           try {
             const { svg } = await mermaid.render(id, source);
             if (!cancelled) {
+              // 外层容器（不滚动，用于定位按钮）
               const container = document.createElement('div');
               container.className = 'mermaid-container';
-              container.innerHTML = svg;
+
+              // 内层滚动区（放 SVG）
+              const scrollArea = document.createElement('div');
+              scrollArea.className = 'mermaid-scroll-area';
+              scrollArea.innerHTML = svg;
+              container.appendChild(scrollArea);
               el.replaceWith(container);
-              fitMermaidSvgToContent(container.querySelector('svg'));
+              fitMermaidSvgToContent(scrollArea.querySelector('svg'));
+
+              // 全屏查看按钮（固定在容器右上角，不随内容滚动）
+              const expandBtn = document.createElement('button');
+              expandBtn.className = 'mermaid-fullscreen-btn';
+              expandBtn.title = '查看大图';
+              expandBtn.setAttribute('aria-label', '查看大图');
+              expandBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
+              expandBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const svgEl = scrollArea.querySelector('svg');
+                if (svgEl) {
+                  setLightboxState({ isOpen: true, svgHtml: svgEl.outerHTML });
+                }
+              });
+              container.appendChild(expandBtn);
             }
           } catch (renderError) {
             console.error(`Mermaid rendering failed for diagram ${i}:`, renderError);
@@ -376,6 +399,10 @@ export default function ArticleDetail() {
       setActiveHeading(headingId)
     }, 500)
   }
+
+  const closeLightbox = useCallback(() => {
+    setLightboxState({ isOpen: false, svgHtml: '' })
+  }, [])
 
   const handleLike = useCallback(async () => {
     if (!article) return
@@ -686,6 +713,12 @@ export default function ArticleDetail() {
       </main>
 
       <Footer />
+
+      <MermaidLightbox
+        isOpen={lightboxState.isOpen}
+        onClose={closeLightbox}
+        svgHtml={lightboxState.svgHtml}
+      />
     </div>
   )
 }

@@ -1,0 +1,169 @@
+/**
+ * Mermaid 图表全屏查看样式
+ */
+
+/* 覆盖层 */
+.mermaid-lightbox-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: mermaidLightboxFadeIn 0.2s ease-out;
+}
+
+@keyframes mermaidLightboxFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 关闭按钮 */
+.mermaid-lightbox-close {
+  position: absolute;
+  top: var(--space-3, 12px);
+  right: var(--space-3, 12px);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: var(--radius-sm, 2px);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  z-index: 1;
+  transition: background 0.2s ease-out, color 0.2s ease-out;
+}
+
+.mermaid-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* 内容区域 - 可滚动 */
+.mermaid-lightbox-content {
+  width: calc(100% - 64px);
+  height: calc(100% - 120px);
+  overflow: auto;
+  display: grid;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* SVG 包裹层 - 缩放容器 */
+.mermaid-lightbox-svg-wrapper {
+  margin: auto;
+  transform-origin: center center;
+  transition: transform 0.2s ease-out;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6, 48px);
+  background: #fff;
+  border-radius: var(--radius-sm, 2px);
+}
+
+.mermaid-lightbox-svg-wrapper svg {
+  max-width: none;
+  height: auto;
+  display: block;
+}
+
+/* 底部工具栏 */
+.mermaid-lightbox-toolbar {
+  position: absolute;
+  bottom: var(--space-4, 24px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  padding: var(--space-1, 4px) var(--space-3, 16px);
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: var(--radius-sm, 2px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 1;
+}
+
+.mermaid-lightbox-toolbar-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  border-radius: var(--radius-sm, 2px);
+  transition: background 0.2s ease-out, color 0.2s ease-out;
+}
+
+.mermaid-lightbox-toolbar-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.mermaid-lightbox-toolbar-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.mermaid-lightbox-zoom-label {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.6);
+  min-width: 42px;
+  text-align: center;
+  user-select: none;
+}
+
+.mermaid-lightbox-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 var(--space-1, 4px);
+}
+
+/* 响应式 - 移动端 */
+@media (max-width: 640px) {
+  .mermaid-lightbox-content {
+    width: calc(100% - 32px);
+    height: calc(100% - 100px);
+  }
+
+  .mermaid-lightbox-svg-wrapper {
+    padding: var(--space-4, 24px);
+  }
+
+  .mermaid-lightbox-toolbar {
+    bottom: var(--space-3, 12px);
+    padding: var(--space-1, 4px) var(--space-2, 8px);
+    gap: 2px;
+  }
+
+  .mermaid-lightbox-toolbar-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .mermaid-lightbox-zoom-label {
+    font-size: 0.75rem;
+    min-width: 36px;
+  }
+
+  .mermaid-lightbox-close {
+    width: 36px;
+    height: 36px;
+    top: var(--space-2, 8px);
+    right: var(--space-2, 8px);
+  }
+}
