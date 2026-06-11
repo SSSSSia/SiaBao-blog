@@ -59,6 +59,8 @@ services:
       - ./docker/logs/nginx:/var/log/nginx
       # Let's Encrypt SSL 证书挂载（有域名时需要）
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      # Let's Encrypt ACME 验证目录（certbot 写入，nginx 读取）
+      - /var/www/certbot:/var/www/certbot:rw
       # 可选：直接通过 Nginx 提供图片服务（更高效）
       - /root/blog/sia-blog-content/server/public:/var/www/public:ro
     networks:
