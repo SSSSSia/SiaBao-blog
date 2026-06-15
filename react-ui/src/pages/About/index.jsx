@@ -92,6 +92,7 @@ function GiteeIcon({ size = 20 }) {
 export default function About() {
   const [toast, setToast] = useState({ visible: false, message: '' })
   const [blogger, setBlogger] = useState(null)
+  const [runningDays, setRunningDays] = useState(null)
   const [loading, setLoading] = useState(true)
 
   const showToast = (message) => {
@@ -133,16 +134,24 @@ export default function About() {
   useEffect(() => {
     const loadUserProfile = async () => {
       try {
-        const response = await siteConfigApi.getConfig()
-        if (response?.user_profile) {
+        const [configResponse, runningDaysResponse] = await Promise.all([
+          siteConfigApi.getConfig(),
+          siteConfigApi.getRunningDays(),
+        ])
+
+        if (configResponse?.user_profile) {
           setBlogger({
-            ...response.user_profile,
+            ...configResponse.user_profile,
             social: {
-              github: response.user_profile.github || '',
-              gitee: response.user_profile.gitee || '',
+              github: configResponse.user_profile.github || '',
+              gitee: configResponse.user_profile.gitee || '',
             },
-            joinedDate: response.user_profile.joined_date || '',
+            joinedDate: configResponse.user_profile.joined_date || '',
           })
+        }
+
+        if (runningDaysResponse) {
+          setRunningDays(runningDaysResponse)
         }
       } catch (error) {
         console.error('加载用户信息失败:', error)
@@ -233,6 +242,12 @@ export default function About() {
                       <Calendar size={16} />
                       <span>加入于 {blogger.joinedDate}</span>
                     </div>
+                    {runningDays && runningDays.running_days > 0 && (
+                      <div className='meta-item'>
+                        <Calendar size={16} />
+                        <span>博客已运行 {runningDays.running_days} 天</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* 社交链接 */}

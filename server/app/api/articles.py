@@ -19,6 +19,8 @@ from app.services.article_service import (
     get_article_by_id,
     get_articles,
     get_article_counts,
+    get_heatmap_data,
+    get_running_days,
     get_statistics,
     import_article_from_markdown,
     increment_views,
@@ -70,6 +72,22 @@ async def get_article_counts_endpoint(
     """Get article counts by status (admin only)."""
     counts = await get_article_counts()
     return R.ok(data=counts)
+
+
+@router.get("/heatmap")
+async def get_heatmap_endpoint(
+    _admin: Annotated[dict, Depends(get_admin_user)],
+) -> R:
+    """Get writing activity heatmap data (admin only)."""
+    heatmap = await get_heatmap_data()
+    return R.ok(data=heatmap)
+
+
+@router.get("/running-days")
+async def get_running_days_endpoint() -> R:
+    """Get blog running days (public)."""
+    data = await get_running_days()
+    return R.ok(data=data)
 
 
 @router.get("")

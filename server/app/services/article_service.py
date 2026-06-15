@@ -5,6 +5,7 @@ This module provides the service layer for article operations,
 delegating to the file repository for persistence.
 """
 import logging
+from datetime import datetime, timedelta
 from typing import Literal
 
 logger = logging.getLogger(__name__)
@@ -265,4 +266,56 @@ async def get_article_counts() -> dict:
         "total": total,
         "published": published,
         "draft": draft,
+    }
+
+
+async def get_heatmap_data() -> dict:
+    """Get writing activity heatmap data for the last 6 months.
+
+    Returns:
+        Dictionary with 'dates' key mapping YYYY-MM-DD to article info.
+    """
+    all_articles, _ = await get_articles_from_repo(page=1, page_size=10000)
+
+    now = datetime.utcnow()
+    six_months_ago = now - timedelta(days=180)
+
+    date_map: dict[str, dict] = {}
+    for article in all_articles:
+        published_at_str = article.get("published_at")
+        if not published_at_str:
+            continue
+        try:
+            pub_date = datetime.fromisoformat(
+                published_at_str.replace("Z", "+00:00")
+            ).replace(tzinfo=None)
+            if pub_date >= six_months_ago:
+                date_key = pub_date.strftime("%Y-%m-%d")
+                if date_key not in date_map:
+                    date_map[date_key] = {"count": 0, "articles": []}
+                date_map[date_key]["count"] += 1
+                date_map[date_key]["articles"].append({
+                    "title": article.get("title", "无标题"),
+                    "slug": article.get("slug", ""),
+                })
+        except (ValueError, TypeError):
+            continue
+
+    return {"dates": date_map}
+
+
+async def get_running_days() -> dict:
+    """Get blog running days since the blog start date.
+
+    Returns:
+        Dictionary with 'running_days' and 'start_date' keys.
+    """
+    # 博客固定起始日期
+    start_date = datetime(2026, 3, 1)
+    now = datetime.utcnow()
+    running_days = (now - start_date).days
+
+    return {
+        "running_days": running_days,
+        "start_date": start_date.strftime("%Y-%m-%d"),
     }

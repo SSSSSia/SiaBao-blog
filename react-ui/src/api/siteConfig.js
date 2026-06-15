@@ -27,6 +27,14 @@ export const siteConfigApi = {
   updateConfig: (data) => {
     return put(`${API_BASE}/config`, data)
   },
+
+  /**
+   * 获取博客运行天数（公开接口）
+   * @returns {Promise<{data: {running_days: number, start_date: string|null}}>}
+   */
+  getRunningDays: () => {
+    return get('/api/articles/running-days')
+  },
 }
 
 export default siteConfigApi

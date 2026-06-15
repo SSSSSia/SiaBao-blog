@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './Dashboard.css'
 import { statisticsApi } from '../../api/statistics'
+import Heatmap from './Heatmap'
 
 const EMPTY_STATS = {
   totalArticles: 0,
@@ -18,6 +19,7 @@ let cacheTime = 0
 
 function Dashboard() {
   const [stats, setStats] = useState(EMPTY_STATS)
+  const [heatmap, setHeatmap] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -35,10 +37,13 @@ function Dashboard() {
           return
         }
 
-        const response = await statisticsApi.getStatistics()
+        const [statsResponse, heatmapResponse] = await Promise.all([
+          statisticsApi.getStatistics(),
+          statisticsApi.getHeatmap(),
+        ])
 
         // request.js 已经返回了 data 字段的内容，不需要再访问 .data
-        const data = response?.data || response || {}
+        const data = statsResponse?.data || statsResponse || {}
 
         // 转换后端数据格式到前端格式
         const transformedStats = {
@@ -50,10 +55,14 @@ function Dashboard() {
           totalViews: data.total_views || 0,
         }
 
+        // 热力图数据
+        const heatmapData = heatmapResponse?.data?.dates || heatmapResponse?.dates || {}
+
         // 更新缓存和状态
         cachedStats = transformedStats
         cacheTime = now
         setStats(transformedStats)
+        setHeatmap(heatmapData)
       } catch (err) {
         console.error('加载仪表盘统计失败:', err)
         setError(err?.message || '加载失败')
@@ -100,6 +109,8 @@ function Dashboard() {
           <p className='stat-number'>{loading ? '-' : stats.totalViews}</p>
         </div>
       </div>
+
+      {!loading && <Heatmap data={heatmap} />}
     </div>
   )
 }

@@ -37,6 +37,14 @@ export const statisticsApi = {
   getArticleCounts: () => {
     return get(`${API_BASE}/count`);
   },
+
+  /**
+   * 获取写作热力图数据（需要管理员权限）
+   * @returns {Promise<{data: {dates: {[key: string]: number}}}>}
+   */
+  getHeatmap: () => {
+    return get(`${API_BASE}/heatmap`);
+  },
 };
 
 export default statisticsApi;

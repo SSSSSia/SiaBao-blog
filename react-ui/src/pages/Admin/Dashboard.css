@@ -39,3 +39,154 @@
   padding: var(--space-5);
   color: var(--text-secondary);
 }
+
+/* ===================================
+   热力图样式
+   =================================== */
+.heatmap-section {
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--bg-tertiary);
+  max-width: 50%;
+}
+
+.heatmap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.heatmap-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.heatmap-header h3 {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.heatmap-period {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.heatmap-grid {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow-x: auto;
+}
+
+.heatmap-month-label {
+  font-size: 0.75rem;
+  fill: var(--text-tertiary);
+}
+
+.heatmap-day-label {
+  font-size: 0.625rem;
+  fill: var(--text-tertiary);
+}
+
+.heatmap-grid rect {
+  transition: fill 0.15s ease;
+}
+
+.heatmap-grid rect:hover {
+  fill: var(--color-gray-600);
+}
+
+.heatmap-cell {
+  outline: none;
+}
+
+/* Tooltip — 通过 JSX inline position:fixed 定位 */
+.heatmap-tooltip {
+  z-index: 1000;
+  background: var(--color-black);
+  color: var(--color-white);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: heatmapTooltipIn 0.12s ease-out;
+}
+
+.heatmap-tooltip-date {
+  font-weight: 500;
+  margin-bottom: var(--space-1);
+}
+
+.heatmap-tooltip-count {
+  color: var(--color-gray-200);
+  margin-bottom: var(--space-1);
+}
+
+.heatmap-tooltip-list {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--color-gray-200);
+  white-space: nowrap;
+}
+
+.heatmap-tooltip-list li {
+  margin-bottom: 2px;
+}
+
+.heatmap-tooltip-list li:last-child {
+  margin-bottom: 0;
+}
+
+@keyframes heatmapTooltipIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.heatmap-legend-label {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.heatmap-legend-cell {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 1200px) {
+  .heatmap-section {
+    max-width: 60%;
+  }
+}
+
+@media (max-width: 900px) {
+  .heatmap-section {
+    max-width: 80%;
+  }
+}
+
+@media (max-width: 640px) {
+  .heatmap-section {
+    max-width: 100%;
+    padding: var(--space-3);
+  }
+}
