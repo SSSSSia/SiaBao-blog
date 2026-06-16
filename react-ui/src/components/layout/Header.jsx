@@ -6,6 +6,7 @@ import './Header.css'
 const navLinks = [
   { path: '/', label: '首页' },
   { path: '/articles', label: '文章' },
+  { path: '/explore', label: '探索' },
   { path: '/about', label: '关于' },
 ]
 

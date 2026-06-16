@@ -42,6 +42,9 @@ export default function Footer() {
                 <a href='/articles'>文章</a>
               </li>
               <li>
+                <a href='/explore'>探索</a>
+              </li>
+              <li>
                 <a href='/about'>关于</a>
               </li>
             </ul>

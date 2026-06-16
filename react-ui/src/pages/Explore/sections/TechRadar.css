@@ -1,0 +1,216 @@
+/**
+ * 技术雷达展区样式
+ */
+
+/* 雷达容器 */
+.radar-container {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.radar-svg {
+  width: 100%;
+  height: auto;
+}
+
+/* SVG 环线描绘动画 */
+.radar-ring {
+  fill: none;
+  stroke: var(--bg-tertiary);
+  stroke-width: 1;
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: radarRingDraw 1.2s ease-out forwards;
+}
+
+.radar-ring:nth-child(1) { animation-delay: 0s; }
+.radar-ring:nth-child(2) { animation-delay: 0.15s; }
+.radar-ring:nth-child(3) { animation-delay: 0.3s; }
+.radar-ring:nth-child(4) { animation-delay: 0.45s; }
+
+@keyframes radarRingDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* 象限分割线 */
+.radar-axis {
+  stroke: var(--bg-tertiary);
+  stroke-width: 0.5;
+}
+
+/* 象限标签 */
+.radar-category-label {
+  font-size: 11px;
+  font-weight: 500;
+  fill: var(--text-tertiary);
+  text-anchor: middle;
+  letter-spacing: 0.02em;
+}
+
+/* 项目圆点 */
+.radar-item-dot {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0;
+  animation: radarDotFadeIn 0.4s ease-out forwards;
+}
+
+.radar-item-dot:hover {
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.3));
+}
+
+.radar-item-dot--adopt { fill: var(--color-gray-900); }
+.radar-item-dot--trial { fill: var(--color-gray-600); }
+.radar-item-dot--assess { fill: var(--color-gray-400); }
+.radar-item-dot--hold { fill: var(--color-gray-200); }
+
+@keyframes radarDotFadeIn {
+  from { opacity: 0; transform: scale(0); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Tooltip */
+.radar-tooltip {
+  position: absolute;
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+  z-index: 10;
+  min-width: 200px;
+  max-width: 280px;
+  animation: tooltipFadeIn 0.15s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.radar-tooltip-name {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+  letter-spacing: -0.01em;
+}
+
+.radar-tooltip-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-2);
+}
+
+.radar-tooltip-sep {
+  color: var(--bg-tertiary);
+}
+
+.radar-tooltip-desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--space-2);
+}
+
+.radar-tooltip-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* 图例 */
+.radar-legend {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.radar-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.radar-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.radar-legend-dot--adopt { background: var(--color-gray-900); }
+.radar-legend-dot--trial { background: var(--color-gray-600); }
+.radar-legend-dot--assess { background: var(--color-gray-400); }
+.radar-legend-dot--hold { background: var(--color-gray-200); border: 1px solid var(--bg-tertiary); }
+
+/* 按环分组的列表视图（移动端辅助） */
+.radar-list {
+  margin-top: var(--space-5);
+}
+
+.radar-list-group {
+  margin-bottom: var(--space-4);
+}
+
+.radar-list-group:last-child {
+  margin-bottom: 0;
+}
+
+.radar-list-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.radar-list-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.radar-list-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-base);
+  cursor: default;
+}
+
+.radar-list-item:hover {
+  color: var(--text-primary);
+  border-color: var(--color-gray-400);
+}
+
+.radar-list-item-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* 响应式 */
+@media (max-width: 640px) {
+  .radar-container {
+    max-width: 320px;
+  }
+}

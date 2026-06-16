@@ -1,0 +1,588 @@
+/**
+ * 探索页面样式
+ * 极简艺术风格 - 单色调黑白灰系统
+ * Bento Grid 布局 + Hero 区域
+ */
+
+/* ===================================
+   Hero 区域
+   =================================== */
+.explore-hero {
+  position: relative;
+  text-align: center;
+  padding: var(--space-6) 0 var(--space-5);
+  overflow: hidden;
+}
+
+/* 微妙的背景渐变动画 */
+.explore-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    var(--color-white) 0%,
+    #F2F2F2 25%,
+    var(--color-white) 50%,
+    #F5F5F5 75%,
+    var(--color-white) 100%
+  );
+  background-size: 400% 400%;
+  animation: heroGradientShift 20s ease infinite;
+  opacity: 0.6;
+  z-index: -1;
+}
+
+@keyframes heroGradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.explore-hero-title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+  animation: fadeIn 0.6s ease-out;
+}
+
+.explore-hero-subtitle {
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-4);
+  animation: fadeIn 0.6s ease-out 0.1s both;
+}
+
+/* 统计数字行 */
+.explore-stats {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-5);
+  animation: fadeIn 0.6s ease-out 0.2s both;
+}
+
+.explore-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.explore-stat-number {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.explore-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.explore-updated {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-top: var(--space-3);
+  animation: fadeIn 0.6s ease-out 0.3s both;
+}
+
+/* ===================================
+   Bento Grid 布局
+   =================================== */
+.explore-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: minmax(140px, auto);
+  gap: var(--space-3);
+}
+
+/* ===================================
+   Bento Card 基础样式
+   =================================== */
+.bento-card {
+  position: relative;
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.bento-card:hover {
+  border-color: var(--color-gray-400);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  transform: translateY(-3px);
+}
+
+.bento-card:active {
+  transform: translateY(-1px);
+}
+
+/* 卡片尺寸变体 */
+.bento-card--large {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.bento-card--tall {
+  grid-column: span 1;
+  grid-row: span 2;
+}
+
+.bento-card--wide {
+  grid-column: span 2;
+  grid-row: span 1;
+}
+
+.bento-card--normal {
+  grid-column: span 1;
+  grid-row: span 1;
+}
+
+/* 卡片头部 */
+.bento-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.bento-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--color-gray-600);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.bento-card-arrow {
+  color: var(--text-tertiary);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 0.2s ease;
+}
+
+.bento-card:hover .bento-card-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.bento-card-title {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-1);
+  letter-spacing: -0.01em;
+}
+
+.bento-card-desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* 卡片预览内容区（大卡片内的迷你组件） */
+.bento-card-preview {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+}
+
+/* 卡片入场动画 */
+.bento-card {
+  animation: bentoFadeIn 0.5s ease-out both;
+}
+
+.bento-card:nth-child(1) { animation-delay: 0.1s; }
+.bento-card:nth-child(2) { animation-delay: 0.15s; }
+.bento-card:nth-child(3) { animation-delay: 0.2s; }
+.bento-card:nth-child(4) { animation-delay: 0.25s; }
+.bento-card:nth-child(5) { animation-delay: 0.3s; }
+.bento-card:nth-child(6) { animation-delay: 0.35s; }
+
+@keyframes bentoFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===================================
+   展区详情区域
+   =================================== */
+.explore-section {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.explore-section-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  margin-bottom: var(--space-4);
+  transition: var(--transition-base);
+}
+
+.explore-section-back:hover {
+  color: var(--text-primary);
+  border-color: var(--color-gray-400);
+  background: var(--bg-primary);
+}
+
+.explore-section-title {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-1);
+}
+
+.explore-section-desc {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-5);
+  line-height: 1.7;
+}
+
+/* ===================================
+   各展区通用样式
+   =================================== */
+
+/* 卡片网格（AI 前沿、热门话题、开源精选共用） */
+.explore-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-3);
+}
+
+.explore-content-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideUp 0.5s ease-out both;
+}
+
+.explore-content-card:hover {
+  border-color: var(--color-gray-400);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+}
+
+.explore-content-card:nth-child(1) { animation-delay: 0.05s; }
+.explore-content-card:nth-child(2) { animation-delay: 0.1s; }
+.explore-content-card:nth-child(3) { animation-delay: 0.15s; }
+.explore-content-card:nth-child(4) { animation-delay: 0.2s; }
+.explore-content-card:nth-child(5) { animation-delay: 0.25s; }
+.explore-content-card:nth-child(6) { animation-delay: 0.3s; }
+
+.explore-content-card.highlight {
+  border-left: 3px solid var(--color-accent);
+}
+
+.explore-card-title {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-2);
+  letter-spacing: -0.01em;
+}
+
+.explore-card-desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0 0 var(--space-3);
+}
+
+.explore-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.explore-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.explore-card-date {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+/* 外部链接卡片 */
+.explore-content-card a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.875rem;
+  color: var(--color-accent);
+}
+
+.explore-content-card a:hover {
+  color: var(--color-gray-800);
+}
+
+/* ===================================
+   工具箱展区 — 分组列表
+   =================================== */
+.explore-tools-group {
+  margin-bottom: var(--space-4);
+}
+
+.explore-tools-group:last-child {
+  margin-bottom: 0;
+}
+
+.explore-tools-category {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--space-2);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.explore-tools-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.explore-tool-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-base);
+  animation: slideUp 0.5s ease-out both;
+}
+
+.explore-tool-item:hover {
+  border-color: var(--color-gray-400);
+  background: var(--bg-secondary);
+}
+
+.explore-tool-name {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.explore-tool-desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ===================================
+   学习路线展区 — 时间线
+   =================================== */
+.explore-paths-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.explore-path-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideUp 0.5s ease-out both;
+}
+
+.explore-path-card:hover {
+  border-color: var(--color-gray-400);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+}
+
+.explore-path-card:nth-child(1) { animation-delay: 0.05s; }
+.explore-path-card:nth-child(2) { animation-delay: 0.1s; }
+.explore-path-card:nth-child(3) { animation-delay: 0.15s; }
+.explore-path-card:nth-child(4) { animation-delay: 0.2s; }
+
+.explore-path-title {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-1);
+  letter-spacing: -0.01em;
+}
+
+.explore-path-desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-3);
+  line-height: 1.5;
+}
+
+/* 时间线步骤 */
+.explore-timeline {
+  position: relative;
+  padding-left: var(--space-4);
+}
+
+.explore-timeline::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--bg-tertiary);
+}
+
+.explore-timeline-step {
+  position: relative;
+  padding-bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.explore-timeline-step:last-child {
+  padding-bottom: 0;
+}
+
+/* 时间线节点 */
+.explore-timeline-dot {
+  position: absolute;
+  left: calc(-1 * var(--space-4) + 3px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  border: 2px solid var(--bg-primary);
+  flex-shrink: 0;
+}
+
+.explore-timeline-step:first-child .explore-timeline-dot {
+  background: var(--color-gray-800);
+  box-shadow: 0 0 0 3px var(--bg-tertiary);
+}
+
+.explore-timeline-label {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 48px;
+  flex-shrink: 0;
+}
+
+.explore-timeline-content {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
+/* ===================================
+   响应式设计
+   =================================== */
+@media (max-width: 1024px) {
+  .explore-bento-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .bento-card--large {
+    grid-column: span 2;
+    grid-row: span 1;
+  }
+
+  .bento-card--tall {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+
+  .bento-card--wide {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .explore-hero {
+    padding: var(--space-5) 0 var(--space-4);
+  }
+
+  .explore-stats {
+    gap: var(--space-3);
+  }
+
+  .explore-stat-number {
+    font-size: 1.25rem;
+  }
+
+  .explore-bento-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bento-card--large,
+  .bento-card--tall,
+  .bento-card--wide {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+
+  .explore-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .explore-paths-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===================================
+   动画（复用 + 新增）
+   =================================== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
