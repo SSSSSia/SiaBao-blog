@@ -8,6 +8,11 @@ import { nodeRadius } from './useConstellation';
 
 // 缩放到该倍率以下隐藏标签（窄屏文字不会糊成一团）
 const LABEL_SCALE_THRESHOLD = 0.7;
+// 强度达到此值的边渲染沿线流动的粒子（暗示「关联在流动」）
+// 必须与 useConstellation.js 的 hasAnimatableMotion() 阈值保持一致，
+// 否则 rAF 休眠后粒子会冻结。
+const FLOW_EDGE_STRENGTH = 0.6;
+const FLOW_SPEED_MS = 2600; // 一个粒子走完整条边所需的毫秒
 
 export function draw(ctx, params) {
   const {
@@ -91,6 +96,47 @@ export function draw(ctx, params) {
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
+
+  // ---- 强连接流动粒子（reduced-motion 下不画，保持静态）----
+  if (!reduced) {
+    const pr = 2 / scale; // 粒子半径（随缩放保持视觉大小）
+    ctx.fillStyle = palette.accent;
+    for (const e of edges) {
+      if ((e.strength || 0) < FLOW_EDGE_STRENGTH) continue;
+      const sn = e.__sn;
+      const tn = e.__tn;
+      if (!sn || !tn) continue;
+      if (!inView(sn.x, sn.y) && !inView(tn.x, tn.y)) continue;
+      // 钻取/聚焦模式下，淡化集外的流动粒子
+      let alpha = 0.85;
+      if (drillActive) {
+        if (!inFocusSet(sn.id) || !inFocusSet(tn.id)) alpha = 0;
+        else alpha = 0.9;
+      } else if (hasFocus) {
+        const involved =
+          focusId === sn.id ||
+          focusId === tn.id ||
+          focusNeighbors.has(sn.id) ||
+          focusNeighbors.has(tn.id);
+        alpha = involved ? 0.95 : dimAlpha;
+      }
+      if (alpha <= 0) continue;
+      // 用边的 source id 末位做相位偏移，避免所有粒子同步
+      let seed = 0;
+      const key = String(e.source || '');
+      for (let i = 0; i < key.length; i++) seed = (seed * 31 + key.charCodeAt(i)) | 0;
+      const offset = (Math.abs(seed) % 1000) / 1000;
+      // 强度越高粒子越快、越靠前的进度
+      const progress = ((time / FLOW_SPEED_MS) * (0.6 + (e.strength || 0.5) * 0.6) + offset) % 1;
+      const px = sn.x + (tn.x - sn.x) * progress;
+      const py = sn.y + (tn.y - sn.y) * progress;
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(px, py, pr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
 
   // ---- 节点 ----
   const pulseActive = !reduced;

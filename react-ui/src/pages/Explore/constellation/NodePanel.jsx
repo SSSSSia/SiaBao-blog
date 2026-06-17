@@ -11,7 +11,41 @@ import { exploreApi } from '../../../api/explore';
 
 // 模块级缓存：同一节点切换回来时秒出，避免重复烧 AI。
 // 形如 { [nodeId]: { insight: string, available: boolean } }。
+// 双层：内存 Map（会话内）+ localStorage（跨会话，带 TTL），减少跨刷新重复请求。
+const INSIGHT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+const LS_KEY = 'explore_insight_cache';
 const insightCache = new Map();
+
+function loadLSCache() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    const now = Date.now();
+    for (const [id, entry] of Object.entries(obj)) {
+      if (entry && typeof entry === 'object' && now - entry.ts < INSIGHT_TTL_MS) {
+        insightCache.set(id, { insight: entry.insight, available: entry.available });
+      }
+    }
+  } catch {
+    /* localStorage 不可用 / 损坏 — 静默降级到纯内存缓存 */
+  }
+}
+
+function persistLSCache() {
+  try {
+    const obj = {};
+    for (const [id, v] of insightCache.entries()) {
+      obj[id] = { ...v, ts: Date.now() };
+    }
+    localStorage.setItem(LS_KEY, JSON.stringify(obj));
+  } catch {
+    /* 配额超限 / 隐私模式 — 静默忽略 */
+  }
+}
+
+// 模块加载时预填跨会话缓存（一次性）
+loadLSCache();
 
 export default function NodePanel({ node, neighbors, getNode, onSelectNode, onClose, onDrill }) {
   const [insight, setInsight] = useState(null); // string | null
@@ -35,6 +69,7 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
       const text = data?.insight || '';
       const available = !!data?.available;
       insightCache.set(n.id, { insight: text, available });
+      persistLSCache();
       setInsight(text);
       setInsightAvailable(available);
       setInsightState(text ? 'done' : 'error');
@@ -122,6 +157,7 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
                 className='constellation-panel-insight-retry'
                 onClick={() => {
                   insightCache.delete(node.id);
+                  persistLSCache();
                   fetchInsight(node);
                 }}
               >

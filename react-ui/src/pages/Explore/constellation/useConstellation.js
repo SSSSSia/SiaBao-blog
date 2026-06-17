@@ -80,12 +80,14 @@ function makeClusterForce(nodes, anchors) {
 export function useConstellation(canvasRef, containerRef) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshingForce, setRefreshingForce] = useState(false); // force=true 同步 GitHub 进行中
   const [meta, setMeta] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [hoveredId, setHoveredId] = useState(null);
   const [scale, setScale] = useState(1);
   const [allNodes, setAllNodes] = useState([]); // 无障碍节点列表快照
   const [focusId, setFocusId] = useState(null); // 语义钻取的聚焦节点（驱动面包屑 UI）
+  const [hiddenCategories, setHiddenCategories] = useState(() => new Set()); // 图例隐藏的分类
 
   // refs（仿真热数据，不入 React state）
   const nodesRef = useRef([]);
@@ -109,6 +111,7 @@ export function useConstellation(canvasRef, containerRef) {
   const renderNodesRef = useRef([]); // 渲染子集（窄屏裁剪）
   const renderEdgesRef = useRef([]); // 与渲染子集匹配的边
   const initializedRef = useRef(false);
+  const hiddenCatsRef = useRef(new Set()); // 与 hiddenCategories state 同步，供非 state 回调读取
   // 语义钻取（聚焦模式）：focusId 为钻入的节点，focusSet = 它 + 1-hop 邻居
   const focusIdRef = useRef(null);
   const focusSetRef = useRef(null);
@@ -144,6 +147,20 @@ export function useConstellation(canvasRef, containerRef) {
     });
   }, [canvasRef, neighborsOf]);
 
+  // 是否还有「值得逐帧重绘」的变化：仿真热 / 相机补间 / 悬停选中 / 高 momentum 脉动 / 流动粒子。
+  // 一旦全部为否，rAF 休眠，避免静止时空转耗电；任何交互都会通过 kickLoop() 唤醒。
+  // 注意：脉冲与流动粒子都用 time 驱动，必须纳入判定，否则休眠后视觉会冻结。
+  const FLOW_EDGE_STRENGTH = 0.6; // 与 render.js 流动粒子阈值保持一致
+  const hasAnimatableMotion = useCallback(() => {
+    for (const n of renderNodesRef.current) {
+      if ((n.momentum || 0) > 0.35) return true;
+    }
+    for (const e of renderEdgesRef.current) {
+      if ((e.strength || 0) >= FLOW_EDGE_STRENGTH) return true;
+    }
+    return false;
+  }, []);
+
   const loop = useCallback(() => {
     const sim = simRef.current;
 
@@ -169,13 +186,16 @@ export function useConstellation(canvasRef, containerRef) {
 
     const simHot = sim && sim.alpha() > ALPHA_MIN;
     const camActive = !!camAnimRef.current;
-    // reduced-motion：无脉动；仿真冷却 + 无相机动画时停 rAF（交互时再启动）
-    if (reducedRef.current && !simHot && !camActive) {
+    // reduced-motion：无脉动无流动；仿真冷却 + 无相机动画时停 rAF（交互时再启动）。
+    // 悬停/选中本身是静态状态，由各自 handler 触发单帧重绘即可，不需持续续帧。
+    const needsFrame =
+      simHot || camActive || (!reducedRef.current && hasAnimatableMotion());
+    if (!needsFrame) {
       rafRef.current = null;
       return;
     }
     rafRef.current = requestAnimationFrame(loop);
-  }, [paint]);
+  }, [paint, hasAnimatableMotion]);
 
   const kickLoop = useCallback(() => {
     if (rafRef.current == null) {
@@ -211,19 +231,19 @@ export function useConstellation(canvasRef, containerRef) {
   const recomputeRenderSubset = useCallback(() => {
     const all = nodesRef.current;
     const { w } = dimsRef.current;
-    if (w && w <= NARROW_WIDTH && all.length > NARROW_NODE_CAP) {
-      const top = [...all]
+    const hidden = hiddenCatsRef.current;
+    // 先按隐藏分类过滤（图例切换），再按窄屏数量裁剪
+    let visible = hidden && hidden.size > 0 ? all.filter((n) => !hidden.has(n.category)) : all;
+    if (w && w <= NARROW_WIDTH && visible.length > NARROW_NODE_CAP) {
+      visible = [...visible]
         .sort((a, b) => (b.weight || 0) - (a.weight || 0))
         .slice(0, NARROW_NODE_CAP);
-      const idSet = new Set(top.map((n) => n.id));
-      renderNodesRef.current = top;
-      renderEdgesRef.current = edgesRef.current.filter(
-        (e) => idSet.has(e.source) && idSet.has(e.target),
-      );
-    } else {
-      renderNodesRef.current = all;
-      renderEdgesRef.current = edgesRef.current;
     }
+    const idSet = new Set(visible.map((n) => n.id));
+    renderNodesRef.current = visible;
+    renderEdgesRef.current = edgesRef.current.filter(
+      (e) => idSet.has(e.source) && idSet.has(e.target),
+    );
   }, []);
 
   // ---- 节点拖动（桌面即时 / 触屏长按后启动）----
@@ -329,6 +349,7 @@ export function useConstellation(canvasRef, containerRef) {
     async (force = false) => {
       setLoading(true);
       setError(null);
+      if (force) setRefreshingForce(true);
       try {
         const res = await exploreApi.getGraph({ force });
         const graph = res?.graph || { nodes: [], edges: [], meta: {} };
@@ -374,6 +395,7 @@ export function useConstellation(canvasRef, containerRef) {
         setError(e);
       } finally {
         setLoading(false);
+        setRefreshingForce(false);
       }
     },
     [initSimulation, paint, recomputeRenderSubset],
@@ -528,6 +550,74 @@ export function useConstellation(canvasRef, containerRef) {
       });
     }
   }, [animateTransform]);
+
+  // ---- 复位：退出聚焦 + 相机回到初始居中变换 ----
+  const resetView = useCallback(() => {
+    if (focusIdRef.current) {
+      focusIdRef.current = null;
+      focusSetRef.current = null;
+      setFocusId(null);
+      savedTransformRef.current = null;
+    }
+    const { w, h } = dimsRef.current;
+    if (!w) return;
+    const s = initialScale(w);
+    animateTransform({
+      tx: (w * (1 - s)) / 2,
+      ty: (h * (1 - s)) / 2,
+      scale: s,
+    });
+  }, [animateTransform]);
+
+  // ---- 飞行定位：居中目标节点 + 轻度放大（不进入聚焦模式，不暗化邻居）----
+  // 与 enterFocus（暗化聚焦子图）区分；搜索/上升榜/键盘导航调用此方法直达。
+  const flyToNode = useCallback(
+    (id) => {
+      const node = nodeById.current.get(id);
+      if (!node || node.x == null) return;
+      const { w, h } = dimsRef.current;
+      const targetScale = Math.min(Math.max(transformRef.current.scale, 1) * 1.4, MAX_SCALE);
+      animateTransform({
+        tx: w / 2 - node.x * targetScale,
+        ty: h / 2 - node.y * targetScale,
+        scale: targetScale,
+      });
+      selectedIdRef.current = id;
+      setSelectedId(id);
+    },
+    [animateTransform],
+  );
+
+  // ---- 分类图例：显隐切换 ----
+  const toggleCategory = useCallback(
+    (cat) => {
+      setHiddenCategories((prev) => {
+        const next = new Set(prev);
+        if (next.has(cat)) next.delete(cat);
+        else next.add(cat);
+        hiddenCatsRef.current = next;
+        return next;
+      });
+      recomputeRenderSubset();
+      paint();
+      kickLoop();
+    },
+    [recomputeRenderSubset, paint, kickLoop],
+  );
+
+  const showAllCategories = useCallback(() => {
+    hiddenCatsRef.current = new Set();
+    setHiddenCategories(new Set());
+    recomputeRenderSubset();
+    paint();
+    kickLoop();
+  }, [recomputeRenderSubset, paint, kickLoop]);
+
+  // 取某分类的画布颜色（图例色块用），读当前 palette
+  const getCategoryColor = useCallback(
+    (cat) => categoryColor(cat, paletteRef.current),
+    [],
+  );
 
   // ---- pointer 事件 ----
   // 滚轮缩放：React 根绑定的 wheel 是 passive，preventDefault 无效（且会报
@@ -730,11 +820,18 @@ export function useConstellation(canvasRef, containerRef) {
     hoveredNode,
     focusId,
     focusedNode: focusId ? nodeById.current.get(focusId) : null,
-    refresh: () => load(true),
+    refresh: (force) => load(force === true),
+    refreshingForce,
     selectNode,
     clearSelection,
     enterFocus,
     exitFocus,
+    resetView,
+    flyToNode,
+    hiddenCategories,
+    toggleCategory,
+    showAllCategories,
+    getCategoryColor,
     getNode: (id) => (id ? nodeById.current.get(id) : null),
     getNeighbors: neighborsOf,
     // canvas 事件绑定（wheel 通过 useEffect 以 non-passive 原生监听）

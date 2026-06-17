@@ -670,3 +670,298 @@
     transition: none;
   }
 }
+
+/* ===================================
+   新增组件：搜索框 / 上升榜 / 分类图例 / 主题按钮
+   =================================== */
+
+/* 舞台键盘聚焦轮廓 */
+.constellation-stage:focus {
+  outline: none;
+}
+.constellation-stage:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* ---------- 搜索框 ---------- */
+.constellation-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 200px;
+  max-width: 240px;
+  padding: 0.3rem 0.6rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-base);
+}
+
+.constellation-search:focus-within {
+  border-color: var(--color-gray-400);
+}
+
+.constellation-search-icon {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.constellation-search-input {
+  flex: 1;
+  min-width: 0;
+  margin-left: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.constellation-search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 12;
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.constellation-search-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: var(--transition-base);
+}
+
+.constellation-search-result.is-active,
+.constellation-search-result:hover {
+  background: var(--bg-secondary);
+}
+
+.constellation-search-result-cat {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+}
+
+/* ---------- 上升榜侧栏 ---------- */
+.constellation-trending {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 7;
+  width: 180px;
+  padding: var(--space-1) var(--space-1) calc(var(--space-1) * 0.6);
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(4px);
+}
+
+.constellation-trending-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.2rem 0.25rem var(--space-1);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.constellation-trending-header span {
+  flex: 1;
+  text-align: left;
+}
+
+.constellation-trending-chevron {
+  color: var(--text-tertiary);
+  transition: transform 0.2s ease;
+}
+
+.constellation-trending-chevron.is-collapsed {
+  transform: rotate(90deg);
+}
+
+.constellation-trending-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.constellation-trending-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.25rem 0.3rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: var(--transition-base);
+}
+
+.constellation-trending-item:hover {
+  background: var(--bg-secondary);
+}
+
+.constellation-trending-rank {
+  flex-shrink: 0;
+  width: 16px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-align: right;
+}
+
+.constellation-trending-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.constellation-trending-label {
+  font-size: 0.76rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.constellation-trending-bar-wrap {
+  height: 3px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.constellation-trending-bar {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 2px;
+}
+
+.constellation-trending-flame {
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+/* ---------- 分类图例 ---------- */
+.constellation-legend {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  z-index: 7;
+  max-width: 260px;
+  padding: var(--space-1);
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.constellation-legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.constellation-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.constellation-legend-item:hover {
+  color: var(--text-primary);
+}
+
+.constellation-legend-item.is-hidden {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.constellation-legend-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.constellation-legend-count {
+  font-size: 0.66rem;
+  color: var(--text-tertiary);
+}
+
+.constellation-legend-reset {
+  display: block;
+  margin-top: 0.4rem;
+  padding: 0;
+  font-size: 0.7rem;
+  color: var(--color-accent);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ---------- 新组件响应式 ---------- */
+@media (max-width: 768px) {
+  .constellation-search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .constellation-trending {
+    width: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .constellation-trending {
+    width: 130px;
+    font-size: 0.7rem;
+  }
+  .constellation-legend {
+    max-width: 200px;
+  }
+}
