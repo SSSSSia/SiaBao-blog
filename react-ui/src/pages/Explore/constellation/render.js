@@ -9,10 +9,6 @@ import { nodeRadius } from './useConstellation';
 // 缩放到该倍率以下隐藏标签（窄屏文字不会糊成一团）
 const LABEL_SCALE_THRESHOLD = 0.7;
 
-// ===== 调试：排查「星图空白」用，排查完删除 =====
-const DEBUG = true;
-let _drawCount = 0;
-
 export function draw(ctx, params) {
   const {
     nodes = [],
@@ -54,22 +50,6 @@ export function draw(ctx, params) {
 
   const inView = (x, y, pad = margin) =>
     x > viewLeft - pad && x < viewRight + pad && y > viewTop - pad && y < viewBottom + pad;
-
-  if (DEBUG && _drawCount < 5) {
-    _drawCount += 1;
-    const withXY = nodes.filter((n) => n.x != null);
-    const sample = withXY[0];
-    console.log(
-      '[constellation] draw #' + _drawCount,
-      'nodes=', nodes.length,
-      'withXY=', withXY.length,
-      'edges=', edges.length,
-      'canvas=', { w, h },
-      'view=', { viewLeft, viewTop, viewRight, viewBottom },
-      'transform=', { tx, ty, scale },
-      'sampleNode=', sample ? { id: sample.id, x: sample.x, y: sample.y } : null,
-    );
-  }
 
   // ---- 连线 ----
   ctx.lineWidth = 1 / scale;

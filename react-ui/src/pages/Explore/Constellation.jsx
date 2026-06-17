@@ -30,14 +30,6 @@ export default function Constellation({ onViewList }) {
     handlers,
   } = useConstellation(canvasRef, containerRef);
 
-  // ===== 调试：排查「星图空白」用，排查完删除 =====
-  console.log('[constellation] render', {
-    loading,
-    error: error ? String(error.message || error) : null,
-    meta,
-    allNodesLen: allNodes?.length,
-  });
-
   // 浮层坐标（屏幕坐标，相对容器）
   const [tipPos, setTipPos] = useState({ x: 0, y: 0 });
 
@@ -75,7 +67,7 @@ export default function Constellation({ onViewList }) {
         </div>
       </div>
 
-      <div className='constellation-stage'>
+      <div className='constellation-stage' ref={containerRef}>
         {/* 加载态 */}
         {loading && (
           <div className='constellation-state'>
