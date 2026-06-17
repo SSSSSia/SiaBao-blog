@@ -495,20 +495,24 @@ export function useConstellation(canvasRef, containerRef) {
     t.ty = my - sy * newScale;
     t.scale = newScale;
     setScale(newScale);
-    paint();
-  }, [canvasRef, paint]);
+    // 不直接 paint()：滚轮手势会连发几十次事件，每次全量重绘（含 shadowBlur）会挤占
+    // 帧预算导致 rAF 掉帧，进而让 time 驱动的粒子/脉动相位跳变（缩到很小时更明显）。
+    // 改为 kickLoop()，一帧内多次缩放合并为单次 rAF 重绘，cadence 交给主循环统一。
+    kickLoop();
+  }, [canvasRef, kickLoop]);
 
   // ---- 选中 / 清除 ----
   const selectNode = useCallback((id) => {
     selectedIdRef.current = id;
     setSelectedId(id);
-    paint();
-  }, [paint]);
+    kickLoop();
+  }, [kickLoop]);
 
   const clearSelection = useCallback(() => {
     selectedIdRef.current = null;
     setSelectedId(null);
-  }, []);
+    kickLoop();
+  }, [kickLoop]);
 
   // ---- 语义钻取：聚焦到某节点的子星座 ----
   const enterFocus = useCallback(
@@ -599,19 +603,17 @@ export function useConstellation(canvasRef, containerRef) {
         return next;
       });
       recomputeRenderSubset();
-      paint();
       kickLoop();
     },
-    [recomputeRenderSubset, paint, kickLoop],
+    [recomputeRenderSubset, kickLoop],
   );
 
   const showAllCategories = useCallback(() => {
     hiddenCatsRef.current = new Set();
     setHiddenCategories(new Set());
     recomputeRenderSubset();
-    paint();
     kickLoop();
-  }, [recomputeRenderSubset, paint, kickLoop]);
+  }, [recomputeRenderSubset, kickLoop]);
 
   // 取某分类的画布颜色（图例色块用），读当前 palette
   const getCategoryColor = useCallback(
@@ -692,7 +694,7 @@ export function useConstellation(canvasRef, containerRef) {
         const { scale } = transformRef.current;
         node.fx = (e.clientX - rect.left - transformRef.current.tx) / scale;
         node.fy = (e.clientY - rect.top - transformRef.current.ty) / scale;
-        paint();
+        kickLoop();
       }
       return;
     }
@@ -703,7 +705,7 @@ export function useConstellation(canvasRef, containerRef) {
       const t = transformRef.current;
       t.tx = p.tx + (e.clientX - p.sx);
       t.ty = p.ty + (e.clientY - p.sy);
-      paint();
+      kickLoop();
       return;
     }
 
@@ -714,9 +716,9 @@ export function useConstellation(canvasRef, containerRef) {
     if (id !== hoverIdRef.current) {
       hoverIdRef.current = id;
       setHoveredId(id);
-      paint();
+      kickLoop();
     }
-  }, [canvasRef, hitTest, paint, clearPressTimer]);
+  }, [canvasRef, hitTest, kickLoop, clearPressTimer]);
 
   const onPointerUp = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -767,9 +769,9 @@ export function useConstellation(canvasRef, containerRef) {
     if (hoverIdRef.current) {
       hoverIdRef.current = null;
       setHoveredId(null);
-      paint();
+      kickLoop();
     }
-  }, [paint]);
+  }, [kickLoop]);
 
   // 触摸双指捏合
   const pinchRef = useRef(null);
