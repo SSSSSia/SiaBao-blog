@@ -379,6 +379,7 @@ export function useConstellation(canvasRef, containerRef) {
   useEffect(() => {
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null; // 清空，避免 StrictMode 复挂载后 kickLoop 误判为「已在运行」而不重排
       if (simRef.current) simRef.current.stop();
       if (pressTimerRef.current != null) clearTimeout(pressTimerRef.current);
     };
@@ -437,11 +438,19 @@ export function useConstellation(canvasRef, containerRef) {
   }, []);
 
   // ---- pointer 事件 ----
-  const onWheel = useCallback((e) => {
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-    zoomAt(e.clientX, e.clientY, factor);
-  }, [zoomAt]);
+  // 滚轮缩放：React 根绑定的 wheel 是 passive，preventDefault 无效（且会报
+  // "passive event listener" 警告）。改用原生 non-passive 监听，才能阻止页面滚动。
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const onWheel = (e) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+      zoomAt(e.clientX, e.clientY, factor);
+    };
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', onWheel);
+  }, [canvasRef, zoomAt]);
 
   const onPointerDown = useCallback(
     (e) => {
@@ -585,7 +594,7 @@ export function useConstellation(canvasRef, containerRef) {
   }, []);
   const onTouchMove = useCallback((e) => {
     if (e.touches.length === 2 && pinchRef.current) {
-      e.preventDefault();
+      // touch-action: none 已在 CSS 禁用默认手势，无需（也无法在 passive 监听里）preventDefault
       const [a, b] = e.touches;
       const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
       const factor = dist / (pinchRef.current.dist || dist);
@@ -620,9 +629,8 @@ export function useConstellation(canvasRef, containerRef) {
     clearSelection,
     getNode: (id) => (id ? nodeById.current.get(id) : null),
     getNeighbors: neighborsOf,
-    // canvas 事件绑定
+    // canvas 事件绑定（wheel 通过 useEffect 以 non-passive 原生监听）
     handlers: {
-      onWheel,
       onPointerDown,
       onPointerMove,
       onPointerUp,
