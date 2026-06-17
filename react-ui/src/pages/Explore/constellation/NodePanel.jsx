@@ -219,7 +219,11 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
           )}
         </section>
 
-        {node.desc && <p className='constellation-panel-desc'>{node.desc}</p>}
+        {/* GitHub 节点的 desc 与 github.description 同源（后端复制自仓库描述），
+            若两者一致则只保留下方 GitHub 区块的简介，避免重复展示。 */}
+        {node.desc && node.desc !== github?.description && (
+          <p className='constellation-panel-desc'>{node.desc}</p>
+        )}
 
         {/* 信号指标 */}
         <div className='constellation-panel-stats'>
