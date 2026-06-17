@@ -23,6 +23,9 @@ export default function Constellation() {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
+  // 画布全屏状态需在 hook 调用前声明，传入 hook 以便 resize 区分「全屏切换」与普通窗口缩放。
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   const {
     loading,
     error,
@@ -48,7 +51,7 @@ export default function Constellation() {
     getNode,
     getNeighbors,
     handlers,
-  } = useConstellation(canvasRef, containerRef);
+  } = useConstellation(canvasRef, containerRef, isFullscreen);
 
   // ---- URL 深链：?focus= 与 ?select= ----
   const [searchParams, setSearchParams] = useSearchParams();
@@ -84,37 +87,39 @@ export default function Constellation() {
   // 浮层坐标（屏幕坐标，相对容器）
   const [tipPos, setTipPos] = useState({ x: 0, y: 0 });
 
-  // ---- 画布全屏：fixed 撑满视口，进入/退出带淡入淡出 + 缩放过渡，Esc 退出 ----
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isLeavingFs, setIsLeavingFs] = useState(false); // 退出动画进行中：先播淡出再摘 fixed
-  const fsTimerRef = useRef(null);
-  const enterFullscreen = useCallback(() => {
-    setIsLeavingFs(false);
-    setIsFullscreen(true);
-  }, []);
+  // ---- 画布全屏：fixed 撑满视口，进入带淡入，Esc 退出 ----
+  // 退出瞬时切换（画布由 hook 的 useLayoutEffect 在首帧绘制前重绘、仿真冻结无跳变），
+  // 再叠一个轻量「落位」动画：返回流式布局后从略低处轻微上浮 + 淡入，柔和收尾。
+  // 全程保持可见（起点 opacity 不为 0），不会重演「整块消失再出现」的闪烁。
+  const [isSettling, setIsSettling] = useState(false);
+  const settleTimerRef = useRef(null);
   const exitFullscreen = useCallback(() => {
-    setIsLeavingFs(true);
-    if (fsTimerRef.current) clearTimeout(fsTimerRef.current);
-    fsTimerRef.current = setTimeout(() => {
-      setIsFullscreen(false);
-      setIsLeavingFs(false);
-      fsTimerRef.current = null;
-    }, 200); // 与 CSS 退出动画时长对齐
+    setIsFullscreen(false);
+    setIsSettling(true);
+    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = setTimeout(() => {
+      setIsSettling(false);
+      settleTimerRef.current = null;
+    }, 220); // 与 constellation-fs-settle 时长对齐
   }, []);
   const toggleFullscreen = useCallback(() => {
-    if (isFullscreen) exitFullscreen();
-    else enterFullscreen();
-  }, [isFullscreen, enterFullscreen, exitFullscreen]);
+    if (isFullscreen) {
+      exitFullscreen();
+    } else {
+      setIsSettling(false); // 进入全屏时取消残留的落位动画
+      setIsFullscreen(true);
+    }
+  }, [isFullscreen, exitFullscreen]);
   useEffect(() => {
-    if (!isFullscreen || isLeavingFs) return;
+    if (!isFullscreen) return;
     const onKey = (e) => {
       if (e.key === 'Escape') exitFullscreen();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isFullscreen, isLeavingFs, exitFullscreen]);
+  }, [isFullscreen, exitFullscreen]);
   useEffect(
-    () => () => fsTimerRef.current && clearTimeout(fsTimerRef.current),
+    () => () => settleTimerRef.current && clearTimeout(settleTimerRef.current),
     [],
   );
 
@@ -160,7 +165,7 @@ export default function Constellation() {
   return (
     <div
       className={`constellation${isFullscreen ? ' is-fullscreen' : ''}${
-        isLeavingFs ? ' is-leaving-fullscreen' : ''
+        isSettling ? ' is-settling' : ''
       }`}
     >
       <div className='constellation-toolbar'>

@@ -6,7 +6,7 @@
  * （tick 计数 / hoveredId / selectedId / scale）触发必要重绘，避免大列表抖动。
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   forceCenter,
   forceCollide,
@@ -77,7 +77,7 @@ function makeClusterForce(nodes, anchors) {
   return force;
 }
 
-export function useConstellation(canvasRef, containerRef) {
+export function useConstellation(canvasRef, containerRef, isFullscreen = false) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshingForce, setRefreshingForce] = useState(false); // force=true 同步 GitHub 进行中
@@ -111,6 +111,8 @@ export function useConstellation(canvasRef, containerRef) {
   const renderNodesRef = useRef([]); // 渲染子集（窄屏裁剪）
   const renderEdgesRef = useRef([]); // 与渲染子集匹配的边
   const initializedRef = useRef(false);
+  const prevFullscreenRef = useRef(false); // 上一次的 isFullscreen，用于判定 resize 是否由全屏切换引起
+  const suppressRelayoutUntilRef = useRef(0); // 全屏切换后短窗内抑制仿真重排，避免 RO 初始回调二次触发粒子跳变
   const hiddenCatsRef = useRef(new Set()); // 与 hiddenCategories state 同步，供非 state 回调读取
   // 语义钻取（聚焦模式）：focusId 为钻入的节点，focusSet = 它 + 1-hop 邻居
   const focusIdRef = useRef(null);
@@ -407,7 +409,9 @@ export function useConstellation(canvasRef, containerRef) {
   }, []);
 
   // ---- 尺寸 / dpr ----
-  useEffect(() => {
+  // 用 useLayoutEffect：DOM 提交后、浏览器绘制前同步重设画布尺寸并重绘，
+  // 确保全屏切换的「新布局首帧」画布 backing store 已就位——不会出现尺寸错位/塌缩的中间帧。
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
@@ -417,6 +421,17 @@ export function useConstellation(canvasRef, containerRef) {
       const dpr = Math.min(window.devicePixelRatio || 1, 2); // 移动端 dpr 上限 2
       const w = Math.max(rect.width, 100);
       const h = Math.max(rect.height, 100);
+      // 全屏切换属「视口变化」而非「图重排」：冻结仿真（节点保持原位），
+      // 仅按两视口中心的位移差平移相机，让星座在尺寸变化时停留在原位平滑过渡，
+      // 避免 resize 重启仿真导致粒子向新中心跳变、退出全屏瞬间闪烁。
+      const fsChanged = prevFullscreenRef.current !== isFullscreen;
+      if (fsChanged) suppressRelayoutUntilRef.current = performance.now() + 200;
+      // fsChanged 命中后的短窗内，新 ResizeObserver 的初始回调也会进来——同样按稳定 resize 处理，
+      // 否则它会落到「重启仿真」分支造成二次跳变。
+      const stableResize = fsChanged || performance.now() < suppressRelayoutUntilRef.current;
+      const prevW = dimsRef.current.w;
+      const prevH = dimsRef.current.h;
+      prevFullscreenRef.current = isFullscreen;
       dimsRef.current = { w, h, dpr };
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
@@ -425,14 +440,22 @@ export function useConstellation(canvasRef, containerRef) {
       const ctx = canvas.getContext('2d');
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (initializedRef.current && simRef.current) {
-        // 重新居中：reduced-motion 下不重启动画，仅 tick 若干步重定位
-        const sim = simRef.current;
-        sim.force('center', forceCenter(w / 2, h / 2));
-        if (reducedRef.current) {
-          for (let i = 0; i < 60 && sim.alpha() > ALPHA_MIN; i++) sim.tick();
-        } else {
-          sim.alpha(0.3).restart();
+        if (stableResize) {
+          // 全屏进/出：节点不动，相机按中心差平移，保持构图连续
+          const t = transformRef.current;
+          t.tx += (w - prevW) / 2;
+          t.ty += (h - prevH) / 2;
           kickLoop();
+        } else {
+          // 重新居中：reduced-motion 下不重启动画，仅 tick 若干步重定位
+          const sim = simRef.current;
+          sim.force('center', forceCenter(w / 2, h / 2));
+          if (reducedRef.current) {
+            for (let i = 0; i < 60 && sim.alpha() > ALPHA_MIN; i++) sim.tick();
+          } else {
+            sim.alpha(0.3).restart();
+            kickLoop();
+          }
         }
       } else {
         initSimulation();
@@ -446,7 +469,7 @@ export function useConstellation(canvasRef, containerRef) {
     resize();
     return () => ro.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasRef, containerRef]);
+  }, [canvasRef, containerRef, isFullscreen]);
 
   // 清理 rAF
   useEffect(() => {
