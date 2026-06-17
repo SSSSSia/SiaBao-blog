@@ -79,13 +79,16 @@ async def get_github(
     return R.ok(data=data)
 
 
-@router.post("/nodes/{node_id}/insight")
-async def get_node_insight(node_id: str) -> R:
+@router.post("/insight")
+async def get_node_insight(payload: dict) -> R:
     """Generate (or return cached) AI insight for a constellation node.
 
-    Public, no auth. Builds the graph, locates the node, computes its 1-hop
-    neighbor labels, and asks the AI to interpret the node's place in the
-    author's knowledge graph. Only public node metadata is sent to the model.
+    Public, no auth. ``node_id`` is taken from the JSON body (not a path
+    param) because GitHub-repo node ids look like ``gh:owner/name`` and
+    contain a ``/`` that would break a path segment. Builds the graph,
+    locates the node, computes its 1-hop neighbor labels, and asks the AI to
+    interpret the node's place in the author's knowledge graph. Only public
+    node metadata is sent to the model.
 
     Responses:
       - ``available=true``  with ``insight`` text on success.
@@ -93,6 +96,10 @@ async def get_node_insight(node_id: str) -> R:
         unconfigured (no API key) or generation fails — the frontend shows a
         graceful degraded state instead of erroring.
     """
+    node_id = (payload or {}).get("node_id")
+    if not node_id or not isinstance(node_id, str):
+        return R.fail(message="缺少 node_id", code="400")
+
     graph = await explore_service.build_explore_graph()
     nodes = graph.get("nodes", [])
     edges = graph.get("edges", [])

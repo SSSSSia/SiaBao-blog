@@ -24,11 +24,13 @@ export const exploreApi = {
 
   /**
    * 获取某个节点的 AI 洞察（后端按内容指纹缓存）
+   * 注意：node_id 走请求体而非 URL 路径，因为 GitHub 仓库节点 id 形如
+   * `gh:owner/name` 含 `/`，放在路径段会破坏路由。
    * @param {string} nodeId
    * @returns {Promise<{ insight: string, available: boolean }>}
    */
   getNodeInsight: (nodeId) =>
-    post(`${API_BASE}/explore/nodes/${encodeURIComponent(nodeId)}/insight`, {}, {}, INSIGHT_TIMEOUT),
+    post(`${API_BASE}/explore/insight`, { node_id: nodeId }, {}, INSIGHT_TIMEOUT),
 
   /**
    * 获取原始 GitHub 趋势缓存（调试 / 预览用）
