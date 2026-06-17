@@ -144,29 +144,6 @@ export function useConstellation(canvasRef, containerRef) {
     });
   }, [canvasRef, neighborsOf]);
 
-  // ---- 相机补间（聚焦/退出聚焦时平滑过渡 transform）----
-  const animateTransform = useCallback(
-    (to, onDone) => {
-      if (reducedRef.current) {
-        transformRef.current = { ...to };
-        setScale(to.scale);
-        paint();
-        onDone?.();
-        return;
-      }
-      const from = { ...transformRef.current };
-      camAnimRef.current = {
-        from,
-        to,
-        start: performance.now(),
-        dur: 450,
-        onDone,
-      };
-      kickLoop();
-    },
-    [kickLoop, paint],
-  );
-
   const loop = useCallback(() => {
     const sim = simRef.current;
 
@@ -205,6 +182,30 @@ export function useConstellation(canvasRef, containerRef) {
       rafRef.current = requestAnimationFrame(loop);
     }
   }, [loop]);
+
+  // ---- 相机补间（聚焦/退出聚焦时平滑过渡 transform）----
+  // 必须声明在 kickLoop 之后（依赖它），否则依赖数组求值时触发 TDZ。
+  const animateTransform = useCallback(
+    (to, onDone) => {
+      if (reducedRef.current) {
+        transformRef.current = { ...to };
+        setScale(to.scale);
+        paint();
+        onDone?.();
+        return;
+      }
+      const from = { ...transformRef.current };
+      camAnimRef.current = {
+        from,
+        to,
+        start: performance.now(),
+        dur: 450,
+        onDone,
+      };
+      kickLoop();
+    },
+    [kickLoop, paint],
+  );
 
   // ---- 窄屏渲染裁剪（仅前端，不改后端图数据 / 选中 / 命中一致性用全量）----
   const recomputeRenderSubset = useCallback(() => {
