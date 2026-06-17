@@ -25,6 +25,10 @@ const NARROW_WIDTH = 640; // ≤640 视为窄屏（与全站断点对齐）
 const NARROW_NODE_CAP = 60; // 窄屏渲染节点上限（仅前端裁剪，不改后端图）
 const LONG_PRESS_DELAY = 200; // 触屏长按判定阈值，区分「拖节点」与「平移」
 
+// ===== 调试开关：排查「星图空白」用，排查完置 false 并删除日志 =====
+const DEBUG = true;
+const dbg = (...a) => DEBUG && console.log('[constellation]', ...a);
+
 /** 窄屏初始退一档缩放，确保首屏看到全部星座而非局部 */
 function initialScale(width) {
   return width && width <= NARROW_WIDTH ? 0.7 : 1;
@@ -115,11 +119,32 @@ export function useConstellation(canvasRef, containerRef) {
   }, []);
 
   // ---- 渲染循环 ----
+  const paintCount = useRef(0);
   const paint = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      dbg('paint: no canvas');
+      return;
+    }
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      dbg('paint: no ctx');
+      return;
+    }
+    const nodes = renderNodesRef.current;
+    const withXY = nodes.filter((n) => n.x != null).length;
+    if (DEBUG && paintCount.current < 5) {
+      paintCount.current += 1;
+      dbg(
+        `paint #${paintCount.current}`,
+        'renderNodes=', nodes.length,
+        'withXY=', withXY,
+        'edges=', renderEdgesRef.current.length,
+        'transform=', transformRef.current,
+        'dims=', dimsRef.current,
+        'palette.accent=', paletteRef.current.accent,
+      );
+    }
     draw(ctx, {
       nodes: renderNodesRef.current,
       edges: renderEdgesRef.current,
@@ -135,22 +160,31 @@ export function useConstellation(canvasRef, containerRef) {
     });
   }, [canvasRef, neighborsOf]);
 
+  const loopCount = useRef(0);
   const loop = useCallback(() => {
     const sim = simRef.current;
-    if (sim && sim.alpha() > ALPHA_MIN) {
-      // d3 auto-ticks; nothing to do but paint
+    if (DEBUG && loopCount.current < 5) {
+      loopCount.current += 1;
+      dbg(
+        `loop #${loopCount.current}`,
+        'sim?', !!sim,
+        'alpha=', sim ? sim.alpha() : null,
+        'reduced=', reducedRef.current,
+      );
     }
     paint();
     // reduced-motion：无脉动，仿真冷却后停 rAF（交互时会再启动）
     const simHot = sim && sim.alpha() > ALPHA_MIN;
     if (reducedRef.current && !simHot) {
       rafRef.current = null;
+      dbg('loop: reduced-motion cooled → stop rAF');
       return;
     }
     rafRef.current = requestAnimationFrame(loop);
   }, [paint]);
 
   const kickLoop = useCallback(() => {
+    dbg('kickLoop: rafRef=', rafRef.current, '→ will schedule?', rafRef.current == null);
     if (rafRef.current == null) {
       rafRef.current = requestAnimationFrame(loop);
     }
@@ -160,6 +194,7 @@ export function useConstellation(canvasRef, containerRef) {
   const recomputeRenderSubset = useCallback(() => {
     const all = nodesRef.current;
     const { w } = dimsRef.current;
+    dbg('recomputeRenderSubset: all=', all.length, 'w=', w);
     if (w && w <= NARROW_WIDTH && all.length > NARROW_NODE_CAP) {
       const top = [...all]
         .sort((a, b) => (b.weight || 0) - (a.weight || 0))
@@ -169,9 +204,11 @@ export function useConstellation(canvasRef, containerRef) {
       renderEdgesRef.current = edgesRef.current.filter(
         (e) => idSet.has(e.source) && idSet.has(e.target),
       );
+      dbg('  → narrow cull to', top.length, 'nodes');
     } else {
       renderNodesRef.current = all;
       renderEdgesRef.current = edgesRef.current;
+      dbg('  → full set', all.length, 'nodes');
     }
   }, []);
 
@@ -214,7 +251,11 @@ export function useConstellation(canvasRef, containerRef) {
     const nodes = nodesRef.current;
     const edges = edgesRef.current;
     const { w, h } = dimsRef.current;
-    if (!nodes.length || !w) return;
+    dbg('initSimulation: nodes=', nodes.length, 'edges=', edges.length, 'dims=', { w, h });
+    if (!nodes.length || !w) {
+      dbg('  → early return (no nodes or no width)');
+      return;
+    }
 
     // 分类角度锚点
     const cats = Array.from(new Set(nodes.map((n) => n.category)));
@@ -280,7 +321,9 @@ export function useConstellation(canvasRef, containerRef) {
       setError(null);
       try {
         const res = await exploreApi.getGraph({ force });
+        dbg('load: raw res keys=', res && Object.keys(res), 'graph?', !!(res && res.graph));
         const graph = res?.graph || { nodes: [], edges: [], meta: {} };
+        dbg('load: nodes=', (graph.nodes || []).length, 'edges=', (graph.edges || []).length, 'meta=', graph.meta);
         // clone nodes so we can attach x/y without mutating cached data
         nodesRef.current = (graph.nodes || []).map((n) => ({ ...n }));
         edgesRef.current = graph.edges || [];
@@ -344,6 +387,7 @@ export function useConstellation(canvasRef, containerRef) {
       const dpr = Math.min(window.devicePixelRatio || 1, 2); // 移动端 dpr 上限 2
       const w = Math.max(rect.width, 100);
       const h = Math.max(rect.height, 100);
+      dbg('resize: rect=', { rw: rect.width, rh: rect.height }, '→ dims=', { w, h, dpr }, 'initialized=', initializedRef.current);
       dimsRef.current = { w, h, dpr };
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
