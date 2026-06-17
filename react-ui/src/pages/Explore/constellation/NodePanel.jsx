@@ -4,10 +4,10 @@
  * 桌面右侧抽屉 / 平板悬浮卡 / ≤768 底部 sheet（由 CSS 控制）
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExternalLink, FileText, Focus, GitBranch, Sparkles, Star, X } from 'lucide-react';
-import { exploreApi } from '../../../api/explore';
+import { exploreApi, streamNodeInsight } from '../../../api/explore';
 
 // 模块级缓存：同一节点切换回来时秒出，避免重复烧 AI。
 // 形如 { [nodeId]: { insight: string, available: boolean } }。
@@ -50,10 +50,22 @@ loadLSCache();
 export default function NodePanel({ node, neighbors, getNode, onSelectNode, onClose, onDrill }) {
   const [insight, setInsight] = useState(null); // string | null
   const [insightAvailable, setInsightAvailable] = useState(true);
-  const [insightState, setInsightState] = useState('idle'); // idle | loading | done | error
+  const [insightState, setInsightState] = useState('idle'); // idle | loading | streaming | done | error
+  // 在途流式的 AbortController：节点切换 / 卸载 / 关闭时取消，避免旧流覆盖新节点的 insight。
+  const streamRef = useRef(null);
+
+  const cancelStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.abort();
+      streamRef.current = null;
+    }
+  }, []);
 
   const fetchInsight = useCallback(async (n) => {
     if (!n) return;
+    // 先取消上一个节点的在途流式请求
+    cancelStream();
+
     const cached = insightCache.get(n.id);
     if (cached) {
       setInsight(cached.insight || '');
@@ -61,28 +73,62 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
       setInsightState(cached.available && cached.insight ? 'done' : 'error');
       return;
     }
-    // 未命中缓存：先清掉旧节点文案，进入加载态
+
+    // 未命中缓存：清掉旧文案，进入加载态，待首字到达切到 streaming
     setInsight(null);
     setInsightState('loading');
-    try {
-      const data = await exploreApi.getNodeInsight(n.id);
-      const text = data?.insight || '';
-      const available = !!data?.available;
-      insightCache.set(n.id, { insight: text, available });
-      persistLSCache();
-      setInsight(text);
-      setInsightAvailable(available);
-      setInsightState(text ? 'done' : 'error');
-    } catch {
-      setInsightState('error');
-    }
-  }, []);
+
+    const controller = new AbortController();
+    streamRef.current = controller;
+    let receivedAny = false;
+
+    await streamNodeInsight(n.id, {
+      signal: controller.signal,
+      onDelta: (text) => {
+        if (!text) return;
+        if (!receivedAny) {
+          receivedAny = true;
+          setInsightState('streaming');
+        }
+        setInsight((prev) => `${prev || ''}${text}`);
+      },
+      onDone: ({ available }) => {
+        if (controller.signal.aborted) return;
+        streamRef.current = null;
+        setInsightAvailable(available);
+        setInsight((finalText) => {
+          // 缓存落盘 + 切态都在 setInsight 回调里，拿到最终累积文本
+          insightCache.set(n.id, { insight: finalText || '', available });
+          persistLSCache();
+          return finalText;
+        });
+        setInsightState(available && receivedAny ? 'done' : 'error');
+      },
+      onError: async () => {
+        if (controller.signal.aborted) return;
+        // 回退非流式（代理可能不支持 SSE）
+        try {
+          const data = await exploreApi.getNodeInsight(n.id);
+          const text = data?.insight || '';
+          const available = !!data?.available;
+          insightCache.set(n.id, { insight: text, available });
+          persistLSCache();
+          setInsight(text);
+          setInsightAvailable(available);
+          setInsightState(text ? 'done' : 'error');
+        } catch {
+          setInsightState('error');
+        }
+      },
+    });
+  }, [cancelStream]);
 
   // 节点切换时拉取（或命中缓存）AI 洞察 —— 这是「同步外部 API 数据到 state」的合法 effect。
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchInsight(node);
-  }, [node, fetchInsight]);
+    return () => cancelStream(); // 卸载 / 节点切换前取消在途流
+  }, [node, fetchInsight, cancelStream]);
 
   if (!node) return null;
 
@@ -146,6 +192,12 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
           )}
           {insightState === 'done' && insight && (
             <p className='constellation-panel-insight-text'>{insight}</p>
+          )}
+          {insightState === 'streaming' && (
+            <p className='constellation-panel-insight-text is-streaming' aria-live='polite'>
+              {insight}
+              <span className='constellation-panel-insight-cursor' aria-hidden='true' />
+            </p>
           )}
           {insightState === 'error' && (
             <p className='constellation-panel-insight-fallback'>

@@ -394,6 +394,34 @@
   color: var(--text-primary);
 }
 
+/* 流式输出：文本逐字增长 + 行末闪烁光标 */
+.constellation-panel-insight-cursor {
+  display: inline-block;
+  width: 0.5ch;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--color-accent);
+  animation: constellation-cursor-blink 1s step-end infinite;
+}
+
+@keyframes constellation-cursor-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .constellation-panel-insight-cursor {
+    animation: none;
+  }
+}
+
 .constellation-panel-insight-loading {
   display: flex;
   align-items: center;

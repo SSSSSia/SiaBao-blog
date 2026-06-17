@@ -107,6 +107,53 @@ async def generate_summary(title: str, content: str) -> str:
         raise Exception(f"Failed to generate summary: {str(e)}")
 
 
+def _build_node_insight_prompt(node: dict, neighbor_labels: list) -> str:
+    """Build the node-insight prompt from public node metadata.
+
+    Shared by both the non-streaming (``generate_node_insight``) and streaming
+    (``generate_node_insight_stream``) paths so the two cannot drift apart.
+    Only public node data is sent to the model.
+    """
+    label = node.get("label", "")
+    category = node.get("category", "")
+    desc = (node.get("desc") or "").strip()
+    tags = ", ".join(node.get("tags") or [])
+
+    blog = node.get("blog") or {}
+    article_titles = [a.get("title", "") for a in (blog.get("articles") or [])[:5]]
+    article_count = blog.get("articleCount", 0)
+
+    github = node.get("github") or {}
+    github_desc = (github.get("description") or "").strip()
+    github_stars = github.get("stars", 0)
+
+    neighbors = ", ".join(neighbor_labels) if neighbor_labels else "（暂无）"
+
+    return f"""你是一位技术博客作者的知识星图向导。请根据以下节点信息，用一段话（70-150字，中文）解读这个技术/话题在作者知识体系中的位置：它是什么、为什么重要，以及它与关联节点之间的内在联系。语气自然、有洞察力，不要罗列数据，不要使用「该节点」这种机械称呼。
+
+节点：{label}
+类别：{category or "未分类"}
+描述：{desc or "（无）"}
+标签：{tags or "无"}
+相关博客（{article_count} 篇）：{"、".join(article_titles) if article_titles else "暂无"}
+GitHub：{github_desc or "无"}（{github_stars} stars）
+关联节点：{neighbors}
+
+解读："""
+
+
+# Common prefixes the model sometimes echoes from the prompt's trailing「解读：」.
+_INSIGHT_PREFIXES = ("解读：", "解读:", "洞察：", "洞察:")
+
+
+def _strip_insight_prefix(text: str) -> str:
+    """Strip a leading「解读：/ 洞察：」echo if present."""
+    for prefix in _INSIGHT_PREFIXES:
+        if text.startswith(prefix):
+            return text[len(prefix) :].strip()
+    return text
+
+
 async def generate_node_insight(node: dict, neighbor_labels: list) -> str:
     """
     Generate a short AI insight for an Explore constellation node.
@@ -129,42 +176,10 @@ async def generate_node_insight(node: dict, neighbor_labels: list) -> str:
     """
     try:
         model = get_ai_model()
-
-        label = node.get("label", "")
-        category = node.get("category", "")
-        desc = (node.get("desc") or "").strip()
-        tags = ", ".join(node.get("tags") or [])
-
-        blog = node.get("blog") or {}
-        article_titles = [a.get("title", "") for a in (blog.get("articles") or [])[:5]]
-        article_count = blog.get("articleCount", 0)
-
-        github = node.get("github") or {}
-        github_desc = (github.get("description") or "").strip()
-        github_stars = github.get("stars", 0)
-
-        neighbors = ", ".join(neighbor_labels) if neighbor_labels else "（暂无）"
-
-        prompt = f"""你是一位技术博客作者的知识星图向导。请根据以下节点信息，用一段话（70-150字，中文）解读这个技术/话题在作者知识体系中的位置：它是什么、为什么重要，以及它与关联节点之间的内在联系。语气自然、有洞察力，不要罗列数据，不要使用「该节点」这种机械称呼。
-
-节点：{label}
-类别：{category or "未分类"}
-描述：{desc or "（无）"}
-标签：{tags or "无"}
-相关博客（{article_count} 篇）：{"、".join(article_titles) if article_titles else "暂无"}
-GitHub：{github_desc or "无"}（{github_stars} stars）
-关联节点：{neighbors}
-
-解读："""
+        prompt = _build_node_insight_prompt(node, neighbor_labels)
 
         response = await model.ainvoke(prompt)
-        text = response.content.strip()
-
-        # Strip common prefixes the model sometimes prepends.
-        for prefix in ("解读：", "解读:", "洞察：", "洞察:"):
-            if text.startswith(prefix):
-                text = text[len(prefix) :].strip()
-                break
+        text = _strip_insight_prefix(response.content.strip())
 
         if len(text) > 400:
             text = text[:400].rstrip() + "…"
@@ -175,3 +190,35 @@ GitHub：{github_desc or "无"}（{github_stars} stars）
         raise
     except Exception as e:
         raise Exception(f"Failed to generate node insight: {str(e)}")
+
+
+async def generate_node_insight_stream(node: dict, neighbor_labels: list):
+    """Stream a node insight token-by-token via langchain's ``astream``.
+
+    Yields ``str`` text deltas as the model produces them. The non-streaming
+    post-processing (prefix strip / 400-char truncation) is only partially
+    applicable to streaming: the prefix echo is stripped from the first
+    emitted delta; truncation is left to the model's ``max_tokens`` cap. The
+    caller is responsible for accumulating the full text for caching.
+
+    Raises ``ValueError`` if the API key is unconfigured (same contract as
+    ``generate_node_insight``) so the route can degrade to ``available=false``.
+    """
+    model = get_ai_model()
+    prompt = _build_node_insight_prompt(node, neighbor_labels)
+
+    started = False
+    async for chunk in model.astream(prompt):
+        delta = chunk.content
+        if not delta:
+            continue
+        if not isinstance(delta, str):
+            # Tool / structured chunks carry non-str content; skip safely.
+            continue
+        if not started:
+            # Best-effort: strip a leading prefix echo from the first delta.
+            delta = _strip_insight_prefix(delta.lstrip())
+            started = True
+            if not delta:
+                continue
+        yield delta

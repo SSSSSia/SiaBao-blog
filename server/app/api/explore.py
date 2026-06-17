@@ -7,9 +7,11 @@ return them in the unified ``R.ok`` envelope.
 """
 
 import hashlib
+import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Query
+from starlette.responses import StreamingResponse
 
 from app.core import R
 from app.core.config import get_settings
@@ -79,6 +81,38 @@ async def get_github(
     return R.ok(data=data)
 
 
+async def _resolve_insight_context(node_id: str) -> tuple[dict, list, str] | None:
+    """Locate a node + its 1-hop neighbor labels + content fingerprint.
+
+    Shared by the non-streaming and streaming insight endpoints. Builds the
+    graph, finds ``node_id`` (None if absent), computes up to 12 deduped
+    neighbor labels, and returns ``(node, neighbor_labels, fingerprint)``.
+    Returns ``None`` when the node does not exist.
+    """
+    graph = await explore_service.build_explore_graph()
+    nodes = graph.get("nodes", [])
+    edges = graph.get("edges", [])
+
+    node = next((n for n in nodes if n.get("id") == node_id), None)
+    if node is None:
+        return None
+
+    # 1-hop neighbor labels (deduped, preserve order).
+    neighbor_ids: list[str] = []
+    seen: set[str] = set()
+    for e in edges:
+        s, t = e.get("source"), e.get("target")
+        other = t if s == node_id else (s if t == node_id else None)
+        if other and other not in seen:
+            seen.add(other)
+            neighbor_ids.append(other)
+    id_to_label = {n.get("id"): n.get("label", n.get("id")) for n in nodes}
+    neighbor_labels = [id_to_label.get(i, i) for i in neighbor_ids][:12]
+
+    fingerprint = _node_insight_fingerprint(node, neighbor_labels)
+    return node, neighbor_labels, fingerprint
+
+
 @router.post("/insight")
 async def get_node_insight(payload: dict) -> R:
     """Generate (or return cached) AI insight for a constellation node.
@@ -100,27 +134,11 @@ async def get_node_insight(payload: dict) -> R:
     if not node_id or not isinstance(node_id, str):
         return R.fail(message="缺少 node_id", code="400")
 
-    graph = await explore_service.build_explore_graph()
-    nodes = graph.get("nodes", [])
-    edges = graph.get("edges", [])
-
-    node = next((n for n in nodes if n.get("id") == node_id), None)
-    if node is None:
+    ctx = await _resolve_insight_context(node_id)
+    if ctx is None:
         return R.fail(message="节点不存在", code="404")
+    node, neighbor_labels, fingerprint = ctx
 
-    # 1-hop neighbor labels (deduped, preserve order).
-    neighbor_ids: list[str] = []
-    seen: set[str] = set()
-    for e in edges:
-        s, t = e.get("source"), e.get("target")
-        other = t if s == node_id else (s if t == node_id else None)
-        if other and other not in seen:
-            seen.add(other)
-            neighbor_ids.append(other)
-    id_to_label = {n.get("id"): n.get("label", n.get("id")) for n in nodes}
-    neighbor_labels = [id_to_label.get(i, i) for i in neighbor_ids][:12]
-
-    fingerprint = _node_insight_fingerprint(node, neighbor_labels)
     cache_key = node_id
     cached = _INSIGHT_CACHE.get(cache_key)
     if cached and cached.get("fp") == fingerprint and cached.get("insight"):
@@ -142,3 +160,82 @@ async def get_node_insight(payload: dict) -> R:
 
     _INSIGHT_CACHE[cache_key] = {"fp": fingerprint, "insight": insight}
     return R.ok(data={"insight": insight, "node_id": node_id, "available": True})
+
+
+def _sse(data: dict | str) -> str:
+    """Format one Server-Sent-Event ``data:`` line (terminated by a blank line)."""
+    if isinstance(data, str):
+        return f"data: {data}\n\n"
+    return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+async def _node_insight_stream(node_id: str):
+    """Async generator emitting SSE chunks for a node insight.
+
+    Emits (in order):
+      - ``data: {"insight": ...}`` once and ``[DONE]`` on a cache hit.
+      - ``data: {"available": false}`` + ``[DONE]`` when AI is unconfigured / fails.
+      - ``data: {"delta": ...}`` per model token, caching the full text on
+        completion, then ``[DONE]``.
+    """
+    ctx = await _resolve_insight_context(node_id)
+    if ctx is None:
+        yield _sse({"error": "节点不存在"})
+        yield _sse("[DONE]")
+        return
+    node, neighbor_labels, fingerprint = ctx
+
+    cache_key = node_id
+    cached = _INSIGHT_CACHE.get(cache_key)
+    if cached and cached.get("fp") == fingerprint and cached.get("insight"):
+        # 命中缓存：一次性吐出全文，避免重复烧 AI。
+        yield _sse({"insight": cached["insight"]})
+        yield _sse("[DONE]")
+        return
+
+    accumulated: list[str] = []
+    try:
+        # 延迟导入：langchain 体积大且仅洞察功能需要。
+        from app.services.ai_summary_service import generate_node_insight_stream
+
+        async for delta in generate_node_insight_stream(node, neighbor_labels):
+            accumulated.append(delta)
+            yield _sse({"delta": delta})
+    except ValueError:
+        # AI backend not configured — degrade gracefully.
+        yield _sse({"available": False})
+        yield _sse("[DONE]")
+        return
+    except Exception:
+        # ImportError / transient AI failure — 同样降级，UI 照常工作。
+        yield _sse({"available": False})
+        yield _sse("[DONE]")
+        return
+
+    full = "".join(accumulated)
+    if full:
+        _INSIGHT_CACHE[cache_key] = {"fp": fingerprint, "insight": full}
+    yield _sse("[DONE]")
+
+
+@router.get("/insight/stream")
+async def stream_node_insight(node_id: str = Query(..., description="Constellation node id")):
+    """Stream an AI node insight via Server-Sent Events.
+
+    Public, no auth. ``node_id`` is a query param (not a path segment)
+    because GitHub-repo node ids look like ``gh:owner/name`` and contain a
+    ``/``. See ``_node_insight_stream`` for the event protocol. ``first-byte``
+    arrives as soon as the model emits its first token rather than after the
+    whole generation — the non-streaming ``POST /insight`` is retained as a
+    fallback for proxies that do not support SSE.
+    """
+    headers = {
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",  # hint nginx (and others) not to buffer
+        "Connection": "keep-alive",
+    }
+    return StreamingResponse(
+        _node_insight_stream(node_id),
+        media_type="text/event-stream",
+        headers=headers,
+    )
