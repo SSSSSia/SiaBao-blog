@@ -11,6 +11,7 @@
   position: relative;
   text-align: center;
   padding: var(--space-6) 0 var(--space-5);
+  margin-bottom: var(--space-4); /* 渐变带与下方工具栏之间留白，不再贴在一起 */
   overflow: hidden;
 }
 
@@ -22,14 +23,14 @@
   background: linear-gradient(
     135deg,
     var(--color-white) 0%,
-    #F2F2F2 25%,
+    #EAEAEA 25%,
     var(--color-white) 50%,
-    #F5F5F5 75%,
+    #E8E8E8 75%,
     var(--color-white) 100%
   );
   background-size: 400% 400%;
   animation: heroGradientShift 20s ease infinite;
-  opacity: 0.6;
+  opacity: 0.85;
   z-index: -1;
 }
 

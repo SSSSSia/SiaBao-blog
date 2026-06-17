@@ -84,17 +84,39 @@ export default function Constellation() {
   // 浮层坐标（屏幕坐标，相对容器）
   const [tipPos, setTipPos] = useState({ x: 0, y: 0 });
 
-  // ---- 画布全屏：fixed 撑满视口，Esc 退出 ----
+  // ---- 画布全屏：fixed 撑满视口，进入/退出带淡入淡出 + 缩放过渡，Esc 退出 ----
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const toggleFullscreen = useCallback(() => setIsFullscreen((f) => !f), []);
+  const [isLeavingFs, setIsLeavingFs] = useState(false); // 退出动画进行中：先播淡出再摘 fixed
+  const fsTimerRef = useRef(null);
+  const enterFullscreen = useCallback(() => {
+    setIsLeavingFs(false);
+    setIsFullscreen(true);
+  }, []);
+  const exitFullscreen = useCallback(() => {
+    setIsLeavingFs(true);
+    if (fsTimerRef.current) clearTimeout(fsTimerRef.current);
+    fsTimerRef.current = setTimeout(() => {
+      setIsFullscreen(false);
+      setIsLeavingFs(false);
+      fsTimerRef.current = null;
+    }, 200); // 与 CSS 退出动画时长对齐
+  }, []);
+  const toggleFullscreen = useCallback(() => {
+    if (isFullscreen) exitFullscreen();
+    else enterFullscreen();
+  }, [isFullscreen, enterFullscreen, exitFullscreen]);
   useEffect(() => {
-    if (!isFullscreen) return;
+    if (!isFullscreen || isLeavingFs) return;
     const onKey = (e) => {
-      if (e.key === 'Escape') setIsFullscreen(false);
+      if (e.key === 'Escape') exitFullscreen();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isFullscreen]);
+  }, [isFullscreen, isLeavingFs, exitFullscreen]);
+  useEffect(
+    () => () => fsTimerRef.current && clearTimeout(fsTimerRef.current),
+    [],
+  );
 
   const handleMouseMove = (e) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -136,7 +158,11 @@ export default function Constellation() {
   const showHoverTip = !!hoveredNode && !selectedNode;
 
   return (
-    <div className={`constellation${isFullscreen ? ' is-fullscreen' : ''}`}>
+    <div
+      className={`constellation${isFullscreen ? ' is-fullscreen' : ''}${
+        isLeavingFs ? ' is-leaving-fullscreen' : ''
+      }`}
+    >
       <div className='constellation-toolbar'>
         <SearchBox nodes={allNodes} flyToNode={flyToNode} />
         <div className='constellation-hint'>
