@@ -19,7 +19,7 @@
   justify-content: space-between;
   gap: var(--space-2);
   flex-wrap: wrap;
-  padding: 0 var(--space-1);
+  padding: var(--space-1);
 }
 
 .constellation-hint {
@@ -76,9 +76,9 @@
 .constellation-stage {
   position: relative;
   width: 100%;
-  height: 62vh;
-  min-height: 360px;
-  max-height: 720px;
+  height: 72vh;
+  min-height: 380px;
+  max-height: 880px;
   background: var(--bg-secondary);
   border: 1px solid var(--bg-tertiary);
   border-radius: var(--radius-sm);
@@ -95,6 +95,26 @@
 
 .constellation-canvas:active {
   cursor: grabbing;
+}
+
+/* ---------- 全屏模式（fixed 撑满视口，stage 吃满剩余高度） ---------- */
+.constellation.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000; /* 盖过 sticky header（z-index:100）与页脚 */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  box-sizing: border-box;
+  background: var(--bg-primary); /* 撑满不留底色缝 */
+}
+
+.constellation.is-fullscreen .constellation-stage {
+  flex: 1; /* 吃掉除 toolbar 外的全部剩余高度 */
+  height: auto;
+  min-height: 0;
+  max-height: none;
 }
 
 /* ---------- 加载 / 错误态 ---------- */
@@ -420,6 +440,11 @@
   .constellation-panel-insight-cursor {
     animation: none;
   }
+  .constellation-legend-body,
+  .constellation-legend-header,
+  .constellation-legend-toggle svg {
+    transition: none;
+  }
 }
 
 .constellation-panel-insight-loading {
@@ -637,7 +662,7 @@
 /* 大手机：面板变底部 sheet */
 @media (max-width: 768px) {
   .constellation-stage {
-    height: 56vh;
+    height: 64vh;
   }
   .constellation-panel {
     top: auto;
@@ -917,6 +942,70 @@
   border: 1px solid var(--bg-tertiary);
   border-radius: var(--radius-sm);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.constellation-legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+  margin-bottom: 0.4rem;
+  transition: margin-bottom 0.22s ease;
+}
+
+.constellation-legend.is-collapsed .constellation-legend-header {
+  margin-bottom: 0;
+}
+
+/* 可折叠主体：grid 1fr↔0fr 实现自适应高度的平滑过渡（内容常驻挂载） */
+.constellation-legend-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.24s ease;
+}
+
+.constellation-legend.is-collapsed .constellation-legend-body {
+  grid-template-rows: 0fr;
+}
+
+.constellation-legend-body-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.constellation-legend-title {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+}
+
+.constellation-legend-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.constellation-legend-toggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+/* ChevronRight：展开时旋 90° 向下，收起时朝右 */
+.constellation-legend-toggle svg {
+  transition: transform 0.2s ease;
+}
+
+.constellation-legend:not(.is-collapsed) .constellation-legend-toggle svg {
+  transform: rotate(90deg);
 }
 
 .constellation-legend-items {

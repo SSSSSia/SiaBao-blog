@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, ChevronRight, Focus, Maximize2, RefreshCw, Github } from 'lucide-react';
+import { AlertCircle, ChevronRight, Expand, Focus, Maximize2, Minimize2, RefreshCw, Github } from 'lucide-react';
 
 import HoverTooltip from './constellation/HoverTooltip';
 import NodePanel from './constellation/NodePanel';
@@ -84,6 +84,18 @@ export default function Constellation() {
   // 浮层坐标（屏幕坐标，相对容器）
   const [tipPos, setTipPos] = useState({ x: 0, y: 0 });
 
+  // ---- 画布全屏：fixed 撑满视口，Esc 退出 ----
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const toggleFullscreen = useCallback(() => setIsFullscreen((f) => !f), []);
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setIsFullscreen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isFullscreen]);
+
   const handleMouseMove = (e) => {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -124,7 +136,7 @@ export default function Constellation() {
   const showHoverTip = !!hoveredNode && !selectedNode;
 
   return (
-    <div className='constellation'>
+    <div className={`constellation${isFullscreen ? ' is-fullscreen' : ''}`}>
       <div className='constellation-toolbar'>
         <SearchBox nodes={allNodes} flyToNode={flyToNode} />
         <div className='constellation-hint'>
@@ -194,6 +206,17 @@ export default function Constellation() {
           >
             <Github size={15} className={refreshingForce ? 'constellation-spin' : ''} />
             {refreshingForce ? '同步中…' : '同步 GitHub'}
+          </button>
+          <button
+            type='button'
+            className='constellation-refresh'
+            onClick={toggleFullscreen}
+            aria-label={isFullscreen ? '退出全屏' : '全屏放大'}
+            aria-pressed={isFullscreen}
+            title={isFullscreen ? '退出全屏（Esc）' : '全屏放大'}
+          >
+            {isFullscreen ? <Minimize2 size={15} /> : <Expand size={15} />}
+            {isFullscreen ? '退出全屏' : '全屏'}
           </button>
         </div>
       </div>
