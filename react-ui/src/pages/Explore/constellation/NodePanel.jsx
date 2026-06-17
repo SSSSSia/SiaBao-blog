@@ -1,13 +1,54 @@
 /**
  * NodePanel — 点击节点后的下钻面板（DOM，非 Canvas）
- * 展示：标签、分类、描述、相关博客文章、GitHub 数据、关联节点
+ * 展示：AI 洞察、标签、分类、描述、相关博客文章、GitHub 数据、关联节点
  * 桌面右侧抽屉 / 平板悬浮卡 / ≤768 底部 sheet（由 CSS 控制）
  */
 
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, FileText, GitBranch, Star, X } from 'lucide-react';
+import { ExternalLink, FileText, Focus, GitBranch, Sparkles, Star, X } from 'lucide-react';
+import { exploreApi } from '../../../api/explore';
 
-export default function NodePanel({ node, neighbors, getNode, onSelectNode, onClose }) {
+// 模块级缓存：同一节点切换回来时秒出，避免重复烧 AI。
+// 形如 { [nodeId]: { insight: string, available: boolean } }。
+const insightCache = new Map();
+
+export default function NodePanel({ node, neighbors, getNode, onSelectNode, onClose, onDrill }) {
+  const [insight, setInsight] = useState(null); // string | null
+  const [insightAvailable, setInsightAvailable] = useState(true);
+  const [insightState, setInsightState] = useState('idle'); // idle | loading | done | error
+
+  const fetchInsight = useCallback(async (n) => {
+    if (!n) return;
+    const cached = insightCache.get(n.id);
+    if (cached) {
+      setInsight(cached.insight || '');
+      setInsightAvailable(cached.available);
+      setInsightState(cached.available && cached.insight ? 'done' : 'error');
+      return;
+    }
+    // 未命中缓存：先清掉旧节点文案，进入加载态
+    setInsight(null);
+    setInsightState('loading');
+    try {
+      const data = await exploreApi.getNodeInsight(n.id);
+      const text = data?.insight || '';
+      const available = !!data?.available;
+      insightCache.set(n.id, { insight: text, available });
+      setInsight(text);
+      setInsightAvailable(available);
+      setInsightState(text ? 'done' : 'error');
+    } catch {
+      setInsightState('error');
+    }
+  }, []);
+
+  // 节点切换时拉取（或命中缓存）AI 洞察 —— 这是「同步外部 API 数据到 state」的合法 effect。
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchInsight(node);
+  }, [node, fetchInsight]);
+
   if (!node) return null;
 
   const blog = node.blog;
@@ -31,17 +72,65 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
             ))}
           </div>
         </div>
-        <button
-          className='constellation-panel-close'
-          onClick={onClose}
-          aria-label='关闭'
-          type='button'
-        >
-          <X size={18} />
-        </button>
+        <div className='constellation-panel-actions'>
+          {onDrill && (
+            <button
+              className='constellation-panel-drill'
+              onClick={() => onDrill(node.id)}
+              aria-label='钻取此节点的子星座'
+              title='钻取子星座（聚焦）'
+              type='button'
+            >
+              <Focus size={16} />
+            </button>
+          )}
+          <button
+            className='constellation-panel-close'
+            onClick={onClose}
+            aria-label='关闭'
+            type='button'
+          >
+            <X size={18} />
+          </button>
+        </div>
       </header>
 
       <div className='constellation-panel-body'>
+        {/* AI 洞察（置顶） */}
+        <section className='constellation-panel-insight'>
+          <h4 className='constellation-panel-insight-title'>
+            <Sparkles size={14} /> AI 洞察
+          </h4>
+          {insightState === 'loading' && (
+            <div className='constellation-panel-insight-loading' aria-live='polite'>
+              <span className='constellation-loading-dots constellation-loading-dots--inline'>
+                <span /> <span /> <span />
+              </span>
+              <span className='constellation-panel-insight-loading-text'>正在解读…</span>
+            </div>
+          )}
+          {insightState === 'done' && insight && (
+            <p className='constellation-panel-insight-text'>{insight}</p>
+          )}
+          {insightState === 'error' && (
+            <p className='constellation-panel-insight-fallback'>
+              {insightAvailable === false
+                ? 'AI 洞察暂未启用'
+                : '洞察加载失败'}
+              <button
+                type='button'
+                className='constellation-panel-insight-retry'
+                onClick={() => {
+                  insightCache.delete(node.id);
+                  fetchInsight(node);
+                }}
+              >
+                重试
+              </button>
+            </p>
+          )}
+        </section>
+
         {node.desc && <p className='constellation-panel-desc'>{node.desc}</p>}
 
         {/* 信号指标 */}

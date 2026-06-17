@@ -22,6 +22,8 @@ export function draw(ctx, params) {
     time,
     reduced,
     categoryColor,
+    drillActive = false,
+    focusSet = null,
   } = params;
 
   const { tx, ty, scale } = transform;
@@ -39,6 +41,7 @@ export function draw(ctx, params) {
   const hasFocus = !!focusId;
 
   const dimAlpha = 0.12;
+  const drillDimAlpha = 0.06;
   const edgeBaseColor = palette.gray400;
 
   // 视口剔除边界（逆变换到 sim 坐标）
@@ -51,6 +54,8 @@ export function draw(ctx, params) {
   const inView = (x, y, pad = margin) =>
     x > viewLeft - pad && x < viewRight + pad && y > viewTop - pad && y < viewBottom + pad;
 
+  const inFocusSet = (id) => !!focusSet && focusSet.has(id);
+
   // ---- 连线 ----
   ctx.lineWidth = 1 / scale;
   for (const e of edges) {
@@ -58,6 +63,18 @@ export function draw(ctx, params) {
     const tn = e.__tn;
     if (!sn || !tn) continue;
     if (!inView(sn.x, sn.y) && !inView(tn.x, tn.y)) continue;
+
+    // 钻取模式：仅渲染聚焦子图内的边，其余完全隐藏
+    if (drillActive) {
+      if (!inFocusSet(sn.id) || !inFocusSet(tn.id)) continue;
+      ctx.globalAlpha = 0.4 + (e.strength || 0.5) * 0.5;
+      ctx.strokeStyle = palette.accent;
+      ctx.beginPath();
+      ctx.moveTo(sn.x, sn.y);
+      ctx.lineTo(tn.x, tn.y);
+      ctx.stroke();
+      continue;
+    }
 
     const involved =
       hasFocus &&
@@ -83,7 +100,10 @@ export function draw(ctx, params) {
 
     const isFocus = n.id === focusId;
     const isNeighbor = focusNeighbors && focusNeighbors.has(n.id);
-    const faded = hasFocus && !isFocus && !isNeighbor;
+    // 钻取模式下以 focusSet 决定明暗，优先级最高
+    const faded = drillActive
+      ? !inFocusSet(n.id)
+      : hasFocus && !isFocus && !isNeighbor;
     const r = nodeRadius(n.weight);
 
     // momentum 脉动（仅高 momentum 节点）
@@ -92,12 +112,12 @@ export function draw(ctx, params) {
       pr = r + Math.sin(time / 600 + (n.x || 0)) * r * 0.12 * (n.momentum || 0);
     }
 
-    ctx.globalAlpha = faded ? dimAlpha : 1;
+    ctx.globalAlpha = faded ? (drillActive ? drillDimAlpha : dimAlpha) : 1;
 
-    // 辉光：高 momentum 或 选中/悬停 节点用 accent
-    const glow = (n.momentum || 0) > 0.4 || isFocus;
+    // 辉光：高 momentum / 选中悬停 / 钻取聚焦子图 节点用 accent
+    const glow = (n.momentum || 0) > 0.4 || isFocus || (drillActive && inFocusSet(n.id));
     if (glow) {
-      ctx.shadowColor = isFocus ? palette.accent : palette.accent;
+      ctx.shadowColor = palette.accent;
       ctx.shadowBlur = (8 + (n.momentum || 0) * 16) / scale;
     } else {
       ctx.shadowBlur = 0;
@@ -119,8 +139,8 @@ export function draw(ctx, params) {
   }
   ctx.globalAlpha = 1;
 
-  // ---- 标签（按 scale 阈值）----
-  if (scale >= LABEL_SCALE_THRESHOLD) {
+  // ---- 标签（按 scale 阈值；钻取模式下聚焦子图标签全显，不受阈值限制）----
+  if (scale >= LABEL_SCALE_THRESHOLD || drillActive) {
     // 标签权重门槛随缩放递降：放大更严格、缩小更宽松，缓解标签突变
     const labelWeight = scale >= 1.2 ? 0.5 : scale >= 0.9 ? 0.35 : 0.25;
     ctx.font = `${12 / scale}px -apple-system, system-ui, sans-serif`;
@@ -129,16 +149,23 @@ export function draw(ctx, params) {
     for (const n of nodes) {
       if (n.x == null) continue;
       if (!inView(n.x, n.y)) continue;
-      // 大权重 或 选中/邻居 才显示标签，避免满屏文字
+      // 钻取模式：聚焦子图节点全显标签，其余不显
+      const drillIn = drillActive && inFocusSet(n.id);
+      const drillOut = drillActive && !inFocusSet(n.id);
+      if (drillOut) continue;
       const showLabel =
+        drillIn ||
         (n.weight || 0) > labelWeight ||
         n.id === focusId ||
         (focusNeighbors && focusNeighbors.has(n.id));
       if (!showLabel) continue;
       const isFocus = n.id === focusId;
-      const faded = hasFocus && !isFocus && !(focusNeighbors && focusNeighbors.has(n.id));
-      ctx.globalAlpha = faded ? dimAlpha : 0.9;
-      ctx.fillStyle = palette.textSecondary;
+      const faded =
+        drillActive && !drillIn
+          ? true
+          : hasFocus && !isFocus && !(focusNeighbors && focusNeighbors.has(n.id));
+      ctx.globalAlpha = faded ? (drillActive ? drillDimAlpha : dimAlpha) : 0.9;
+      ctx.fillStyle = drillIn ? palette.accent : palette.textSecondary;
       const r = nodeRadius(n.weight);
       ctx.fillText(n.label || n.id, n.x, n.y + r + 3 / scale);
     }

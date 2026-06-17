@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """AI summary generation service using LangChain."""
+
 import os
-from typing import Optional
 
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
@@ -105,3 +105,73 @@ async def generate_summary(title: str, content: str) -> str:
     except Exception as e:
         # Log and wrap other errors
         raise Exception(f"Failed to generate summary: {str(e)}")
+
+
+async def generate_node_insight(node: dict, neighbor_labels: list) -> str:
+    """
+    Generate a short AI insight for an Explore constellation node.
+
+    Explains where this tech sits in the author's knowledge graph and why it
+    connects to its neighbors — using only public node metadata (label,
+    category, description, tags, related blog article titles, GitHub
+    description, neighbor labels). No private/secret data is sent.
+
+    Args:
+        node: Explore graph node dict (label/category/desc/tags/blog/github).
+        neighbor_labels: Human-readable labels of the node's 1-hop neighbors.
+
+    Returns:
+        str: 70-150 character Chinese insight.
+
+    Raises:
+        ValueError: If the SiliconFlow API key is not configured.
+        Exception: If generation otherwise fails.
+    """
+    try:
+        model = get_ai_model()
+
+        label = node.get("label", "")
+        category = node.get("category", "")
+        desc = (node.get("desc") or "").strip()
+        tags = ", ".join(node.get("tags") or [])
+
+        blog = node.get("blog") or {}
+        article_titles = [a.get("title", "") for a in (blog.get("articles") or [])[:5]]
+        article_count = blog.get("articleCount", 0)
+
+        github = node.get("github") or {}
+        github_desc = (github.get("description") or "").strip()
+        github_stars = github.get("stars", 0)
+
+        neighbors = ", ".join(neighbor_labels) if neighbor_labels else "（暂无）"
+
+        prompt = f"""你是一位技术博客作者的知识星图向导。请根据以下节点信息，用一段话（70-150字，中文）解读这个技术/话题在作者知识体系中的位置：它是什么、为什么重要，以及它与关联节点之间的内在联系。语气自然、有洞察力，不要罗列数据，不要使用「该节点」这种机械称呼。
+
+节点：{label}
+类别：{category or "未分类"}
+描述：{desc or "（无）"}
+标签：{tags or "无"}
+相关博客（{article_count} 篇）：{"、".join(article_titles) if article_titles else "暂无"}
+GitHub：{github_desc or "无"}（{github_stars} stars）
+关联节点：{neighbors}
+
+解读："""
+
+        response = await model.ainvoke(prompt)
+        text = response.content.strip()
+
+        # Strip common prefixes the model sometimes prepends.
+        for prefix in ("解读：", "解读:", "洞察：", "洞察:"):
+            if text.startswith(prefix):
+                text = text[len(prefix) :].strip()
+                break
+
+        if len(text) > 400:
+            text = text[:400].rstrip() + "…"
+
+        return text
+
+    except ValueError:
+        raise
+    except Exception as e:
+        raise Exception(f"Failed to generate node insight: {str(e)}")

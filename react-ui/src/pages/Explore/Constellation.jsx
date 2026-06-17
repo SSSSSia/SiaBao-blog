@@ -4,14 +4,14 @@
  */
 
 import { useRef, useState } from 'react';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, ChevronRight, Focus, RefreshCw } from 'lucide-react';
 
 import HoverTooltip from './constellation/HoverTooltip';
 import NodePanel from './constellation/NodePanel';
 import { useConstellation } from './constellation/useConstellation';
 import './Constellation.css';
 
-export default function Constellation({ onViewList }) {
+export default function Constellation() {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -22,9 +22,13 @@ export default function Constellation({ onViewList }) {
     allNodes,
     selectedNode,
     hoveredNode,
+    focusId,
+    focusedNode,
     refresh,
     selectNode,
     clearSelection,
+    enterFocus,
+    exitFocus,
     getNode,
     getNeighbors,
     handlers,
@@ -45,7 +49,23 @@ export default function Constellation({ onViewList }) {
     <div className='constellation'>
       <div className='constellation-toolbar'>
         <div className='constellation-hint'>
-          <span>拖动平移 · 滚轮/双指缩放 · 点击查看</span>
+          {focusId && focusedNode ? (
+            // 聚焦模式面包屑（点击退出）
+            <button
+              type='button'
+              className='constellation-breadcrumb'
+              onClick={exitFocus}
+              aria-label='退出聚焦，返回全景'
+            >
+              <span className='constellation-breadcrumb-root'>全景</span>
+              <ChevronRight size={13} />
+              <span className='constellation-breadcrumb-current'>
+                {focusedNode.label || focusedNode.id}
+              </span>
+            </button>
+          ) : (
+            <span>拖动平移 · 滚轮/双指缩放 · 点击查看 · 双击钻取</span>
+          )}
         </div>
         <div className='constellation-toolbar-actions'>
           {meta && (
@@ -53,6 +73,17 @@ export default function Constellation({ onViewList }) {
               {meta.nodeCount} 节点 · {meta.edgeCount} 连线
               {meta.githubEnabled === false && ' · GitHub 已关闭'}
             </span>
+          )}
+          {focusId && (
+            <button
+              type='button'
+              className='constellation-refresh'
+              onClick={exitFocus}
+              aria-label='退出聚焦'
+            >
+              <Focus size={15} />
+              退出聚焦
+            </button>
           )}
           <button
             type='button'
@@ -87,11 +118,6 @@ export default function Constellation({ onViewList }) {
               <button type='button' onClick={refresh}>
                 重试
               </button>
-              {onViewList && (
-                <button type='button' onClick={onViewList}>
-                  切换到列表视图
-                </button>
-              )}
             </div>
           </div>
         )}
@@ -118,6 +144,7 @@ export default function Constellation({ onViewList }) {
             getNode={getNode}
             onSelectNode={selectNode}
             onClose={clearSelection}
+            onDrill={enterFocus}
           />
         )}
       </div>
@@ -132,8 +159,8 @@ const SOURCE_LABELS = { curated: '策展', blog: '博客', github: 'GitHub' };
 
 /**
  * 读屏可见的节点列表（visually-hidden，不影响视觉布局）。
- * 用 useConstellation 暴露的 allNodes 快照渲染每个节点的可读摘要。
- * 「列表」视图仍是更完整的可读浏览主路径。
+ * 用 useConstellation 暴露的 allNodes 快照渲染每个节点的可读摘要，
+ * 作为 Canvas 星图的无障碍主路径。
  */
 function ConstellationA11yList({ nodes }) {
   if (!nodes || nodes.length === 0) return null;

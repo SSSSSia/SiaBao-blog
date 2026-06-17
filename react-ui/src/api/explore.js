@@ -3,9 +3,12 @@
  * 复用 utils/request.js 的 get()，自动解包 { code, message, data } 信封
  */
 
-import { get } from '../utils/request';
+import { get, post } from '../utils/request';
 
 const API_BASE = '/api';
+
+// AI 洞察生成较慢（数秒），需超过 utils/request.js 默认的 10s 超时。
+const INSIGHT_TIMEOUT = 60000;
 
 export const exploreApi = {
   /**
@@ -18,6 +21,14 @@ export const exploreApi = {
     const params = opts.force ? { force: true } : {};
     return get(`${API_BASE}/explore/graph`, params);
   },
+
+  /**
+   * 获取某个节点的 AI 洞察（后端按内容指纹缓存）
+   * @param {string} nodeId
+   * @returns {Promise<{ insight: string, available: boolean }>}
+   */
+  getNodeInsight: (nodeId) =>
+    post(`${API_BASE}/explore/nodes/${encodeURIComponent(nodeId)}/insight`, {}, {}, INSIGHT_TIMEOUT),
 
   /**
    * 获取原始 GitHub 趋势缓存（调试 / 预览用）

@@ -85,6 +85,7 @@ export function useConstellation(canvasRef, containerRef) {
   const [hoveredId, setHoveredId] = useState(null);
   const [scale, setScale] = useState(1);
   const [allNodes, setAllNodes] = useState([]); // 无障碍节点列表快照
+  const [focusId, setFocusId] = useState(null); // 语义钻取的聚焦节点（驱动面包屑 UI）
 
   // refs（仿真热数据，不入 React state）
   const nodesRef = useRef([]);
@@ -108,6 +109,12 @@ export function useConstellation(canvasRef, containerRef) {
   const renderNodesRef = useRef([]); // 渲染子集（窄屏裁剪）
   const renderEdgesRef = useRef([]); // 与渲染子集匹配的边
   const initializedRef = useRef(false);
+  // 语义钻取（聚焦模式）：focusId 为钻入的节点，focusSet = 它 + 1-hop 邻居
+  const focusIdRef = useRef(null);
+  const focusSetRef = useRef(null);
+  const savedTransformRef = useRef(null); // 进聚焦前保存，退出时还原
+  const camAnimRef = useRef(null); // 相机补间 {from, to, start, dur, onDone}
+  const lastClickRef = useRef(null); // 双击判定 {id, t}
 
   const neighborsOf = useCallback((id) => {
     if (!id) return null;
@@ -132,18 +139,61 @@ export function useConstellation(canvasRef, containerRef) {
       time: performance.now(),
       reduced: reducedRef.current,
       categoryColor,
+      drillActive: !!focusIdRef.current,
+      focusSet: focusSetRef.current,
     });
   }, [canvasRef, neighborsOf]);
 
+  // ---- 相机补间（聚焦/退出聚焦时平滑过渡 transform）----
+  const animateTransform = useCallback(
+    (to, onDone) => {
+      if (reducedRef.current) {
+        transformRef.current = { ...to };
+        setScale(to.scale);
+        paint();
+        onDone?.();
+        return;
+      }
+      const from = { ...transformRef.current };
+      camAnimRef.current = {
+        from,
+        to,
+        start: performance.now(),
+        dur: 450,
+        onDone,
+      };
+      kickLoop();
+    },
+    [kickLoop, paint],
+  );
+
   const loop = useCallback(() => {
     const sim = simRef.current;
-    if (sim && sim.alpha() > ALPHA_MIN) {
-      // d3 auto-ticks; nothing to do but paint
+
+    // 推进相机补间
+    const cam = camAnimRef.current;
+    if (cam) {
+      const t = Math.min(1, (performance.now() - cam.start) / cam.dur);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      transformRef.current = {
+        tx: cam.from.tx + (cam.to.tx - cam.from.tx) * eased,
+        ty: cam.from.ty + (cam.to.ty - cam.from.ty) * eased,
+        scale: cam.from.scale + (cam.to.scale - cam.from.scale) * eased,
+      };
+      setScale(transformRef.current.scale);
+      if (t >= 1) {
+        const done = cam.onDone;
+        camAnimRef.current = null;
+        if (done) done();
+      }
     }
+
     paint();
-    // reduced-motion：无脉动，仿真冷却后停 rAF（交互时会再启动）
+
     const simHot = sim && sim.alpha() > ALPHA_MIN;
-    if (reducedRef.current && !simHot) {
+    const camActive = !!camAnimRef.current;
+    // reduced-motion：无脉动；仿真冷却 + 无相机动画时停 rAF（交互时再启动）
+    if (reducedRef.current && !simHot && !camActive) {
       rafRef.current = null;
       return;
     }
@@ -437,6 +487,47 @@ export function useConstellation(canvasRef, containerRef) {
     setSelectedId(null);
   }, []);
 
+  // ---- 语义钻取：聚焦到某节点的子星座 ----
+  const enterFocus = useCallback(
+    (id) => {
+      const node = nodeById.current.get(id);
+      if (!node || node.x == null) return;
+      const { w, h } = dimsRef.current;
+      // 已在聚焦 → 切换目标，无需再保存
+      if (!focusIdRef.current) {
+        savedTransformRef.current = { ...transformRef.current };
+      }
+      const focusSet = new Set([id, ...(neighborsOf(id) || [])]);
+      focusSetRef.current = focusSet;
+      focusIdRef.current = id;
+      setFocusId(id);
+      // 目标：把该节点居中并适度放大
+      const targetScale = Math.max(
+        Math.min(transformRef.current.scale * 1.5, MAX_SCALE),
+        1,
+      );
+      animateTransform({
+        tx: w / 2 - node.x * targetScale,
+        ty: h / 2 - node.y * targetScale,
+        scale: targetScale,
+      });
+    },
+    [animateTransform, neighborsOf],
+  );
+
+  const exitFocus = useCallback(() => {
+    if (!focusIdRef.current) return;
+    focusIdRef.current = null;
+    focusSetRef.current = null;
+    setFocusId(null);
+    const saved = savedTransformRef.current;
+    if (saved) {
+      animateTransform(saved, () => {
+        savedTransformRef.current = null;
+      });
+    }
+  }, [animateTransform]);
+
   // ---- pointer 事件 ----
   // 滚轮缩放：React 根绑定的 wheel 是 passive，preventDefault 无效（且会报
   // "passive event listener" 警告）。改用原生 non-passive 监听，才能阻止页面滚动。
@@ -563,6 +654,15 @@ export function useConstellation(canvasRef, containerRef) {
     // 点击判定（按下未移动）
     if (press && !press.moved) {
       if (press.nodeId) {
+        // 双击同一节点（300ms 内）→ 钻取聚焦；否则单击选中
+        const now = performance.now();
+        const last = lastClickRef.current;
+        const isDouble =
+          last && last.id === press.nodeId && now - last.t < 300;
+        lastClickRef.current = { id: press.nodeId, t: now };
+        if (isDouble) {
+          enterFocus(press.nodeId);
+        }
         selectNode(press.nodeId);
       } else {
         clearSelection();
@@ -570,7 +670,7 @@ export function useConstellation(canvasRef, containerRef) {
     }
     pressRef.current = null;
     kickLoop();
-  }, [canvasRef, clearPressTimer, clearSelection, kickLoop, selectNode]);
+  }, [canvasRef, clearPressTimer, clearSelection, enterFocus, kickLoop, selectNode]);
 
   const onPointerLeave = useCallback(() => {
     if (hoverIdRef.current) {
@@ -603,14 +703,17 @@ export function useConstellation(canvasRef, containerRef) {
     }
   }, [zoomAt]);
 
-  // Esc 关闭面板
+  // Esc：优先退出聚焦，否则关闭面板
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') clearSelection();
+      if (e.key === 'Escape') {
+        if (focusIdRef.current) exitFocus();
+        else clearSelection();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [clearSelection]);
+  }, [clearSelection, exitFocus]);
 
   const selectedNode = selectedId ? nodeById.current.get(selectedId) : null;
   const hoveredNode = hoveredId ? nodeById.current.get(hoveredId) : null;
@@ -624,9 +727,13 @@ export function useConstellation(canvasRef, containerRef) {
     selectedId,
     selectedNode,
     hoveredNode,
+    focusId,
+    focusedNode: focusId ? nodeById.current.get(focusId) : null,
     refresh: () => load(true),
     selectNode,
     clearSelection,
+    enterFocus,
+    exitFocus,
     getNode: (id) => (id ? nodeById.current.get(id) : null),
     getNeighbors: neighborsOf,
     // canvas 事件绑定（wheel 通过 useEffect 以 non-passive 原生监听）
