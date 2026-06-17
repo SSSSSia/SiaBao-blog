@@ -1,0 +1,141 @@
+/**
+ * Constellation — 知识星图主组件
+ * 挂载 Canvas + 编排 useConstellation hook 与 DOM 面板 / 浮层。
+ */
+
+import { useRef, useState } from 'react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
+
+import HoverTooltip from './constellation/HoverTooltip';
+import NodePanel from './constellation/NodePanel';
+import { useConstellation } from './constellation/useConstellation';
+import './Constellation.css';
+
+export default function Constellation({ onViewList }) {
+  const canvasRef = useRef(null);
+  const containerRef = useRef(null);
+
+  const {
+    loading,
+    error,
+    meta,
+    selectedNode,
+    hoveredNode,
+    refresh,
+    selectNode,
+    clearSelection,
+    getNode,
+    getNeighbors,
+    handlers,
+  } = useConstellation(canvasRef, containerRef);
+
+  // 浮层坐标（屏幕坐标，相对容器）
+  const [tipPos, setTipPos] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setTipPos({ x: e.clientX - rect.left + 14, y: e.clientY - rect.top + 14 });
+  };
+
+  const showHoverTip = !!hoveredNode && !selectedNode;
+
+  return (
+    <div className='constellation'>
+      <div className='constellation-toolbar'>
+        <div className='constellation-hint'>
+          <span>拖动平移 · 滚轮/双指缩放 · 点击查看</span>
+        </div>
+        <div className='constellation-toolbar-actions'>
+          {meta && (
+            <span className='constellation-meta'>
+              {meta.nodeCount} 节点 · {meta.edgeCount} 连线
+              {meta.githubEnabled === false && ' · GitHub 已关闭'}
+            </span>
+          )}
+          <button
+            type='button'
+            className='constellation-refresh'
+            onClick={refresh}
+            disabled={loading}
+            aria-label='刷新星图'
+          >
+            <RefreshCw size={15} className={loading ? 'constellation-spin' : ''} />
+            刷新
+          </button>
+        </div>
+      </div>
+
+      <div className='constellation-stage'>
+        {/* 加载态 */}
+        {loading && (
+          <div className='constellation-state'>
+            <div className='constellation-loading-dots'>
+              <span /> <span /> <span /> <span /> <span />
+            </div>
+            <p>正在构建星图…</p>
+          </div>
+        )}
+
+        {/* 错误态 */}
+        {error && !loading && (
+          <div className='constellation-state'>
+            <AlertCircle size={28} />
+            <p>星图加载失败</p>
+            <div className='constellation-state-actions'>
+              <button type='button' onClick={refresh}>
+                重试
+              </button>
+              {onViewList && (
+                <button type='button' onClick={onViewList}>
+                  切换到列表视图
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <canvas
+          ref={canvasRef}
+          className='constellation-canvas'
+          role='application'
+          aria-label='技术知识星图'
+          {...handlers}
+          onMouseMove={handleMouseMove}
+        />
+
+        {/* 悬停浮层（仅 hover 设备） */}
+        {showHoverTip && (
+          <HoverTooltip node={hoveredNode} x={tipPos.x} y={tipPos.y} />
+        )}
+
+        {/* 选中下钻面板 */}
+        {selectedNode && (
+          <NodePanel
+            node={selectedNode}
+            neighbors={getNeighbors(selectedNode.id)}
+            getNode={getNode}
+            onSelectNode={selectNode}
+            onClose={clearSelection}
+          />
+        )}
+      </div>
+
+      {/* 无障碍兜底：读屏可见的节点列表 */}
+      <ConstellationA11yList />
+    </div>
+  );
+}
+
+/**
+ * 因 useConstellation 未暴露全量 neighbors 视图，这里用一个轻量包装：
+ * 直接渲染 visually-hidden 列表。为避免重复拉取，列表内容用 hook 暴露的 meta。
+ * 完整节点文本列表暂以占位提示形式给出（无障碍主路径为「列表」视图切换）。
+ */
+function ConstellationA11yList() {
+  return (
+    <ul className='visually-hidden' aria-label='星图节点列表'>
+      <li>技术知识星图。请切换到「列表」视图以浏览全部技术话题的完整可读列表。</li>
+    </ul>
+  );
+}

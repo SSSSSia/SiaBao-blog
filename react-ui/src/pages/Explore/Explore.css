@@ -93,6 +93,46 @@
 }
 
 /* ===================================
+   视图切换 segmented control（星图 ↔ 列表）
+   =================================== */
+.explore-view-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  margin: 0 auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  animation: fadeIn 0.6s ease-out 0.15s both;
+}
+
+.explore-view-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.explore-view-tab:hover {
+  color: var(--text-primary);
+}
+
+.explore-view-tab.active {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+
+/* ===================================
    Bento Grid 布局
    =================================== */
 .explore-bento-grid {
