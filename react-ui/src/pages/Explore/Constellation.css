@@ -68,16 +68,6 @@
   border-color: var(--color-gray-400);
 }
 
-/* 主操作：同步 GitHub（耗时重操作，accent 描边 + 文字拉开层级，区别于一排普通按钮） */
-.constellation-refresh--sync {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-}
-.constellation-refresh--sync:hover:not(:disabled) {
-  background: var(--color-accent);
-  color: var(--bg-primary);
-}
-
 /* 激活态：全屏开启时 aria-pressed=true，读屏可读 + 视觉可辨（实底 + accent） */
 .constellation-refresh[aria-pressed='true'] {
   background: var(--bg-secondary);
