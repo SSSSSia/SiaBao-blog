@@ -60,7 +60,7 @@ async def get_graph(
     else:
         background_tasks.add_task(github_trending_service.get_github_data, False)
 
-    graph = await explore_service.build_explore_graph()
+    graph = await explore_service.build_explore_graph(force=force)
     return R.ok(
         data={
             "graph": graph,

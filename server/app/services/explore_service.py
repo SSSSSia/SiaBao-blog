@@ -181,15 +181,21 @@ def _build_blog_signals() -> tuple[dict, dict, list[dict], str]:
 # ---------------------------------------------------------------------------
 # Public entry
 # ---------------------------------------------------------------------------
-async def build_explore_graph() -> dict:
-    """Build (or return cached) the constellation graph: {nodes, edges, meta}."""
+async def build_explore_graph(force: bool = False) -> dict:
+    """Build (or return cached) the constellation graph: {nodes, edges, meta}.
+
+    ``force`` bypasses the in-memory cache so a refresh (which also forces a
+    GitHub re-fetch upstream) actually rebuilds the graph from fresh signals —
+    otherwise the graph stays pinned to its pre-refresh state for up to the TTL.
+    """
     global _graph_cache, _graph_built_at, _graph_blog_hash
 
     tag_agg, cat_agg, _published, blog_hash = _build_blog_signals()
 
     now = _now_ts()
     cache_valid = (
-        _graph_cache is not None
+        not force
+        and _graph_cache is not None
         and blog_hash == _graph_blog_hash
         and (now - _graph_built_at) < _GRAPH_TTL_SECONDS
     )

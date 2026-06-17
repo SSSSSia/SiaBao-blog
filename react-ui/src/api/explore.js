@@ -9,6 +9,8 @@ const API_BASE = '/api';
 
 // AI 洞察生成较慢（数秒），需超过 utils/request.js 默认的 10s 超时。
 const INSIGHT_TIMEOUT = 60000;
+// 强制刷新会同步抓取 GitHub Search API + 周榜（多语言），耗时较长。
+const GRAPH_FORCE_TIMEOUT = 60000;
 
 export const exploreApi = {
   /**
@@ -19,7 +21,12 @@ export const exploreApi = {
    */
   getGraph: (opts = {}) => {
     const params = opts.force ? { force: true } : {};
-    return get(`${API_BASE}/explore/graph`, params);
+    return get(
+      `${API_BASE}/explore/graph`,
+      params,
+      {},
+      opts.force ? GRAPH_FORCE_TIMEOUT : undefined
+    );
   },
 
   /**
