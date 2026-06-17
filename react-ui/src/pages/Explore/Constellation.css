@@ -62,6 +62,29 @@
   cursor: default;
 }
 
+/* 按下：轻微缩放 + 边框加深，补上缺失的触觉反馈 */
+.constellation-refresh:active:not(:disabled) {
+  transform: scale(0.97);
+  border-color: var(--color-gray-400);
+}
+
+/* 主操作：同步 GitHub（耗时重操作，accent 描边 + 文字拉开层级，区别于一排普通按钮） */
+.constellation-refresh--sync {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.constellation-refresh--sync:hover:not(:disabled) {
+  background: var(--color-accent);
+  color: var(--bg-primary);
+}
+
+/* 激活态：全屏开启时 aria-pressed=true，读屏可读 + 视觉可辨（实底 + accent） */
+.constellation-refresh[aria-pressed='true'] {
+  background: var(--bg-secondary);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
 .constellation-spin {
   animation: constellation-spin 1s linear infinite;
 }
