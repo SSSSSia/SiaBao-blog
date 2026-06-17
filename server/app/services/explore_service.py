@@ -61,6 +61,33 @@ def _now_ts() -> float:
     return datetime.now(timezone.utc).timestamp()
 
 
+def _now_dt() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _days_since(date_iso: str | None) -> float:
+    """Days between now and an ISO date, floored to 1 (handles missing / future)."""
+    if not date_iso:
+        return 1.0
+    try:
+        dt = datetime.fromisoformat(str(date_iso).replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return 1.0
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    days = (_now_dt() - dt).total_seconds() / 86400.0
+    return max(days, 1.0)
+
+
+def _mom_score(views: int, latest_date: str | None) -> float:
+    """Blog momentum proxy: reading volume scaled down by age of latest post.
+
+    Recent + heavily-read topics get higher momentum. No historical velocity is
+    tracked, so recency × volume is the best available signal.
+    """
+    return (views or 0) / _days_since(latest_date)
+
+
 def _blog_hash(articles: list[dict]) -> str:
     """Cheap content signature over published article id + published_at."""
     parts = sorted(
@@ -193,6 +220,7 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
     nodes: dict[str, dict] = {}
     raw_weights: dict[str, float] = {}
     raw_momentum: dict[str, float] = {}
+    blog_mom: dict[str, float] = {}  # blog-side momentum proxy, normalized later
     edges_accum: dict[tuple[str, str], tuple[float, str]] = {}
 
     def add_node(node_id: str, **fields) -> dict:
@@ -259,7 +287,7 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
             tags=[tag],
         )
         raw_weights[target_id] = raw_weights.get(target_id, 0.0) + tag_norm.get(tag, 0.0) * 0.4
-        raw_momentum.setdefault(target_id, 0.0)
+        blog_mom[target_id] = max(blog_mom.get(target_id, 0.0), _mom_score(agg["views"], agg["latestDate"]))
 
     # --- 3. Category anchor nodes ---
     cat_score = {k: v["views"] + v["articleCount"] for k, v in cat_agg.items()}
@@ -281,7 +309,7 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
             sources=["blog"],
         )
         raw_weights[nid] = 0.3 + 0.4 * cat_norm.get(cat, 0.0)
-        raw_momentum.setdefault(nid, 0.0)
+        blog_mom[nid] = max(blog_mom.get(nid, 0.0), _mom_score(agg["views"], agg["latestDate"]))
 
     # --- 4. GitHub repos ---
     if repos:
@@ -373,6 +401,14 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
             tn = _tag_node_id(tag, nodes)
             if tn and tn != cat_nid:
                 _add_edge(edges_accum, cat_nid, tn, 0.3, "category-cluster")
+
+    # Fold normalized blog-side momentum into raw_momentum (curated stays 0).
+    # GitHub repos already contribute 0..1 (normalized within their set), so the
+    # final normalization below keeps both sources comparable.
+    if blog_mom:
+        bm_norm = _normalize(blog_mom)
+        for nid, m in bm_norm.items():
+            raw_momentum[nid] = max(raw_momentum.get(nid, 0.0), m)
 
     # final weight / momentum normalization to 0..1
     if raw_weights:

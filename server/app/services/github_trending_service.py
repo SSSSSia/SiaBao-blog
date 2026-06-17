@@ -68,6 +68,16 @@ def _save_cache_atomic(data: dict) -> None:
         raise
 
 
+def _build_query(*qualifiers: str) -> str:
+    """Join GitHub Search API qualifiers with SPACES (not '+').
+
+    httpx encodes spaces to %20 correctly. A literal '+' would be sent as %2B
+    (a literal plus sign), producing a 422 'not a numeric value' error.
+    Kept as a pure function so the separator contract is unit-testable.
+    """
+    return " ".join(q for q in qualifiers if q)
+
+
 def _build_headers() -> dict[str, str]:
     headers = {
         "Accept": "application/vnd.github+json",
@@ -157,14 +167,14 @@ async def _fetch_via_search_api() -> dict | None:
             if rate_remaining is not None and rate_remaining <= 1:
                 logger.info("GitHub rate limit near zero, stopping early")
                 break
-            q = f"topic:{topic} stars:>50 pushed:>{week_ago}"
+            q = _build_query(f"topic:{topic}", "stars:>50", f"pushed:>{week_ago}")
             repos, rate_remaining = await _search_repos(client, q, per_page=8)
             for r in repos:
                 seen.setdefault(r["repo"], r)
 
         # Global recent hot list
         month_ago = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d")
-        global_q = f"stars:>1000 created:>{month_ago}"
+        global_q = _build_query("stars:>1000", f"created:>{month_ago}")
         repos, rate_remaining = await _search_repos(client, global_q, per_page=10)
         for r in repos:
             seen.setdefault(r["repo"], r)

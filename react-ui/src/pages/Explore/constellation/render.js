@@ -121,6 +121,8 @@ export function draw(ctx, params) {
 
   // ---- 标签（按 scale 阈值）----
   if (scale >= LABEL_SCALE_THRESHOLD) {
+    // 标签权重门槛随缩放递降：放大更严格、缩小更宽松，缓解标签突变
+    const labelWeight = scale >= 1.2 ? 0.5 : scale >= 0.9 ? 0.35 : 0.25;
     ctx.font = `${12 / scale}px -apple-system, system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
@@ -129,7 +131,7 @@ export function draw(ctx, params) {
       if (!inView(n.x, n.y)) continue;
       // 大权重 或 选中/邻居 才显示标签，避免满屏文字
       const showLabel =
-        (n.weight || 0) > 0.5 ||
+        (n.weight || 0) > labelWeight ||
         n.id === focusId ||
         (focusNeighbors && focusNeighbors.has(n.id));
       if (!showLabel) continue;

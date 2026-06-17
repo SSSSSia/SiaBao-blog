@@ -21,6 +21,14 @@ import { draw, resolveEdgeNodes } from './render';
 const ALPHA_MIN = 0.02;
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 3;
+const NARROW_WIDTH = 640; // ≤640 视为窄屏（与全站断点对齐）
+const NARROW_NODE_CAP = 60; // 窄屏渲染节点上限（仅前端裁剪，不改后端图）
+const LONG_PRESS_DELAY = 200; // 触屏长按判定阈值，区分「拖节点」与「平移」
+
+/** 窄屏初始退一档缩放，确保首屏看到全部星座而非局部 */
+function initialScale(width) {
+  return width && width <= NARROW_WIDTH ? 0.7 : 1;
+}
 
 /** 节点半径：weight 0..1 → 5..20 px */
 export function nodeRadius(weight = 0) {
@@ -76,6 +84,7 @@ export function useConstellation(canvasRef, containerRef) {
   const [selectedId, setSelectedId] = useState(null);
   const [hoveredId, setHoveredId] = useState(null);
   const [scale, setScale] = useState(1);
+  const [allNodes, setAllNodes] = useState([]); // 无障碍节点列表快照
 
   // refs（仿真热数据，不入 React state）
   const nodesRef = useRef([]);
@@ -95,6 +104,9 @@ export function useConstellation(canvasRef, containerRef) {
   const draggingRef = useRef(null); // {id} when dragging a node
   const panningRef = useRef(null); // {sx, sy, tx, ty}
   const pressRef = useRef(null); // pointerdown info for click vs drag
+  const pressTimerRef = useRef(null); // 触屏长按计时器
+  const renderNodesRef = useRef([]); // 渲染子集（窄屏裁剪）
+  const renderEdgesRef = useRef([]); // 与渲染子集匹配的边
   const initializedRef = useRef(false);
 
   const neighborsOf = useCallback((id) => {
@@ -109,8 +121,8 @@ export function useConstellation(canvasRef, containerRef) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     draw(ctx, {
-      nodes: nodesRef.current,
-      edges: edgesRef.current,
+      nodes: renderNodesRef.current,
+      edges: renderEdgesRef.current,
       transform: transformRef.current,
       dims: dimsRef.current,
       palette: paletteRef.current,
@@ -143,6 +155,59 @@ export function useConstellation(canvasRef, containerRef) {
       rafRef.current = requestAnimationFrame(loop);
     }
   }, [loop]);
+
+  // ---- 窄屏渲染裁剪（仅前端，不改后端图数据 / 选中 / 命中一致性用全量）----
+  const recomputeRenderSubset = useCallback(() => {
+    const all = nodesRef.current;
+    const { w } = dimsRef.current;
+    if (w && w <= NARROW_WIDTH && all.length > NARROW_NODE_CAP) {
+      const top = [...all]
+        .sort((a, b) => (b.weight || 0) - (a.weight || 0))
+        .slice(0, NARROW_NODE_CAP);
+      const idSet = new Set(top.map((n) => n.id));
+      renderNodesRef.current = top;
+      renderEdgesRef.current = edgesRef.current.filter(
+        (e) => idSet.has(e.source) && idSet.has(e.target),
+      );
+    } else {
+      renderNodesRef.current = all;
+      renderEdgesRef.current = edgesRef.current;
+    }
+  }, []);
+
+  // ---- 节点拖动（桌面即时 / 触屏长按后启动）----
+  const beginNodeDrag = useCallback(
+    (node) => {
+      draggingRef.current = { id: node.id };
+      const sim = simRef.current;
+      if (sim && !reducedRef.current) {
+        node.fx = node.x;
+        node.fy = node.y;
+        sim.alphaTarget(0.3).restart();
+        kickLoop();
+      }
+    },
+    [kickLoop],
+  );
+
+  const clearPressTimer = useCallback(() => {
+    if (pressTimerRef.current != null) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  }, []);
+
+  const startNodePress = useCallback(
+    (node) => {
+      // 触屏：长按 LONG_PRESS_DELAY 后才进入拖动，避免与单指平移冲突
+      clearPressTimer();
+      pressTimerRef.current = setTimeout(() => {
+        pressTimerRef.current = null;
+        beginNodeDrag(node);
+      }, LONG_PRESS_DELAY);
+    },
+    [beginNodeDrag, clearPressTimer],
+  );
 
   // ---- 初始化仿真 ----
   const initSimulation = useCallback(() => {
@@ -197,12 +262,16 @@ export function useConstellation(canvasRef, containerRef) {
       sim.restart();
     }
 
-    // 初始变换：居中
-    transformRef.current = { tx: 0, ty: 0, scale: 1 };
-    setScale(1);
+    // 初始变换：居中（窄屏退一档缩放，仍以画布中心为原点居中）
+    const s = initialScale(w);
+    const tx = (w * (1 - s)) / 2;
+    const ty = (h * (1 - s)) / 2;
+    transformRef.current = { tx, ty, scale: s };
+    setScale(s);
     initializedRef.current = true;
+    recomputeRenderSubset();
     kickLoop();
-  }, [kickLoop]);
+  }, [kickLoop, recomputeRenderSubset]);
 
   // ---- 取数 ----
   const load = useCallback(
@@ -233,6 +302,19 @@ export function useConstellation(canvasRef, containerRef) {
         });
         adjacency.current = adj;
 
+        // 无障碍快照（轻量字段，供读屏列表渲染）
+        setAllNodes(
+          nodesRef.current.map((n) => ({
+            id: n.id,
+            label: n.label || n.id,
+            category: n.category,
+            sources: n.sources || [],
+            weight: n.weight || 0,
+            blog: n.blog || null,
+          })),
+        );
+        recomputeRenderSubset();
+
         initializedRef.current = false;
         initSimulation();
         paint();
@@ -243,7 +325,7 @@ export function useConstellation(canvasRef, containerRef) {
         setLoading(false);
       }
     },
-    [initSimulation, paint],
+    [initSimulation, paint, recomputeRenderSubset],
   );
 
   useEffect(() => {
@@ -270,15 +352,19 @@ export function useConstellation(canvasRef, containerRef) {
       const ctx = canvas.getContext('2d');
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (initializedRef.current && simRef.current) {
-        // 重新居中
-        simRef.current
-          .force('center', forceCenter(w / 2, h / 2))
-          .alpha(0.3)
-          .restart();
-        kickLoop();
+        // 重新居中：reduced-motion 下不重启动画，仅 tick 若干步重定位
+        const sim = simRef.current;
+        sim.force('center', forceCenter(w / 2, h / 2));
+        if (reducedRef.current) {
+          for (let i = 0; i < 60 && sim.alpha() > ALPHA_MIN; i++) sim.tick();
+        } else {
+          sim.alpha(0.3).restart();
+          kickLoop();
+        }
       } else {
         initSimulation();
       }
+      recomputeRenderSubset();
       paint();
     };
 
@@ -294,10 +380,11 @@ export function useConstellation(canvasRef, containerRef) {
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       if (simRef.current) simRef.current.stop();
+      if (pressTimerRef.current != null) clearTimeout(pressTimerRef.current);
     };
   }, []);
 
-  // ---- 命中检测 ----
+  // ---- 命中检测（仅检测当前渲染子集，避免点击不可见节点）----
   const hitTest = useCallback((clientX, clientY) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
@@ -306,7 +393,7 @@ export function useConstellation(canvasRef, containerRef) {
     const sx = (clientX - rect.left - tx) / scale;
     const sy = (clientY - rect.top - ty) / scale;
     // 从大节点（半径大）优先命中：按半径降序遍历
-    const sorted = nodesRef.current
+    const sorted = renderNodesRef.current
       .map((n) => ({ n, r: nodeRadius(n.weight) }))
       .sort((a, b) => b.r - a.r);
     for (const { n, r } of sorted) {
@@ -356,31 +443,33 @@ export function useConstellation(canvasRef, containerRef) {
     zoomAt(e.clientX, e.clientY, factor);
   }, [zoomAt]);
 
-  const onPointerDown = useCallback((e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.setPointerCapture(e.pointerId);
-    const node = hitTest(e.clientX, e.clientY);
-    pressRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      nodeId: node ? node.id : null,
-      moved: false,
-    };
-    if (node) {
-      draggingRef.current = { id: node.id };
-      const sim = simRef.current;
-      if (sim && !reducedRef.current) {
-        node.fx = node.x;
-        node.fy = node.y;
-        sim.alphaTarget(0.3).restart();
-        kickLoop();
+  const onPointerDown = useCallback(
+    (e) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      canvas.setPointerCapture(e.pointerId);
+      const node = hitTest(e.clientX, e.clientY);
+      pressRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        nodeId: node ? node.id : null,
+        moved: false,
+      };
+      clearPressTimer();
+      if (node) {
+        // 触屏需长按 200ms 才进入拖动，期间移动则视为平移；桌面即时拖动。
+        if (e.pointerType === 'touch') {
+          startNodePress(node);
+        } else {
+          beginNodeDrag(node);
+        }
+      } else {
+        const t = transformRef.current;
+        panningRef.current = { sx: e.clientX, sy: e.clientY, tx: t.tx, ty: t.ty };
       }
-    } else {
-      const t = transformRef.current;
-      panningRef.current = { sx: e.clientX, sy: e.clientY, tx: t.tx, ty: t.ty };
-    }
-  }, [canvasRef, hitTest, kickLoop]);
+    },
+    [canvasRef, hitTest, startNodePress, beginNodeDrag, clearPressTimer],
+  );
 
   const onPointerMove = useCallback((e) => {
     const press = pressRef.current;
@@ -388,6 +477,19 @@ export function useConstellation(canvasRef, containerRef) {
       const movedDist =
         Math.abs(e.clientX - press.x) + Math.abs(e.clientY - press.y);
       if (movedDist > 4) press.moved = true;
+    }
+
+    // 触屏长按等待中移动 → 取消长按，转为平移
+    if (
+      press &&
+      press.moved &&
+      pressTimerRef.current != null &&
+      !draggingRef.current &&
+      !panningRef.current
+    ) {
+      clearPressTimer();
+      const t = transformRef.current;
+      panningRef.current = { sx: press.x, sy: press.y, tx: t.tx, ty: t.ty };
     }
 
     // 拖节点
@@ -423,7 +525,7 @@ export function useConstellation(canvasRef, containerRef) {
       setHoveredId(id);
       paint();
     }
-  }, [canvasRef, hitTest, paint]);
+  }, [canvasRef, hitTest, paint, clearPressTimer]);
 
   const onPointerUp = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -434,6 +536,7 @@ export function useConstellation(canvasRef, containerRef) {
         /* ignore */
       }
     }
+    clearPressTimer();
     const press = pressRef.current;
     // 释放拖动节点
     if (draggingRef.current) {
@@ -458,7 +561,7 @@ export function useConstellation(canvasRef, containerRef) {
     }
     pressRef.current = null;
     kickLoop();
-  }, [canvasRef, clearSelection, kickLoop, selectNode]);
+  }, [canvasRef, clearPressTimer, clearSelection, kickLoop, selectNode]);
 
   const onPointerLeave = useCallback(() => {
     if (hoverIdRef.current) {
@@ -507,6 +610,7 @@ export function useConstellation(canvasRef, containerRef) {
     loading,
     error,
     meta,
+    allNodes,
     scale,
     selectedId,
     selectedNode,

@@ -19,6 +19,7 @@ export default function Constellation({ onViewList }) {
     loading,
     error,
     meta,
+    allNodes,
     selectedNode,
     hoveredNode,
     refresh,
@@ -122,20 +123,34 @@ export default function Constellation({ onViewList }) {
       </div>
 
       {/* 无障碍兜底：读屏可见的节点列表 */}
-      <ConstellationA11yList />
+      <ConstellationA11yList nodes={allNodes} />
     </div>
   );
 }
 
+const SOURCE_LABELS = { curated: '策展', blog: '博客', github: 'GitHub' };
+
 /**
- * 因 useConstellation 未暴露全量 neighbors 视图，这里用一个轻量包装：
- * 直接渲染 visually-hidden 列表。为避免重复拉取，列表内容用 hook 暴露的 meta。
- * 完整节点文本列表暂以占位提示形式给出（无障碍主路径为「列表」视图切换）。
+ * 读屏可见的节点列表（visually-hidden，不影响视觉布局）。
+ * 用 useConstellation 暴露的 allNodes 快照渲染每个节点的可读摘要。
+ * 「列表」视图仍是更完整的可读浏览主路径。
  */
-function ConstellationA11yList() {
+function ConstellationA11yList({ nodes }) {
+  if (!nodes || nodes.length === 0) return null;
   return (
     <ul className='visually-hidden' aria-label='星图节点列表'>
-      <li>技术知识星图。请切换到「列表」视图以浏览全部技术话题的完整可读列表。</li>
+      {nodes.map((n) => {
+        const sources = (n.sources || [])
+          .map((s) => SOURCE_LABELS[s] || s)
+          .join('、');
+        const count = n.blog?.articleCount;
+        return (
+          <li key={n.id}>
+            {n.label}（{n.category || '未分类'}，来源：{sources || '未知'}
+            {count ? `，${count} 篇文章` : ''}）
+          </li>
+        );
+      })}
     </ul>
   );
 }
