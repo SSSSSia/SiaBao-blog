@@ -78,6 +78,14 @@
 
 ![关于页](https://raw.githubusercontent.com/SSSSSia/SiaBao-blog/main/pic/about.png)
 
+### 知识星图（Explore）
+
+![知识星图总览](https://raw.githubusercontent.com/SSSSSia/SiaBao-blog/main/pic/explore.png)
+
+![Canvas 画布视图](https://raw.githubusercontent.com/SSSSSia/SiaBao-blog/main/pic/Canvas.png)
+
+![节点详情 / AI 洞察](https://raw.githubusercontent.com/SSSSSia/SiaBao-blog/main/pic/Canvas_detail.png)
+
 ### 后台管理
 
 ![后台仪表盘](https://raw.githubusercontent.com/SSSSSia/SiaBao-blog/main/pic/admin_dashboard.png)

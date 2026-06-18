@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      # 仅文档/截图/CI 配置变更不触发部署（仍可用 workflow_dispatch 手动触发）
+      - 'pic/**'
+      - 'docs/**'
+      - '*.md'
+      - '.github/**'
   workflow_dispatch:
 
 jobs:
