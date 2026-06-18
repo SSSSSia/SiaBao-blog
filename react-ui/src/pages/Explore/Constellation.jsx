@@ -203,7 +203,7 @@ export default function Constellation() {
               aria-label='退出聚焦'
             >
               <Focus size={15} />
-              退出聚焦
+              <span className='constellation-refresh-text'>退出聚焦</span>
             </button>
           )}
           <button
@@ -214,7 +214,7 @@ export default function Constellation() {
             title='复位到全景'
           >
             <Maximize2 size={15} />
-            复位
+            <span className='constellation-refresh-text'>复位</span>
           </button>
           <button
             type='button'
@@ -225,7 +225,7 @@ export default function Constellation() {
             title='快速刷新（不抓取 GitHub）'
           >
             <RefreshCw size={15} className={loading && !refreshingForce ? 'constellation-spin' : ''} />
-            刷新
+            <span className='constellation-refresh-text'>刷新</span>
           </button>
           <button
             type='button'
@@ -236,7 +236,9 @@ export default function Constellation() {
             title='同步 GitHub 趋势（可能需要数十秒）'
           >
             <Github size={15} className={refreshingForce ? 'constellation-spin' : ''} />
-            {refreshingForce ? '同步中…' : '同步 GitHub'}
+            <span className='constellation-refresh-text'>
+              {refreshingForce ? '同步中…' : '同步 GitHub'}
+            </span>
           </button>
           <button
             type='button'
@@ -247,7 +249,7 @@ export default function Constellation() {
             title={isFullscreen ? '退出全屏（Esc）' : '全屏放大'}
           >
             {isFullscreen ? <Minimize2 size={15} /> : <Expand size={15} />}
-            {isFullscreen ? '退出全屏' : '全屏'}
+            <span className='constellation-refresh-text'>{isFullscreen ? '退出全屏' : '全屏'}</span>
           </button>
         </div>
       </div>

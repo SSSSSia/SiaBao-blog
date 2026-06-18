@@ -9,8 +9,12 @@ import { ChevronRight, Flame, TrendingUp } from 'lucide-react';
 
 const TOP_N = 10;
 
+// 移动端默认折叠浮层，避免遮挡画布；用户可手动展开。
+const isMobileViewport = () =>
+  typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+
 export default function TrendingSidebar({ nodes, flyToNode }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(isMobileViewport);
 
   const ranked = useMemo(() => {
     return [...(nodes || [])]

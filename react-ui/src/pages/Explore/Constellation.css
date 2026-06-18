@@ -62,6 +62,11 @@
   cursor: default;
 }
 
+/* 按钮文字标签：窄屏隐藏只留图标，由移动端断点控制 */
+.constellation-refresh-text {
+  white-space: nowrap;
+}
+
 /* 按下：轻微缩放 + 边框加深，补上缺失的触觉反馈 */
 .constellation-refresh:active:not(:disabled) {
   transform: scale(0.97);
@@ -90,6 +95,7 @@
   position: relative;
   width: 100%;
   height: 72vh;
+  height: 72dvh; /* 移动端地址栏伸缩时按动态视口高度，避免画布反复跳动 */
   min-height: 380px;
   max-height: 880px;
   background: var(--bg-secondary);
@@ -710,6 +716,7 @@
 @media (max-width: 768px) {
   .constellation-stage {
     height: 64vh;
+    height: 64dvh; /* 移动端动态视口高度，消除地址栏伸缩时的跳动 */
   }
   .constellation-panel {
     top: auto;
@@ -717,7 +724,10 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    max-height: 70vh;
+    /* 相对 stage 高度而非视口：stage 只有 64dvh，若用 70dvh 面板会顶破 stage 上沿，
+       被 stage 的 overflow:hidden 裁掉——含「聚焦/关闭」按钮的头部就此消失、且无法滚回。
+       限到 100% 保证头部永远在可见区内，留 space-2 作顶部一缝以示 sheet。 */
+    max-height: calc(100% - var(--space-2));
     border-left: none;
     border-top: 1px solid var(--bg-tertiary);
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.06);
@@ -727,7 +737,7 @@
   }
 }
 
-/* 小手机：提示文案显式常驻 */
+/* 小手机：提示文案显式常驻 + 工具栏纵向堆叠 + 按钮图标化 */
 @media (max-width: 640px) {
   .constellation-hint {
     display: block;
@@ -735,7 +745,29 @@
     font-size: 0.72rem;
   }
   .constellation-toolbar {
+    flex-direction: column;
+    align-items: stretch;
     gap: var(--space-1);
+  }
+  /* 搜索框独占一行（768 断点已设 flex-basis:100%），操作区再独占一行。
+     注：搜索框的「不可 flex-grow」修复已下移到文件末尾的「新组件响应式」区——
+     基类 .constellation-search（flex:1 1 200px）定义在本块之后，特异性相同时后写的会赢，
+     若把修复留在这里会被基类静默覆盖，纵向布局下搜索框仍会被撑高、把按钮挤出屏幕。 */
+  .constellation-toolbar-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.3rem;
+  }
+  /* 窄屏只留图标，文字交给 aria-label，避免长标签挤爆溢出 */
+  .constellation-refresh-text {
+    display: none;
+  }
+  .constellation-refresh {
+    padding: 0.4rem;
+  }
+  /* 节点/连线计数在窄屏让位给操作按钮 */
+  .constellation-meta {
+    display: none;
   }
 }
 
@@ -1117,6 +1149,24 @@
   }
   .constellation-trending {
     width: 150px;
+    /* 条目多时不超出 stage，内部可滚动 */
+    max-height: calc(100% - var(--space-2) * 2);
+    overflow-y: auto;
+  }
+  /* NodePanel 变底部 sheet 时完全覆盖左下区域，图例让位；关闭后自动回归 */
+  .constellation-stage:has(.constellation-panel) .constellation-legend {
+    display: none;
+  }
+}
+
+/* 小手机：纵向工具栏里搜索框不可 flex-grow，否则会被纵向撑成很高的长条、
+   把下方按钮挤出全屏遮罩（fixed 不可滚动）而彻底看不到。
+   放在「新组件响应式」区、且位于基类 .constellation-search（flex:1 1 200px）之后，
+   同特异性下后写的本规则才能压过基类生效（见上文 640 断点注释）。 */
+@media (max-width: 640px) {
+  .constellation-search {
+    flex: 0 1 auto; /* 不生长：只占内容高度 */
+    max-width: none; /* 横向由 align-items:stretch 撑满整行 */
   }
 }
 

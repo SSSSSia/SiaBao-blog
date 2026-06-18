@@ -10,9 +10,16 @@ import { ChevronRight } from 'lucide-react';
 
 const LS_KEY = 'explore_legend_collapsed';
 
+// 移动端默认折叠浮层，避免遮挡画布；用户可手动展开。
+const isMobileViewport = () =>
+  typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+
 function readInitialCollapsed() {
   try {
-    return window.localStorage.getItem(LS_KEY) === '1';
+    const stored = window.localStorage.getItem(LS_KEY);
+    // 用户明确设置过偏好则尊重，否则在移动端默认折叠。
+    if (stored !== null) return stored === '1';
+    return isMobileViewport();
   } catch {
     return false;
   }
