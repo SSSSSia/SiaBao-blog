@@ -21,7 +21,9 @@ jobs:
           # passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script_stop: false
           timeout: 15m
-          command_timeout: 30m
+          # 依赖大改（如引入 langchain 全家桶）时，首次 pip install 较慢，
+          # 给足执行时间避免 docker compose build 被中途杀掉导致部署超时。
+          command_timeout: 60m
           script: |
             set -e  # Exit immediately if a command exits with a non-zero status
             echo "=== Starting Deployment ==="

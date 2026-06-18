@@ -18,7 +18,10 @@ RUN apt-get update && apt-get install -y \
 COPY server/requirements.txt server/pyproject.toml ./
 
 # 安装 Python 依赖
-RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+# 用 BuildKit 缓存挂载持久化 pip 下载缓存：依赖层一旦被击穿（如 requirements.txt 改动），
+# wheel 也只会从镜像源下载一次，后续重跑命中本地缓存，秒级完成，避免部署超时。
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
 # 复制源代码
 COPY server/app/ ./app/
