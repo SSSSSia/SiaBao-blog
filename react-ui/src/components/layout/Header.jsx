@@ -18,6 +18,12 @@ export default function Header() {
     setMobileMenuOpen((prev) => !prev)
   }
 
+  // '/' 用精确匹配，其余按前缀匹配，使 /articles/:id 也能高亮「文章」
+  const isActive = (path) =>
+    path === '/'
+      ? location.pathname === '/'
+      : location.pathname === path || location.pathname.startsWith(`${path}/`)
+
   return (
     <header className='header'>
       <div className='container header-container'>
@@ -30,7 +36,7 @@ export default function Header() {
             <Link
               key={link.path}
               to={link.path}
-              className={`header-nav-link ${location.pathname === link.path ? 'active' : ''}`}
+              className={`header-nav-link ${isActive(link.path) ? 'active' : ''}`}
               onClick={() => setMobileMenuOpen(false)}
             >
               {link.label}

@@ -15,6 +15,7 @@ const EMPTY_STATS = {
 // 缓存统计数据 5 分钟
 const CACHE_DURATION = 5 * 60 * 1000
 let cachedStats = null
+let cachedHeatmap = {}
 let cacheTime = 0
 
 function Dashboard() {
@@ -33,6 +34,7 @@ function Dashboard() {
         const now = Date.now()
         if (cachedStats && now - cacheTime < CACHE_DURATION) {
           setStats(cachedStats)
+          setHeatmap(cachedHeatmap)
           setLoading(false)
           return
         }
@@ -60,6 +62,7 @@ function Dashboard() {
 
         // 更新缓存和状态
         cachedStats = transformedStats
+        cachedHeatmap = heatmapData
         cacheTime = now
         setStats(transformedStats)
         setHeatmap(heatmapData)

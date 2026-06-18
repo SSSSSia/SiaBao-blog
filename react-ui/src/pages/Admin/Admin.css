@@ -57,6 +57,12 @@
   color: var(--text-primary);
 }
 
+.nav-item-active {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 /* 返回前台按钮样式 - 固定在侧边栏底部 */
 .nav-back-to-frontend {
   margin-top: auto;

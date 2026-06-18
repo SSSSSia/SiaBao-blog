@@ -1,4 +1,4 @@
-import { Outlet, Link, useNavigate } from 'react-router-dom'
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { User, Menu, X } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
@@ -8,8 +8,18 @@ import './Admin.css'
 function Admin() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const sidebarNavRef = useRef(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // 按前缀匹配高亮当前导航项，使 /admin/articles/:id/edit 也高亮「文章管理」
+  const adminNavItems = [
+    { path: '/admin/dashboard', label: '仪表板' },
+    { path: '/admin/articles', label: '文章管理' },
+    { path: '/admin/settings', label: '站点配置' },
+  ]
+  const isActive = (path) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`)
 
   const toggleSidebar = () => {
     setSidebarOpen(prev => !prev)
@@ -125,9 +135,15 @@ function Admin() {
         </div>
 
         <nav className="sidebar-nav" ref={sidebarNavRef}>
-          <Link to="/admin/dashboard" className="nav-item">仪表板</Link>
-          <Link to="/admin/articles" className="nav-item">文章管理</Link>
-          <Link to="/admin/settings" className="nav-item">站点配置</Link>
+          {adminNavItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`nav-item ${isActive(item.path) ? 'nav-item-active' : ''}`}
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         {/* 返回前台按钮 - 放在底部 */}
