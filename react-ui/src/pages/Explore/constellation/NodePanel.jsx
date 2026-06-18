@@ -16,6 +16,12 @@ const INSIGHT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 const LS_KEY = 'explore_insight_cache';
 const insightCache = new Map();
 
+// 与后端 prompt 版本同步（见 server/app/api/explore.py 的 _INSIGHT_PROMPT_VERSION）。
+// 后端改了洞察 prompt / 话术后，两端都要 bump：前端 localStorage 缓存 key 只含
+// node.id，不加版本的话旧洞察会在 24h TTL 内一直命中、永远刷不出新文案——
+// 而且命中后根本不会请求后端，所以重启后端也没用。
+const INSIGHT_PROMPT_VERSION = 2;
+
 function loadLSCache() {
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -23,7 +29,12 @@ function loadLSCache() {
     const obj = JSON.parse(raw);
     const now = Date.now();
     for (const [id, entry] of Object.entries(obj)) {
-      if (entry && typeof entry === 'object' && now - entry.ts < INSIGHT_TTL_MS) {
+      if (
+        entry &&
+        typeof entry === 'object' &&
+        now - entry.ts < INSIGHT_TTL_MS &&
+        entry.v === INSIGHT_PROMPT_VERSION // 版本不符（含旧版无 v 字段）直接丢弃，强制重新生成
+      ) {
         insightCache.set(id, { insight: entry.insight, available: entry.available });
       }
     }
@@ -36,7 +47,7 @@ function persistLSCache() {
   try {
     const obj = {};
     for (const [id, v] of insightCache.entries()) {
-      obj[id] = { ...v, ts: Date.now() };
+      obj[id] = { ...v, v: INSIGHT_PROMPT_VERSION, ts: Date.now() };
     }
     localStorage.setItem(LS_KEY, JSON.stringify(obj));
   } catch {
