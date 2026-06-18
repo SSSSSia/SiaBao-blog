@@ -26,7 +26,7 @@
 
 ### 内容管理
 
-- **文章系统** - 支持 Markdown 写作，代码高亮，数学公式渲染
+- **文章系统** - 支持 Markdown 写作，代码高亮、数学公式（KaTeX）、Mermaid 流程图渲染（带全屏查看）
 - **分类标签** - 灵活的文章分类和标签管理
 - **全文搜索** - 快速检索文章内容
 - **互动功能** - 文章点赞、浏览统计、评论系统
@@ -37,6 +37,10 @@
 - **文章编辑器** - 实时预览的 Markdown 编辑器
 - **站点配置** - 自定义站点信息、Logo、社交链接
 - **图片管理** - 拖拽上传，自动清理未使用图片
+
+### 特色功能
+
+- **知识星图（Explore）** - 基于 Canvas + `d3-force` 的可视化图谱，融合博客标签/分类信号与实时 GitHub Trending 仓库，支持缩放、拖拽、命中检测；可选 AI 洞察生成（SSE 流式）
 
 ### 技术特性
 
@@ -53,9 +57,10 @@
 
 | 类型 | 技术 |
 |-----|------|
-| **前端** | React 19, Vite 7, React Router 7, Lucide Icons |
-| **后端** | FastAPI, Uvicorn, Pydantic, LangChain |
-| **渲染** | Marked, Markdown-it, Highlight.js, KaTeX |
+| **前端** | React 19, Vite 7, React Router 7, d3-force, Lucide Icons |
+| **后端** | FastAPI, Uvicorn, Pydantic, pydantic-settings |
+| **渲染** | Marked, Highlight.js, KaTeX, DOMPurify, Mermaid |
+| **认证** | JWT（python-jose + passlib bcrypt） |
 | **部署** | Docker, Nginx, Let's Encrypt |
 | **CI/CD** | GitHub Actions |
 
@@ -65,25 +70,25 @@
 
 ### 前台页面
 
-![主页](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/home.png)
+![主页](https://raw.githubusercontent.com/SSSSSia/SiaBao-blog/main/pic/home.png)
 
-![文章列表页](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/article.png)
+![文章列表页](https://raw.githubusercontent.com/SSSSSia/SiaBao-blog/main/pic/article.png)
 
-![文章详情页](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/articleDetail.png)
+![文章详情页](https://raw.githubusercontent.com/SSSSSia/SiaBao-blog/main/pic/articleDetail.png)
 
-![关于页](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/about.png)
+![关于页](https://raw.githubusercontent.com/SSSSSia/SiaBao-blog/main/pic/about.png)
 
 ### 后台管理
 
-![后台仪表盘](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/admin_dashboard.png)
+![后台仪表盘](https://raw.githubusercontent.com/SSSSSia/SiaBao-blog/main/pic/admin_dashboard.png)
 
-![后台文章管理页](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/admin_article.png)
+![后台文章管理页](https://raw.githubusercontent.com/SSSSSia/SiaBao-blog/main/pic/admin_article.png)
 
-![后台编辑文章页](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/admin_editArticle.png)
+![后台编辑文章页](https://raw.githubusercontent.com/SSSSSia/SiaBao-blog/main/pic/admin_editArticle.png)
 
-![后台站点配置页1](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/admin_settings1.png)
+![后台站点配置页1](https://raw.githubusercontent.com/SSSSSia/SiaBao-blog/main/pic/admin_settings1.png)
 
-![后台站点配置页2](https://github.com/SSSSSia/SiaBao-blog/blob/main/pic/admin_settings2.png)
+![后台站点配置页2](https://raw.githubusercontent.com/SSSSSia/SiaBao-blog/main/pic/admin_settings2.png)
 
 
 ---
@@ -93,7 +98,7 @@
 ### 环境要求
 
 - Node.js >= 18
-- Python >= 3.10
+- Python >= 3.13
 - Docker >= 24.0（可选）
 
 ### 本地开发
@@ -188,27 +193,40 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 ### 后端环境变量 (server/.env)
 
+完整模板见 `server/.env.example`，以下为关键项：
+
 ```env
 # 服务器配置
 HOST=0.0.0.0
 PORT=9090
+DEBUG=false
+
+# CORS 配置（逗号分隔多个源）
+CORS_ORIGINS=http://localhost:5173,http://localhost:4173
 
 # JWT 配置
-SECRET_KEY=your-secret-key
+SECRET_KEY=your-secret-key-change-this-use-openssl-rand-hex-32
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
 # 管理员凭据
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=admin123
+ADMIN_PASSWORD=change-this-to-a-secure-password
 
-# CORS 配置
-CORS_ORIGINS=http://localhost:5173
+# 文件上传
+MAX_UPLOAD_SIZE=10485760
+UPLOAD_DIR=data/uploads
 
-# AI 功能（可选）
+# AI 摘要生成（可选）
 SILICONFLOW_API_KEY=your-api-key
 SILICONFLOW_BASE_URL=https://api.siliconflow.cn/v1
 SILICONFLOW_MODEL=Qwen/Qwen2.5-7B-Instruct
+
+# 知识星图 / Explore（全部可选，零配置即可运行）
+EXPLORE_GITHUB_ENABLED=true
+GITHUB_TOKEN=                              # 可选：提升 GitHub API 限流到 5000/hr
+EXPLORE_CACHE_TTL=21600
+EXPLORE_MAX_NODES=120
 ```
 
 生成安全的密钥：
