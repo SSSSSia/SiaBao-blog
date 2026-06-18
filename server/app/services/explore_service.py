@@ -304,7 +304,7 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
             nid,
             label=cat,
             category=cat,
-            desc="分类",
+            desc=f"「{cat}」分类下的博客文章聚合节点",
             blog={
                 "articleCount": agg["articleCount"],
                 "views": agg["views"],
@@ -371,7 +371,14 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
                 _add_edge(edges_accum, concept_id, nid, 0.6 + 0.3 * gh_momentum, "shared-topic")
             elif language:
                 lang_node = f"lang:{language}"
-                add_node(lang_node, label=language, category="github", weight=0.25, momentum=0.0)
+                add_node(
+                    lang_node,
+                    label=language,
+                    category="github",
+                    desc=f"以 {language} 为主的 GitHub 仓库聚合节点",
+                    weight=0.25,
+                    momentum=0.0,
+                )
                 raw_weights.setdefault(lang_node, 0.25)
                 _add_edge(edges_accum, lang_node, nid, 0.4, "shared-language")
 

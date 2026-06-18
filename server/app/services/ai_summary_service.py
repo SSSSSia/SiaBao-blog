@@ -113,10 +113,20 @@ def _build_node_insight_prompt(node: dict, neighbor_labels: list) -> str:
     Shared by both the non-streaming (``generate_node_insight``) and streaming
     (``generate_node_insight_stream``) paths so the two cannot drift apart.
     Only public node data is sent to the model.
+
+    The prompt branches on the node's origin (``sources`` / id prefix) because a
+    one-size-fits-all「author's knowledge system」framing reads wrong on GitHub
+    trending repos (external projects) and on structural category/language anchor
+    nodes. Each branch gets its own persona and instruction.
     """
+    node_id = node.get("id", "")
+    sources = node.get("sources") or []
+    is_github = "github" in sources or node_id.startswith("gh:")
+    is_category = node_id.startswith("cat:")
+    is_language = node_id.startswith("lang:")
+
     label = node.get("label", "")
     category = node.get("category", "")
-    desc = (node.get("desc") or "").strip()
     tags = ", ".join(node.get("tags") or [])
 
     blog = node.get("blog") or {}
@@ -129,15 +139,58 @@ def _build_node_insight_prompt(node: dict, neighbor_labels: list) -> str:
 
     neighbors = ", ".join(neighbor_labels) if neighbor_labels else "（暂无）"
 
-    return f"""你是一位技术博客作者的知识星图向导。请根据以下节点信息，用一段话（70-150字，中文）解读这个技术/话题在作者知识体系中的位置：它是什么、为什么重要，以及它与关联节点之间的内在联系。语气自然、有洞察力，不要罗列数据，不要使用「该节点」这种机械称呼。
+    if is_github:
+        # GitHub trending 仓库是外部项目，而非作者自身知识 —— 换成生态视角，
+        # 避免模型硬编「作者在使用/深入掌握」之类站不住脚的话。
+        persona = "你是一位敏锐的技术趋势观察者。"
+        task = (
+            f"用一段话（70-150字，中文）介绍开源项目「{label}」在技术生态中的角色："
+            "它是做什么的、为什么当下值得开发者关注、它如何与图中相关的技术节点呼应。"
+            "语气自然、有洞察，不要罗列数据，不要说成是「作者的项目」或「作者正在使用」。"
+        )
+        fields = (
+            f"类别：{category or '未分类'}\n"
+            f"GitHub 简介：{github_desc or '（无）'}（{github_stars} stars）\n"
+            f"标签：{tags or '无'}\n"
+            f"关联节点：{neighbors}"
+        )
+    elif is_category or is_language:
+        # 分类/语言锚点是结构性聚合节点，只做轻量归类说明，
+        # 避免被要求「解读它在作者体系中的位置」时产生空泛/幻觉描述。
+        kind = "分类" if is_category else "编程语言"
+        persona = "你是技术知识星图的向导。"
+        task = (
+            f"用一句话（40-80字，中文）简述这个「{label}」{kind}聚类："
+            "它聚合了哪些方向的内容、整体覆盖面如何。简明客观，不要夸张、不要罗列。"
+        )
+        fields = (
+            f"{kind}：{label}\n"
+            f"相关博客：{article_count} 篇\n"
+            f"关联节点：{neighbors}"
+        )
+    else:
+        # 策展概念 / 博客标签：作者自身知识体系里的真节点。
+        desc = (node.get("desc") or "").strip()
+        persona = "你是一位技术博客作者的知识星图向导。"
+        task = (
+            "请根据以下节点信息，用一段话（70-150字，中文）解读这个技术/话题"
+            "在作者知识体系中的位置：它是什么、为什么重要，以及它与关联节点之间的内在联系。"
+            "语气自然、有洞察力，不要罗列数据，不要使用「该节点」这种机械称呼。"
+        )
+        fields = (
+            f"节点：{label}\n"
+            f"类别：{category or '未分类'}\n"
+            f"描述：{desc or '（无）'}\n"
+            f"标签：{tags or '无'}\n"
+            f"相关博客（{article_count} 篇）：{'、'.join(article_titles) if article_titles else '暂无'}\n"
+            f"关联节点：{neighbors}"
+        )
 
-节点：{label}
-类别：{category or "未分类"}
-描述：{desc or "（无）"}
-标签：{tags or "无"}
-相关博客（{article_count} 篇）：{"、".join(article_titles) if article_titles else "暂无"}
-GitHub：{github_desc or "无"}（{github_stars} stars）
-关联节点：{neighbors}
+    return f"""{persona}
+
+{task}
+
+{fields}
 
 解读："""
 
