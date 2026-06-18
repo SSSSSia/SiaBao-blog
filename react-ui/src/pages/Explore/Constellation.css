@@ -1,0 +1,1181 @@
+/**
+ * Constellation 知识星图样式
+ * 严格复用全站设计 token（--space-* / --bg-* / --text-* / --color-accent /
+ * --radius-sm / --transition-base），断点对齐 640 / 768 / 1024 / 480。
+ * 视觉克制：与现有极简页面风格统一，是「动态章节」而非炫技页。
+ */
+
+.constellation {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* ---------- 工具栏 ---------- */
+.constellation-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-1);
+}
+
+.constellation-hint {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+
+.constellation-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.constellation-meta {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+}
+
+.constellation-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.constellation-refresh:hover:not(:disabled) {
+  border-color: var(--color-gray-400);
+  color: var(--text-primary);
+}
+
+.constellation-refresh:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* 按钮文字标签：窄屏隐藏只留图标，由移动端断点控制 */
+.constellation-refresh-text {
+  white-space: nowrap;
+}
+
+/* 按下：轻微缩放 + 边框加深，补上缺失的触觉反馈 */
+.constellation-refresh:active:not(:disabled) {
+  transform: scale(0.97);
+  border-color: var(--color-gray-400);
+}
+
+/* 激活态：全屏开启时 aria-pressed=true，读屏可读 + 视觉可辨（实底 + accent） */
+.constellation-refresh[aria-pressed='true'] {
+  background: var(--bg-secondary);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.constellation-spin {
+  animation: constellation-spin 1s linear infinite;
+}
+
+@keyframes constellation-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- 舞台 ---------- */
+.constellation-stage {
+  position: relative;
+  width: 100%;
+  height: 72vh;
+  height: 72dvh; /* 移动端地址栏伸缩时按动态视口高度，避免画布反复跳动 */
+  min-height: 380px;
+  max-height: 880px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.constellation-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none; /* 自己处理触摸手势 */
+}
+
+.constellation-canvas:active {
+  cursor: grabbing;
+}
+
+/* ---------- 全屏模式（fixed 撑满视口，stage 吃满剩余高度） ---------- */
+.constellation.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000; /* 盖过 sticky header（z-index:100）与页脚 */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  box-sizing: border-box;
+  background: var(--bg-primary); /* 撑满不留底色缝 */
+  transform-origin: center;
+  animation: constellation-fs-in 0.24s ease both; /* 进入：淡入 + 放大，掩盖 fixed 跳变 */
+}
+
+.constellation.is-fullscreen .constellation-stage {
+  flex: 1; /* 吃掉除 toolbar 外的全部剩余高度 */
+  height: auto;
+  min-height: 0;
+  max-height: none;
+}
+
+@keyframes constellation-fs-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 退出全屏落位：返回流式布局后从略低处上浮 + 淡入。
+   起点保持可见（opacity 不归零），避免「整块消失再出现」的闪烁感。 */
+.constellation.is-settling {
+  animation: constellation-fs-settle 0.22s ease-out both;
+}
+
+@keyframes constellation-fs-settle {
+  from {
+    opacity: 0.55;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- 加载 / 错误态 ---------- */
+.constellation-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  z-index: 5;
+  background: var(--bg-secondary);
+}
+
+.constellation-state p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.constellation-state-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.constellation-state-actions button {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.constellation-state-actions button:hover {
+  border-color: var(--color-gray-400);
+}
+
+/* 占位点闪烁 */
+.constellation-loading-dots {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.constellation-loading-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-gray-400);
+  animation: constellation-pulse 1.2s ease-in-out infinite;
+}
+
+.constellation-loading-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+  background: var(--color-gray-600);
+}
+.constellation-loading-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.constellation-loading-dots span:nth-child(4) {
+  animation-delay: 0.45s;
+  background: var(--color-gray-600);
+}
+.constellation-loading-dots span:nth-child(5) {
+  animation-delay: 0.6s;
+}
+
+@keyframes constellation-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* ---------- 悬停浮层 ---------- */
+.constellation-tooltip {
+  position: absolute;
+  z-index: 10;
+  max-width: 220px;
+  padding: var(--space-1);
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  pointer-events: none;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.constellation-tooltip-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.constellation-tooltip-meta {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+}
+
+.constellation-tooltip-category,
+.constellation-tooltip-source {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  padding: 0.05rem 0.35rem;
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.constellation-tooltip-desc {
+  margin: 0.35rem 0 0;
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* ---------- 下钻面板 ---------- */
+.constellation-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(360px, 92%);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  border-left: 1px solid var(--bg-tertiary);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.05);
+  z-index: 8;
+  animation: fadeIn 0.4s ease-out;
+  overflow: hidden;
+}
+
+.constellation-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.constellation-panel-title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.constellation-panel-title {
+  margin: 0;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.constellation-panel-meta {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.3rem;
+}
+
+.constellation-panel-category,
+.constellation-panel-source {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.constellation-panel-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.constellation-panel-close:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.constellation-panel-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.constellation-panel-drill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.constellation-panel-drill:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: var(--bg-secondary);
+}
+
+/* 聚焦模式面包屑 */
+.constellation-breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: var(--transition-base);
+}
+
+.constellation-breadcrumb:hover {
+  color: var(--color-accent);
+}
+
+.constellation-breadcrumb-root {
+  color: var(--text-tertiary);
+}
+
+.constellation-breadcrumb-current {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.constellation-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.constellation-panel-desc {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+/* AI 洞察区（克制的 accent 强调，不破坏灰阶调性） */
+.constellation-panel-insight {
+  padding: var(--space-3);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  animation: fadeIn 0.35s ease-out;
+}
+
+.constellation-panel-insight-title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 var(--space-2);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.constellation-panel-insight-text {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+
+/* 流式输出：文本逐字增长 + 行末闪烁光标 */
+.constellation-panel-insight-cursor {
+  display: inline-block;
+  width: 0.5ch;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--color-accent);
+  animation: constellation-cursor-blink 1s step-end infinite;
+}
+
+@keyframes constellation-cursor-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .constellation-panel-insight-cursor {
+    animation: none;
+  }
+  .constellation-legend-body,
+  .constellation-legend-header,
+  .constellation-legend-toggle svg {
+    transition: none;
+  }
+  .constellation.is-fullscreen,
+  .constellation.is-settling {
+    animation: none; /* 全屏进入/落位动画对动效敏感用户禁用 */
+  }
+}
+
+.constellation-panel-insight-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.constellation-loading-dots--inline {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.constellation-loading-dots--inline span {
+  width: 5px;
+  height: 5px;
+  background: var(--color-accent);
+  border-radius: 50%;
+  animation: loadingPulse 1.2s ease-in-out infinite;
+}
+
+.constellation-loading-dots--inline span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.constellation-loading-dots--inline span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes loadingPulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+.constellation-panel-insight-loading-text {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+
+.constellation-panel-insight-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+
+.constellation-panel-insight-retry {
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.constellation-panel-insight-retry:hover {
+  color: var(--text-primary);
+}
+
+.constellation-panel-stats {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.constellation-panel-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.constellation-panel-stat-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.constellation-panel-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+}
+
+.constellation-panel-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 var(--space-1);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.constellation-panel-articles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.constellation-panel-article-link {
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: var(--transition-base);
+}
+
+.constellation-panel-article-link:hover {
+  color: var(--color-accent);
+}
+
+.constellation-panel-github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: var(--transition-base);
+}
+
+.constellation-panel-github-link:hover {
+  color: var(--color-accent);
+}
+
+.constellation-panel-github-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 0.35rem;
+  font-size: 0.74rem;
+  color: var(--text-tertiary);
+}
+
+.constellation-panel-github-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.constellation-panel-github-desc {
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.constellation-panel-tags {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.constellation-panel-tag {
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.constellation-panel-related {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.constellation-panel-related-chip {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  transition: var(--transition-base);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.constellation-panel-related-chip:hover {
+  border-color: var(--color-gray-400);
+  color: var(--text-primary);
+}
+
+/* ---------- 无障碍兜底 ---------- */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- 响应式 ---------- */
+
+/* 平板：面板变窄 */
+@media (max-width: 1024px) {
+  .constellation-panel {
+    width: min(300px, 88%);
+  }
+}
+
+/* 大手机：面板变底部 sheet */
+@media (max-width: 768px) {
+  .constellation-stage {
+    height: 64vh;
+    height: 64dvh; /* 移动端动态视口高度，消除地址栏伸缩时的跳动 */
+  }
+  .constellation-panel {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    /* 相对 stage 高度而非视口：stage 只有 64dvh，若用 70dvh 面板会顶破 stage 上沿，
+       被 stage 的 overflow:hidden 裁掉——含「聚焦/关闭」按钮的头部就此消失、且无法滚回。
+       限到 100% 保证头部永远在可见区内，留 space-2 作顶部一缝以示 sheet。 */
+    max-height: calc(100% - var(--space-2));
+    border-left: none;
+    border-top: 1px solid var(--bg-tertiary);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.06);
+  }
+  .constellation-hint {
+    display: none;
+  }
+}
+
+/* 小手机：提示文案显式常驻 + 工具栏纵向堆叠 + 按钮图标化 */
+@media (max-width: 640px) {
+  .constellation-hint {
+    display: block;
+    width: 100%;
+    font-size: 0.72rem;
+  }
+  .constellation-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-1);
+  }
+  /* 搜索框独占一行（768 断点已设 flex-basis:100%），操作区再独占一行。
+     注：搜索框的「不可 flex-grow」修复已下移到文件末尾的「新组件响应式」区——
+     基类 .constellation-search（flex:1 1 200px）定义在本块之后，特异性相同时后写的会赢，
+     若把修复留在这里会被基类静默覆盖，纵向布局下搜索框仍会被撑高、把按钮挤出屏幕。 */
+  .constellation-toolbar-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.3rem;
+  }
+  /* 窄屏只留图标，文字交给 aria-label，避免长标签挤爆溢出 */
+  .constellation-refresh-text {
+    display: none;
+  }
+  .constellation-refresh {
+    padding: 0.4rem;
+  }
+  /* 节点/连线计数在窄屏让位给操作按钮 */
+  .constellation-meta {
+    display: none;
+  }
+}
+
+/* 极小屏 */
+@media (max-width: 480px) {
+  .constellation-stage {
+    min-height: 320px;
+  }
+}
+
+/* ---------- 触屏：禁用依赖 hover 的浮层 ---------- */
+@media (hover: none) {
+  .constellation-tooltip {
+    display: none;
+  }
+}
+
+/* ---------- 减弱动效 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .constellation-spin,
+  .constellation-loading-dots span {
+    animation: none;
+  }
+  .constellation-panel,
+  .constellation-tooltip {
+    animation: none;
+  }
+  .constellation-refresh,
+  .constellation-panel-close,
+  .constellation-panel-article-link,
+  .constellation-panel-related-chip {
+    transition: none;
+  }
+}
+
+/* ===================================
+   新增组件：搜索框 / 上升榜 / 分类图例 / 主题按钮
+   =================================== */
+
+/* 舞台键盘聚焦轮廓 */
+.constellation-stage:focus {
+  outline: none;
+}
+.constellation-stage:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* ---------- 搜索框 ---------- */
+.constellation-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 200px;
+  max-width: 240px;
+  padding: 0.3rem 0.6rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-base);
+}
+
+.constellation-search:focus-within {
+  border-color: var(--color-gray-400);
+}
+
+.constellation-search-icon {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.constellation-search-input {
+  flex: 1;
+  min-width: 0;
+  margin-left: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.constellation-search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 12;
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.constellation-search-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: var(--transition-base);
+}
+
+.constellation-search-result.is-active,
+.constellation-search-result:hover {
+  background: var(--bg-secondary);
+}
+
+.constellation-search-result-cat {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  color: var(--text-tertiary);
+}
+
+/* ---------- 上升榜侧栏 ---------- */
+.constellation-trending {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 7;
+  width: 180px;
+  padding: var(--space-1) var(--space-1) calc(var(--space-1) * 0.6);
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(4px);
+}
+
+.constellation-trending-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.2rem 0.25rem var(--space-1);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.constellation-trending-header span {
+  flex: 1;
+  text-align: left;
+}
+
+.constellation-trending-chevron {
+  color: var(--text-tertiary);
+  transition: transform 0.2s ease;
+}
+
+.constellation-trending-chevron.is-collapsed {
+  transform: rotate(90deg);
+}
+
+.constellation-trending-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.constellation-trending-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.25rem 0.3rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: var(--transition-base);
+}
+
+.constellation-trending-item:hover {
+  background: var(--bg-secondary);
+}
+
+.constellation-trending-rank {
+  flex-shrink: 0;
+  width: 16px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-align: right;
+}
+
+.constellation-trending-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.constellation-trending-label {
+  font-size: 0.76rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.constellation-trending-bar-wrap {
+  height: 3px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.constellation-trending-bar {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 2px;
+}
+
+.constellation-trending-flame {
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+/* ---------- 分类图例 ---------- */
+.constellation-legend {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  z-index: 7;
+  max-width: 260px;
+  padding: var(--space-1);
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.constellation-legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+  margin-bottom: 0.4rem;
+  transition: margin-bottom 0.22s ease;
+}
+
+.constellation-legend.is-collapsed .constellation-legend-header {
+  margin-bottom: 0;
+}
+
+/* 可折叠主体：grid 1fr↔0fr 实现自适应高度的平滑过渡（内容常驻挂载） */
+.constellation-legend-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.24s ease;
+}
+
+.constellation-legend.is-collapsed .constellation-legend-body {
+  grid-template-rows: 0fr;
+}
+
+.constellation-legend-body-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.constellation-legend-title {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+}
+
+.constellation-legend-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.constellation-legend-toggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+/* ChevronRight：展开时旋 90° 向下，收起时朝右 */
+.constellation-legend-toggle svg {
+  transition: transform 0.2s ease;
+}
+
+.constellation-legend:not(.is-collapsed) .constellation-legend-toggle svg {
+  transform: rotate(90deg);
+}
+
+.constellation-legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.constellation-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.constellation-legend-item:hover {
+  color: var(--text-primary);
+}
+
+.constellation-legend-item.is-hidden {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.constellation-legend-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.constellation-legend-count {
+  font-size: 0.66rem;
+  color: var(--text-tertiary);
+}
+
+.constellation-legend-reset {
+  display: block;
+  margin-top: 0.4rem;
+  padding: 0;
+  font-size: 0.7rem;
+  color: var(--color-accent);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ---------- 新组件响应式 ---------- */
+@media (max-width: 768px) {
+  .constellation-search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .constellation-trending {
+    width: 150px;
+    /* 条目多时不超出 stage，内部可滚动 */
+    max-height: calc(100% - var(--space-2) * 2);
+    overflow-y: auto;
+  }
+  /* NodePanel 变底部 sheet 时完全覆盖左下区域，图例让位；关闭后自动回归 */
+  .constellation-stage:has(.constellation-panel) .constellation-legend {
+    display: none;
+  }
+}
+
+/* 小手机：纵向工具栏里搜索框不可 flex-grow，否则会被纵向撑成很高的长条、
+   把下方按钮挤出全屏遮罩（fixed 不可滚动）而彻底看不到。
+   放在「新组件响应式」区、且位于基类 .constellation-search（flex:1 1 200px）之后，
+   同特异性下后写的本规则才能压过基类生效（见上文 640 断点注释）。 */
+@media (max-width: 640px) {
+  .constellation-search {
+    flex: 0 1 auto; /* 不生长：只占内容高度 */
+    max-width: none; /* 横向由 align-items:stretch 撑满整行 */
+  }
+}
+
+@media (max-width: 480px) {
+  .constellation-trending {
+    width: 130px;
+    font-size: 0.7rem;
+  }
+  .constellation-legend {
+    max-width: 200px;
+  }
+}

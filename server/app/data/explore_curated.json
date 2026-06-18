@@ -1,0 +1,54 @@
+{
+  "_comment": "知识星图策展概念（单一真相源）。github_topics / languages 是让 GitHub 仓库回连策展概念的 join keys。前端 exploreData.js 仅作为列表视图兜底，图真相以此文件为准。",
+  "concepts": [
+    { "id": "typescript", "label": "TypeScript", "category": "languages", "ring": "adopt", "desc": "类型安全的 JavaScript 超集，已成为大型项目标配", "tags": ["前端", "类型系统"], "github_topics": ["typescript"], "languages": ["typescript"] },
+    { "id": "rust", "label": "Rust", "category": "languages", "ring": "trial", "desc": "系统级编程语言，内存安全零成本抽象", "tags": ["系统编程", "WebAssembly"], "github_topics": ["rust"], "languages": ["rust"] },
+    { "id": "go", "label": "Go", "category": "languages", "ring": "adopt", "desc": "简洁高效的并发编程语言，云原生基础设施首选", "tags": ["后端", "云原生"], "github_topics": ["go", "golang"], "languages": ["go"] },
+    { "id": "python", "label": "Python", "category": "languages", "ring": "adopt", "desc": "AI/ML 领域的绝对主力语言，生态极其丰富", "tags": ["AI", "数据科学"], "github_topics": ["python"], "languages": ["python"] },
+    { "id": "zig", "label": "Zig", "category": "languages", "ring": "assess", "desc": "C 语言的现代替代者，系统编程新选择", "tags": ["系统编程", "底层"], "github_topics": ["zig"], "languages": ["zig"] },
+    { "id": "mojo", "label": "Mojo", "category": "languages", "ring": "assess", "desc": "Python 的超集语言，AI 专用高性能编程", "tags": ["AI", "高性能"], "github_topics": ["mojo"], "languages": ["mojo"] },
+
+    { "id": "react-19", "label": "React 19", "category": "frameworks", "ring": "adopt", "desc": "Server Components、Actions、use() 等重要特性", "tags": ["前端", "UI"], "github_topics": ["react"], "languages": ["typescript", "javascript"] },
+    { "id": "nextjs", "label": "Next.js 15", "category": "frameworks", "ring": "adopt", "desc": "全栈 React 框架，App Router 日趋成熟", "tags": ["全栈", "SSR"], "github_topics": ["nextjs"], "languages": ["typescript", "javascript"] },
+    { "id": "vite", "label": "Vite", "category": "frameworks", "ring": "adopt", "desc": "极快的下一代前端构建工具，已成为主流", "tags": ["构建工具", "前端"], "github_topics": ["vite"], "languages": ["typescript", "javascript"] },
+    { "id": "astro", "label": "Astro", "category": "frameworks", "ring": "trial", "desc": "内容优先的 Web 框架，岛屿架构", "tags": ["静态站点", "内容"], "github_topics": ["astro"], "languages": ["typescript", "javascript"] },
+    { "id": "htmx", "label": "HTMX", "category": "frameworks", "ring": "trial", "desc": "用 HTML 属性实现现代交互，回归简洁", "tags": ["HTML", "超媒体"], "github_topics": ["htmx"], "languages": ["javascript"] },
+    { "id": "tailwind-v4", "label": "Tailwind CSS v4", "category": "frameworks", "ring": "adopt", "desc": "CSS-first 配置，性能大幅提升", "tags": ["CSS", "样式"], "github_topics": ["tailwind", "tailwindcss"], "languages": ["typescript", "javascript"] },
+    { "id": "tauri", "label": "Tauri", "category": "frameworks", "ring": "assess", "desc": "轻量级跨平台桌面应用框架", "tags": ["桌面端", "Rust"], "github_topics": ["tauri"], "languages": ["rust", "typescript"] },
+
+    { "id": "cursor", "label": "Cursor", "category": "tools", "ring": "adopt", "desc": "AI 驱动的代码编辑器，编程效率革新", "tags": ["编辑器", "AI"], "github_topics": ["cursor", "editor"], "languages": ["typescript"] },
+    { "id": "docker", "label": "Docker", "category": "tools", "ring": "adopt", "desc": "容器化部署的标准工具链", "tags": ["容器", "部署"], "github_topics": ["docker", "container"], "languages": ["go"] },
+    { "id": "biome", "label": "Biome", "category": "tools", "ring": "trial", "desc": "极速的前端工具链（lint + format），Rust 编写", "tags": ["Lint", "格式化"], "github_topics": ["biome", "linter"], "languages": ["rust"] },
+    { "id": "bun", "label": "Bun", "category": "tools", "ring": "trial", "desc": "全能 JavaScript 运行时，速度极快", "tags": ["运行时", "全栈"], "github_topics": ["bun"], "languages": ["javascript", "zig"] },
+    { "id": "turbopack", "label": "Turbopack", "category": "tools", "ring": "assess", "desc": "Vercel 推出的增量打包器", "tags": ["构建", "性能"], "github_topics": ["turbopack"], "languages": ["rust"] },
+    { "id": "copilot", "label": "GitHub Copilot", "category": "tools", "ring": "adopt", "desc": "AI 代码补全助手，已成为开发者标配", "tags": ["AI", "编程助手"], "github_topics": ["copilot"], "languages": ["typescript"] },
+
+    { "id": "vercel", "label": "Vercel", "category": "platforms", "ring": "adopt", "desc": "前端部署平台，零配置开箱即用", "tags": ["部署", "Serverless"], "github_topics": ["vercel", "serverless"], "languages": ["typescript"] },
+    { "id": "cloudflare", "label": "Cloudflare", "category": "platforms", "ring": "adopt", "desc": "边缘计算 + Workers，全球 CDN 加速", "tags": ["边缘计算", "CDN"], "github_topics": ["cloudflare", "cloudflare-workers"], "languages": ["javascript"] },
+    { "id": "supabase", "label": "Supabase", "category": "platforms", "ring": "trial", "desc": "开源的 Firebase 替代品，Postgres + Auth + Storage", "tags": ["BaaS", "数据库"], "github_topics": ["supabase"], "languages": ["typescript"] },
+    { "id": "huggingface", "label": "Hugging Face", "category": "platforms", "ring": "adopt", "desc": "AI 模型和数据集的 GitHub", "tags": ["AI", "开源"], "github_topics": ["huggingface"], "languages": ["python"] },
+    { "id": "deno", "label": "Deno", "category": "platforms", "ring": "hold", "desc": "Node 的替代运行时，生态仍在追赶中", "tags": ["运行时", "JavaScript"], "github_topics": ["deno"], "languages": ["typescript"] },
+    { "id": "railway", "label": "Railway", "category": "platforms", "ring": "assess", "desc": "极简的后端部署平台，开发者体验优先", "tags": ["部署", "PaaS"], "github_topics": ["railway"], "languages": ["typescript"] },
+
+    { "id": "ai-agents", "label": "AI Agents", "category": "ai", "ring": "trial", "desc": "基于大语言模型的自主代理系统，能够规划、推理、使用工具完成复杂任务，代表 AI 应用的下一个范式。", "tags": ["LLM", "自主决策", "工具使用"], "github_topics": ["agents", "ai-agents", "llm-agents", "autonomous-agents"], "languages": ["python", "typescript"] },
+    { "id": "multimodal", "label": "多模态 AI", "category": "ai", "ring": "trial", "desc": "融合文本、图像、音频、视频的统一 AI 模型。", "tags": ["视觉", "语音", "理解"], "github_topics": ["multimodal", "vision-language"], "languages": ["python"] },
+    { "id": "code-gen", "label": "AI 代码生成", "category": "ai", "ring": "adopt", "desc": "从 Copilot 到 Cursor，AI 辅助编程已成为开发者日常，正从补全进化到自主构建。", "tags": ["编程", "Vibe Coding", "效率"], "github_topics": ["code-generation", "ai-coding", "llm"], "languages": ["python", "typescript"] },
+    { "id": "local-llm", "label": "本地大模型", "category": "ai", "ring": "trial", "desc": "Ollama、llama.cpp 等工具让本地运行大模型成为现实，隐私和成本优势显著。", "tags": ["开源", "本地部署", "隐私"], "github_topics": ["ollama", "llama", "local-llm"], "languages": ["python", "cpp"] },
+    { "id": "rag", "label": "RAG 检索增强生成", "category": "ai", "ring": "trial", "desc": "结合外部知识库与 LLM 的检索增强技术，企业级 AI 应用的核心架构。", "tags": ["知识库", "企业应用", "可靠性"], "github_topics": ["rag", "retrieval-augmented-generation", "llm"], "languages": ["python"] },
+    { "id": "ai-video", "label": "AI 视频生成", "category": "ai", "ring": "assess", "desc": "Sora、Kling、Runway 等模型让 AI 生成视频质量达到实用级别。", "tags": ["视频", "生成式", "创意"], "github_topics": ["text-to-video", "ai-video", "diffusion"], "languages": ["python"] }
+  ],
+  "links": [
+    { "source": "rag", "target": "ai-agents", "reason": "curated-link" },
+    { "source": "rag", "target": "local-llm", "reason": "curated-link" },
+    { "source": "ai-agents", "target": "local-llm", "reason": "curated-link" },
+    { "source": "ai-agents", "target": "code-gen", "reason": "curated-link" },
+    { "source": "code-gen", "target": "cursor", "reason": "curated-link" },
+    { "source": "code-gen", "target": "copilot", "reason": "curated-link" },
+    { "source": "react-19", "target": "nextjs", "reason": "curated-link" },
+    { "source": "vite", "target": "react-19", "reason": "curated-link" },
+    { "source": "rust", "target": "tauri", "reason": "curated-link" },
+    { "source": "rust", "target": "biome", "reason": "curated-link" },
+    { "source": "vercel", "target": "nextjs", "reason": "curated-link" },
+    { "source": "python", "target": "ai-agents", "reason": "curated-link" }
+  ]
+}

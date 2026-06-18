@@ -9,6 +9,9 @@ python-multipart>=0.0.17
 python-dotenv>=1.0.0
 python-frontmatter>=1.0.0
 
+# HTTP client (used by Explore GitHub trending agent in production)
+httpx>=0.28.0
+
 # AI/LLM dependencies
 langchain>=0.3.0
 langchain-openai>=0.2.0
@@ -18,4 +21,3 @@ langchain-core>=0.3.0
 ruff>=0.8.0
 pytest>=8.0.0
 pytest-asyncio>=0.24.0
-httpx>=0.28.0

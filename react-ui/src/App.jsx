@@ -17,6 +17,7 @@ const ArticleDetail = retryLazy(() => import('./pages/ArticleDetail'))
 const Category = retryLazy(() => import('./pages/Category'))
 const Tag = retryLazy(() => import('./pages/Tag'))
 const Search = retryLazy(() => import('./pages/Search'))
+const Explore = retryLazy(() => import('./pages/Explore'))
 
 // 后台管理页面
 const Admin = retryLazy(() => import('./pages/Admin/Admin'))
@@ -57,6 +58,7 @@ function App() {
               <Route path='/category/:slug' element={<Category />} />
               <Route path='/tag/:slug' element={<Tag />} />
               <Route path='/search' element={<Search />} />
+              <Route path='/explore' element={<Explore />} />
 
               {/* 后台管理路由 - 需要登录 */}
               <Route

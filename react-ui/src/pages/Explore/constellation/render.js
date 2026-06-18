@@ -1,0 +1,234 @@
+/**
+ * render.js — 纯 Canvas 绘制函数（节点 / 连线 / 辉光 / 标签）
+ *
+ * 不持有状态，所有数据由调用方传入。包含视口剔除与按 scale 阈值的标签显隐。
+ */
+
+import { nodeRadius } from './useConstellation';
+
+// 缩放到该倍率以下隐藏标签（窄屏文字不会糊成一团）
+const LABEL_SCALE_THRESHOLD = 0.7;
+// 强度达到此值的边渲染沿线流动的粒子（暗示「关联在流动」）
+// 必须与 useConstellation.js 的 hasAnimatableMotion() 阈值保持一致，
+// 否则 rAF 休眠后粒子会冻结。
+const FLOW_EDGE_STRENGTH = 0.6;
+const FLOW_SPEED_MS = 2600; // 一个粒子走完整条边所需的毫秒
+
+export function draw(ctx, params) {
+  const {
+    nodes = [],
+    edges = [],
+    transform,
+    dims,
+    palette,
+    hoveredId,
+    selectedId,
+    neighbors,
+    time,
+    reduced,
+    categoryColor,
+    drillActive = false,
+    focusSet = null,
+  } = params;
+
+  const { tx, ty, scale } = transform;
+  const { w, h } = dims;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // 应用变换（translate + scale）
+  ctx.save();
+  ctx.translate(tx, ty);
+  ctx.scale(scale, scale);
+
+  const focusId = hoveredId || selectedId;
+  const focusNeighbors = focusId ? neighbors(focusId) : null;
+  const hasFocus = !!focusId;
+
+  const dimAlpha = 0.12;
+  const drillDimAlpha = 0.06;
+  const edgeBaseColor = palette.gray400;
+
+  // 视口剔除边界（逆变换到 sim 坐标）
+  const viewLeft = -tx / scale;
+  const viewTop = -ty / scale;
+  const viewRight = (w - tx) / scale;
+  const viewBottom = (h - ty) / scale;
+  const margin = 40;
+
+  const inView = (x, y, pad = margin) =>
+    x > viewLeft - pad && x < viewRight + pad && y > viewTop - pad && y < viewBottom + pad;
+
+  const inFocusSet = (id) => !!focusSet && focusSet.has(id);
+
+  // ---- 连线 ----
+  ctx.lineWidth = 1 / scale;
+  for (const e of edges) {
+    const sn = e.__sn;
+    const tn = e.__tn;
+    if (!sn || !tn) continue;
+    if (!inView(sn.x, sn.y) && !inView(tn.x, tn.y)) continue;
+
+    // 钻取模式：仅渲染聚焦子图内的边，其余完全隐藏
+    if (drillActive) {
+      if (!inFocusSet(sn.id) || !inFocusSet(tn.id)) continue;
+      ctx.globalAlpha = 0.4 + (e.strength || 0.5) * 0.5;
+      ctx.strokeStyle = palette.accent;
+      ctx.beginPath();
+      ctx.moveTo(sn.x, sn.y);
+      ctx.lineTo(tn.x, tn.y);
+      ctx.stroke();
+      continue;
+    }
+
+    const involved =
+      hasFocus &&
+      (focusId === sn.id ||
+        focusId === tn.id ||
+        focusNeighbors.has(sn.id) ||
+        focusNeighbors.has(tn.id));
+    const faded = hasFocus && !involved;
+    ctx.globalAlpha = (faded ? dimAlpha : 1) * (0.25 + (e.strength || 0.5) * 0.6);
+    ctx.strokeStyle = edgeBaseColor;
+    ctx.beginPath();
+    ctx.moveTo(sn.x, sn.y);
+    ctx.lineTo(tn.x, tn.y);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // ---- 强连接流动粒子（reduced-motion 下不画，保持静态）----
+  if (!reduced) {
+    const pr = 2 / scale; // 粒子半径（随缩放保持视觉大小）
+    ctx.fillStyle = palette.accent;
+    for (const e of edges) {
+      if ((e.strength || 0) < FLOW_EDGE_STRENGTH) continue;
+      const sn = e.__sn;
+      const tn = e.__tn;
+      if (!sn || !tn) continue;
+      if (!inView(sn.x, sn.y) && !inView(tn.x, tn.y)) continue;
+      // 钻取/聚焦模式下，淡化集外的流动粒子
+      let alpha = 0.85;
+      if (drillActive) {
+        if (!inFocusSet(sn.id) || !inFocusSet(tn.id)) alpha = 0;
+        else alpha = 0.9;
+      } else if (hasFocus) {
+        const involved =
+          focusId === sn.id ||
+          focusId === tn.id ||
+          focusNeighbors.has(sn.id) ||
+          focusNeighbors.has(tn.id);
+        alpha = involved ? 0.95 : dimAlpha;
+      }
+      if (alpha <= 0) continue;
+      // 用边的 source id 末位做相位偏移，避免所有粒子同步
+      let seed = 0;
+      const key = String(e.source || '');
+      for (let i = 0; i < key.length; i++) seed = (seed * 31 + key.charCodeAt(i)) | 0;
+      const offset = (Math.abs(seed) % 1000) / 1000;
+      // 强度越高粒子越快、越靠前的进度
+      const progress = ((time / FLOW_SPEED_MS) * (0.6 + (e.strength || 0.5) * 0.6) + offset) % 1;
+      const px = sn.x + (tn.x - sn.x) * progress;
+      const py = sn.y + (tn.y - sn.y) * progress;
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(px, py, pr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---- 节点 ----
+  const pulseActive = !reduced;
+  for (const n of nodes) {
+    if (n.x == null) continue;
+    if (!inView(n.x, n.y)) continue;
+
+    const isFocus = n.id === focusId;
+    const isNeighbor = focusNeighbors && focusNeighbors.has(n.id);
+    // 钻取模式下以 focusSet 决定明暗，优先级最高
+    const faded = drillActive
+      ? !inFocusSet(n.id)
+      : hasFocus && !isFocus && !isNeighbor;
+    const r = nodeRadius(n.weight);
+
+    // momentum 脉动（仅高 momentum 节点）
+    let pr = r;
+    if (pulseActive && (n.momentum || 0) > 0.35) {
+      pr = r + Math.sin(time / 600 + (n.x || 0)) * r * 0.12 * (n.momentum || 0);
+    }
+
+    ctx.globalAlpha = faded ? (drillActive ? drillDimAlpha : dimAlpha) : 1;
+
+    // 辉光：高 momentum / 选中悬停 / 钻取聚焦子图 节点用 accent
+    const glow = (n.momentum || 0) > 0.4 || isFocus || (drillActive && inFocusSet(n.id));
+    if (glow) {
+      ctx.shadowColor = palette.accent;
+      ctx.shadowBlur = (8 + (n.momentum || 0) * 16) / scale;
+    } else {
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, pr, 0, Math.PI * 2);
+    ctx.fillStyle = categoryColor(n.category, palette);
+    ctx.fill();
+
+    // 选中/悬停描边
+    if (isFocus) {
+      ctx.shadowBlur = 0;
+      ctx.lineWidth = 2 / scale;
+      ctx.strokeStyle = palette.accent;
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+  }
+  ctx.globalAlpha = 1;
+
+  // ---- 标签（按 scale 阈值；钻取模式下聚焦子图标签全显，不受阈值限制）----
+  if (scale >= LABEL_SCALE_THRESHOLD || drillActive) {
+    // 标签权重门槛随缩放递降：放大更严格、缩小更宽松，缓解标签突变
+    const labelWeight = scale >= 1.2 ? 0.5 : scale >= 0.9 ? 0.35 : 0.25;
+    ctx.font = `${12 / scale}px -apple-system, system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (const n of nodes) {
+      if (n.x == null) continue;
+      if (!inView(n.x, n.y)) continue;
+      // 钻取模式：聚焦子图节点全显标签，其余不显
+      const drillIn = drillActive && inFocusSet(n.id);
+      const drillOut = drillActive && !inFocusSet(n.id);
+      if (drillOut) continue;
+      const showLabel =
+        drillIn ||
+        (n.weight || 0) > labelWeight ||
+        n.id === focusId ||
+        (focusNeighbors && focusNeighbors.has(n.id));
+      if (!showLabel) continue;
+      const isFocus = n.id === focusId;
+      const faded =
+        drillActive && !drillIn
+          ? true
+          : hasFocus && !isFocus && !(focusNeighbors && focusNeighbors.has(n.id));
+      ctx.globalAlpha = faded ? (drillActive ? drillDimAlpha : dimAlpha) : 0.9;
+      ctx.fillStyle = drillIn ? palette.accent : palette.textSecondary;
+      const r = nodeRadius(n.weight);
+      ctx.fillText(n.label || n.id, n.x, n.y + r + 3 / scale);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+}
+
+/**
+ * 给 edges 预解析节点引用（避免每帧用 id 查表）。
+ * 返回新数组，每条边附加 __sn / __tn。
+ */
+export function resolveEdgeNodes(edges, nodeById) {
+  for (const e of edges) {
+    e.__sn = nodeById.get(e.source);
+    e.__tn = nodeById.get(e.target);
+  }
+  return edges;
+}

@@ -151,7 +151,7 @@ export async function request(url, options = {}, timeout = DEFAULT_TIMEOUT) {
 /**
  * GET 请求
  */
-export function get(url, params = {}, options = {}) {
+export function get(url, params = {}, options = {}, timeout = DEFAULT_TIMEOUT) {
   const filteredParams = Object.entries(params).reduce((acc, [key, value]) => {
     if (value === undefined || value === null || value === '') {
       return acc;
@@ -161,7 +161,7 @@ export function get(url, params = {}, options = {}) {
   }, {});
   const queryString = new URLSearchParams(filteredParams).toString();
   const fullUrl = queryString ? `${url}?${queryString}` : url;
-  return request(fullUrl, { ...options, method: 'GET' });
+  return request(fullUrl, { ...options, method: 'GET' }, timeout);
 }
 
 /**

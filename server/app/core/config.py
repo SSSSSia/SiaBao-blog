@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Application configuration."""
+
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings
@@ -30,11 +31,16 @@ class Settings(BaseSettings):
     siliconflow_base_url: str = "https://api.siliconflow.cn/v1"
     siliconflow_model: str = "Qwen/Qwen2.5-7B-Instruct"
 
-    model_config = {
-        "env_file": ".env",
-        "case_sensitive": False,
-        "extra": "ignore"
-    }
+    # Explore / Knowledge Constellation
+    explore_github_enabled: bool = True  # GitHub Trending Agent 开关
+    github_token: str = ""  # 可选；启用 5000/hr 配额（建议细粒度只读 PAT）
+    explore_cache_ttl: int = 86400  # GitHub 缓存 TTL 秒（24h，懒刷新）
+    explore_github_fallback_scrape: bool = (
+        True  # Search API 之外，合并 github.com/trending 周榜（真·本周上升）
+    )
+    explore_max_nodes: int = 120  # 知识星图节点硬上限
+
+    model_config = {"env_file": ".env", "case_sensitive": False, "extra": "ignore"}
 
     @property
     def cors_origins_list(self) -> list[str]:

@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api import articles, auth, comments, health, site_config, upload
+from app.api import articles, auth, comments, explore, health, site_config, upload
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 
@@ -29,6 +29,13 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     # Startup
     print("Starting My Blog Server...")
+    # Preheat the Explore GitHub trending cache (best-effort, never crashes startup)
+    if settings.explore_github_enabled:
+        import asyncio
+
+        from app.services import github_trending_service
+
+        asyncio.create_task(github_trending_service.preheat())
     yield
     # Shutdown
     print("Shutting down My Blog Server...")
@@ -63,6 +70,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(articles.router, prefix="/api")
 app.include_router(comments.router, prefix="/api")
 app.include_router(site_config.router, prefix="/api/site")
+app.include_router(explore.router, prefix="/api")
 app.include_router(upload.router, prefix="/api")
 
 # Mount static files directory
