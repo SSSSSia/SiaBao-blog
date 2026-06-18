@@ -60,4 +60,4 @@ server/public/uploads/*
 !server/public/uploads/.gitkeep
 AGENTS.md
 
-
+/docs
