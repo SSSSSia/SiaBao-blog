@@ -118,6 +118,10 @@ def _build_node_insight_prompt(node: dict, neighbor_labels: list) -> str:
     one-size-fits-all「author's knowledge system」framing reads wrong on GitHub
     trending repos (external projects) and on structural category/language anchor
     nodes. Each branch gets its own persona and instruction.
+
+    Within the concept/tag branch, an author-signal check (``articleCount > 0``)
+    further splits the framing: a concept the author has never written about is
+    described neutrally rather than passed off as part of the author's knowledge.
     """
     node_id = node.get("id", "")
     sources = node.get("sources") or []
@@ -169,14 +173,27 @@ def _build_node_insight_prompt(node: dict, neighbor_labels: list) -> str:
             f"关联节点：{neighbors}"
         )
     else:
-        # 策展概念 / 博客标签：作者自身知识体系里的真节点。
+        # 策展概念 / 博客标签。是否套用「作者知识体系」话术，取决于作者是否真的写过它：
+        # 一个概念若没有任何博客文章、仅靠策展骨架 + GitHub 仓库邻居撑着，
+        # 那把它说成「作者知识体系的核心支柱」就是凭空编造 —— 应换成中性的技术解读框架。
         desc = (node.get("desc") or "").strip()
-        persona = "你是一位技术博客作者的知识星图向导。"
-        task = (
-            "请根据以下节点信息，用一段话（70-150字，中文）解读这个技术/话题"
-            "在作者知识体系中的位置：它是什么、为什么重要，以及它与关联节点之间的内在联系。"
-            "语气自然、有洞察力，不要罗列数据，不要使用「该节点」这种机械称呼。"
-        )
+        has_author_signal = article_count > 0
+        if has_author_signal:
+            persona = "你是一位技术博客作者的知识星图向导。"
+            task = (
+                "请根据以下节点信息，用一段话（70-150字，中文）解读这个技术/话题"
+                "在作者知识体系中的位置：它是什么、为什么重要，以及它与关联节点之间的内在联系。"
+                "语气自然、有洞察力，不要罗列数据，不要使用「该节点」这种机械称呼。"
+            )
+        else:
+            persona = "你是一位技术知识星图的向导。"
+            task = (
+                f"请用一段话（70-150字，中文）介绍「{label}」这项技术："
+                "它是什么、解决了什么问题、为什么当下值得关注，"
+                "以及它如何与星图中相关的开源项目/技术呼应。"
+                "语气自然、客观，不要把它说成是「作者正在使用/深入研究」的内容，"
+                "也不要使用「该节点」这种机械称呼。"
+            )
         fields = (
             f"节点：{label}\n"
             f"类别：{category or '未分类'}\n"

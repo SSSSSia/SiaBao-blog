@@ -28,12 +28,19 @@ router = APIRouter(prefix="/explore", tags=["Explore"])
 # payload.
 _INSIGHT_CACHE: dict[str, dict] = {}
 
+# Bump when the insight prompt's framing/wording materially changes, so the
+# fingerprint (and thus the cache key) shifts and stale insights regenerate
+# without a manual backend restart. The fingerprint only hashes node content,
+# so a prompt-only edit would otherwise keep serving the old text forever.
+_INSIGHT_PROMPT_VERSION = "2"
+
 
 def _node_insight_fingerprint(node: dict, neighbor_labels: list) -> str:
     """Cheap hash of the inputs that change an insight's meaning."""
     blog = node.get("blog") or {}
     github = node.get("github") or {}
     parts = [
+        _INSIGHT_PROMPT_VERSION,
         node.get("label", ""),
         node.get("category", ""),
         node.get("desc", ""),
