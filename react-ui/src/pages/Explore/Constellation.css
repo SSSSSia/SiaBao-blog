@@ -778,6 +778,7 @@
 }
 
 /* 小手机：提示文案显式常驻 + 工具栏纵向堆叠 + 按钮图标化 */
+/* 640 须与 index.css 的 --bp-narrow 保持同步（JS 侧由该变量驱动） */
 @media (max-width: 640px) {
   .constellation-hint {
     display: block;
@@ -1221,7 +1222,8 @@
 /* 小手机：纵向工具栏里搜索框不可 flex-grow，否则会被纵向撑成很高的长条、
    把下方按钮挤出全屏遮罩（fixed 不可滚动）而彻底看不到。
    放在「新组件响应式」区、且位于基类 .constellation-search（flex:1 1 200px）之后，
-   同特异性下后写的本规则才能压过基类生效（见上文 640 断点注释）。 */
+   同特异性下后写的本规则才能压过基类生效（见上文 640 断点注释）。
+   640 须与 index.css 的 --bp-narrow 保持同步（JS 侧由该变量驱动）。 */
 @media (max-width: 640px) {
   .constellation-search {
     flex: 0 1 auto; /* 不生长：只占内容高度 */

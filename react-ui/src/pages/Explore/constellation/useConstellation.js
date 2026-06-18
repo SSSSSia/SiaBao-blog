@@ -17,11 +17,11 @@ import {
 
 import { exploreApi } from '../../../api/explore';
 import { draw, resolveEdgeNodes } from './render';
+import { FLOW_EDGE_STRENGTH, MOMENTUM_PULSE, NARROW_WIDTH } from './constants';
 
 const ALPHA_MIN = 0.02;
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 3;
-const NARROW_WIDTH = 640; // ≤640 视为窄屏（与全站断点对齐）
 const NARROW_NODE_CAP = 60; // 窄屏渲染节点上限（仅前端裁剪，不改后端图）
 const LONG_PRESS_DELAY = 200; // 触屏长按判定阈值，区分「拖节点」与「平移」
 
@@ -155,10 +155,10 @@ export function useConstellation(canvasRef, containerRef, isFullscreen = false) 
   // 是否还有「值得逐帧重绘」的变化：仿真热 / 相机补间 / 悬停选中 / 高 momentum 脉动 / 流动粒子。
   // 一旦全部为否，rAF 休眠，避免静止时空转耗电；任何交互都会通过 kickLoop() 唤醒。
   // 注意：脉冲与流动粒子都用 time 驱动，必须纳入判定，否则休眠后视觉会冻结。
-  const FLOW_EDGE_STRENGTH = 0.6; // 与 render.js 流动粒子阈值保持一致
+  // 阈值统一来自 constants.js（与 render.js 的脉动 / 流动粒子保持一致）。
   const hasAnimatableMotion = useCallback(() => {
     for (const n of renderNodesRef.current) {
-      if ((n.momentum || 0) > 0.35) return true;
+      if ((n.momentum || 0) > MOMENTUM_PULSE) return true;
     }
     for (const e of renderEdgesRef.current) {
       if ((e.strength || 0) >= FLOW_EDGE_STRENGTH) return true;

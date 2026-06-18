@@ -40,12 +40,65 @@ def _reset_graph_cache():
     explore_service._graph_cache = None
     explore_service._graph_built_at = 0.0
     explore_service._graph_blog_hash = ""
+    explore_service._cooccur_cache = None
+    explore_service._cooccur_blog_hash = ""
     yield
 
 
 # ---------------------------------------------------------------------------
 # Pure helpers
 # ---------------------------------------------------------------------------
+def test_cooccur_cache_hit_on_same_hash(monkeypatch):
+    """Same blog_hash → tag co-occurrence is computed once and reused."""
+    calls = {"n": 0}
+    original = explore_service._load_index
+
+    def counting_load():
+        calls["n"] += 1
+        return original()
+
+    monkeypatch.setattr(explore_service, "_load_index", counting_load)
+
+    explore_service._build_tag_cooccurrence("h1")
+    explore_service._build_tag_cooccurrence("h1")
+    assert calls["n"] == 1  # cached → index loaded only once
+
+
+def test_cooccur_cache_invalidates_on_hash_change(monkeypatch):
+    """Different blog_hash → co-occurrence is recomputed."""
+    calls = {"n": 0}
+    original = explore_service._load_index
+
+    def counting_load():
+        calls["n"] += 1
+        return original()
+
+    monkeypatch.setattr(explore_service, "_load_index", counting_load)
+
+    explore_service._build_tag_cooccurrence("h1")
+    explore_service._build_tag_cooccurrence("h2")
+    assert calls["n"] == 2  # hash changed → reload
+
+
+def test_cooccur_counts_tag_pairs(monkeypatch):
+    """Published articles contribute their tag pairs; non-published are skipped."""
+    monkeypatch.setattr(
+        explore_service,
+        "_load_index",
+        lambda: {
+            "a1": {"status": "published", "tags": ["x", "y", "z"]},
+            "a2": {"status": "published", "tags": ["x", "y"]},
+            "a3": {"status": "draft", "tags": ["x", "y"]},  # skipped
+        },
+    )
+    cooccur = explore_service._build_tag_cooccurrence("hx")
+    # sorted pairs: a1 → (x,y)(x,z)(y,z), a2 → (x,y)
+    assert cooccur[("x", "y")] == 2
+    assert cooccur[("x", "z")] == 1
+    assert cooccur[("y", "z")] == 1
+
+
+
 def test_blog_hash_changes_with_published_at():
     a = [{"id": "1", "published_at": "2026-01-01"}]
     b = [{"id": "1", "published_at": "2026-02-01"}]

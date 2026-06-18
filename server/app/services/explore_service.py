@@ -36,6 +36,11 @@ _graph_built_at: float = 0.0
 _graph_blog_hash: str = ""
 _GRAPH_TTL_SECONDS = 3600  # 1h
 
+# 标签共现矩阵缓存：共现只依赖 published 文章的 tags，而 blog_hash 正是 published
+# 文章内容指纹——指纹未变即可复用，跳过 O(文章×标签²) 重算。机制同 _graph_blog_hash。
+_cooccur_cache: dict[tuple[str, str], int] | None = None
+_cooccur_blog_hash: str = ""
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -94,6 +99,32 @@ def _blog_hash(articles: list[dict]) -> str:
         f"{a.get('id')}:{a.get('published_at') or a.get('updated_at')}" for a in articles
     )
     return hashlib.md5("|".join(parts).encode("utf-8")).hexdigest()
+
+
+def _build_tag_cooccurrence(blog_hash: str) -> dict[tuple[str, str], int]:
+    """标签共现计数，按 blog_hash 缓存。
+
+    共现只依赖 published 文章的 tags，而 blog_hash 是 published 文章内容指纹——
+    指纹未变即复用上次结果，跳过 O(文章×标签²) 重算。
+    """
+    global _cooccur_cache, _cooccur_blog_hash
+    if _cooccur_cache is not None and blog_hash == _cooccur_blog_hash:
+        return _cooccur_cache
+
+    index = _load_index()
+    cooccur: dict[tuple[str, str], int] = {}
+    for a in index.values():
+        if a.get("status") != "published":
+            continue
+        ts = sorted(set(a.get("tags", []) or []))
+        for i in range(len(ts)):
+            for j in range(i + 1, len(ts)):
+                key = (ts[i], ts[j])
+                cooccur[key] = cooccur.get(key, 0) + 1
+
+    _cooccur_cache = cooccur
+    _cooccur_blog_hash = blog_hash
+    return cooccur
 
 
 def _normalize(values: dict[str, float]) -> dict[str, float]:
@@ -389,16 +420,7 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
             _add_edge(edges_accum, s, t, 0.7, link.get("reason", "curated-link"))
 
     # --- 6. Tag co-occurrence (from published articles) ---
-    index = _load_index()
-    cooccur: dict[tuple[str, str], int] = {}
-    for a in index.values():
-        if a.get("status") != "published":
-            continue
-        ts = sorted(set(a.get("tags", []) or []))
-        for i in range(len(ts)):
-            for j in range(i + 1, len(ts)):
-                key = (ts[i], ts[j])
-                cooccur[key] = cooccur.get(key, 0) + 1
+    cooccur = _build_tag_cooccurrence(blog_hash)
     if cooccur:
         mx = max(cooccur.values())
         for (a, b), cnt in cooccur.items():

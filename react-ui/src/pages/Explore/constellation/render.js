@@ -5,14 +5,16 @@
  */
 
 import { nodeRadius } from './useConstellation';
-
-// 缩放到该倍率以下隐藏标签（窄屏文字不会糊成一团）
-const LABEL_SCALE_THRESHOLD = 0.7;
-// 强度达到此值的边渲染沿线流动的粒子（暗示「关联在流动」）
-// 必须与 useConstellation.js 的 hasAnimatableMotion() 阈值保持一致，
-// 否则 rAF 休眠后粒子会冻结。
-const FLOW_EDGE_STRENGTH = 0.6;
-const FLOW_SPEED_MS = 2600; // 一个粒子走完整条边所需的毫秒
+import {
+  FLOW_EDGE_STRENGTH,
+  FLOW_SPEED_MS,
+  LABEL_SCALE_THRESHOLD,
+  LABEL_WEIGHT_HIGH,
+  LABEL_WEIGHT_LOW,
+  LABEL_WEIGHT_MID,
+  MOMENTUM_GLOW,
+  MOMENTUM_PULSE,
+} from './constants';
 
 export function draw(ctx, params) {
   const {
@@ -154,14 +156,14 @@ export function draw(ctx, params) {
 
     // momentum 脉动（仅高 momentum 节点）
     let pr = r;
-    if (pulseActive && (n.momentum || 0) > 0.35) {
+    if (pulseActive && (n.momentum || 0) > MOMENTUM_PULSE) {
       pr = r + Math.sin(time / 600 + (n.x || 0)) * r * 0.12 * (n.momentum || 0);
     }
 
     ctx.globalAlpha = faded ? (drillActive ? drillDimAlpha : dimAlpha) : 1;
 
     // 辉光：高 momentum / 选中悬停 / 钻取聚焦子图 节点用 accent
-    const glow = (n.momentum || 0) > 0.4 || isFocus || (drillActive && inFocusSet(n.id));
+    const glow = (n.momentum || 0) > MOMENTUM_GLOW || isFocus || (drillActive && inFocusSet(n.id));
     if (glow) {
       ctx.shadowColor = palette.accent;
       ctx.shadowBlur = (8 + (n.momentum || 0) * 16) / scale;
@@ -188,7 +190,7 @@ export function draw(ctx, params) {
   // ---- 标签（按 scale 阈值；钻取模式下聚焦子图标签全显，不受阈值限制）----
   if (scale >= LABEL_SCALE_THRESHOLD || drillActive) {
     // 标签权重门槛随缩放递降：放大更严格、缩小更宽松，缓解标签突变
-    const labelWeight = scale >= 1.2 ? 0.5 : scale >= 0.9 ? 0.35 : 0.25;
+    const labelWeight = scale >= 1.2 ? LABEL_WEIGHT_HIGH : scale >= 0.9 ? LABEL_WEIGHT_MID : LABEL_WEIGHT_LOW;
     ctx.font = `${12 / scale}px -apple-system, system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';

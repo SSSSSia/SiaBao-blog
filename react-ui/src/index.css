@@ -48,6 +48,11 @@
   --container-max-width: 1200px;
   --prose-max-width: 860px;
 
+  /* 响应式断点（窄屏）。注意：CSS 变量无法用于 @media 查询，
+     各媒体查询处保留字面量 640px 并标注同步；JS 侧通过此变量驱动逻辑
+     （见 constellation/constants.js 的 readBpNarrow）。 */
+  --bp-narrow: 640px;
+
   /* 圆角 */
   --radius-sm: 2px;
 

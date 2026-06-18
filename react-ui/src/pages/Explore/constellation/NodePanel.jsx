@@ -15,6 +15,10 @@ import { cx } from './utils';
 // 双层：内存 Map（会话内）+ localStorage（跨会话，带 TTL），减少跨刷新重复请求。
 const INSIGHT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 const LS_KEY = 'explore_insight_cache';
+// localStorage 条目上限（LRU）：超出按 ts 淘汰最旧。50 条足够覆盖常用洞察，
+// 单条约数百字节，总量远低于 5MB 配额——既防无界膨胀，也避免某次写入撑爆配额
+// 导致「整批缓存一起丢失」。
+const LS_MAX_ENTRIES = 50;
 const insightCache = new Map();
 
 // 与后端 prompt 版本同步（见 server/app/api/explore.py 的 _INSIGHT_PROMPT_VERSION）。
@@ -36,7 +40,11 @@ function loadLSCache() {
         now - entry.ts < INSIGHT_TTL_MS &&
         entry.v === INSIGHT_PROMPT_VERSION // 版本不符（含旧版无 v 字段）直接丢弃，强制重新生成
       ) {
-        insightCache.set(id, { insight: entry.insight, available: entry.available });
+        insightCache.set(id, {
+          insight: entry.insight,
+          available: entry.available,
+          ts: entry.ts || now,
+        });
       }
     }
   } catch {
@@ -44,15 +52,39 @@ function loadLSCache() {
   }
 }
 
+/** 按 ts 升序淘汰超出上限的最旧条目（LRU），内存与持久化同步收缩。 */
+function trimCache(max) {
+  if (insightCache.size <= max) return;
+  const sorted = [...insightCache.entries()].sort(
+    (a, b) => (a[1].ts || 0) - (b[1].ts || 0),
+  );
+  const drop = sorted.length - max;
+  for (let i = 0; i < drop; i++) insightCache.delete(sorted[i][0]);
+}
+
 function persistLSCache() {
-  try {
+  // 先按 LRU 收敛到上限，避免无谓写入即将被淘汰的条目
+  trimCache(LS_MAX_ENTRIES);
+  const write = (maxEntries) => {
+    const sorted = [...insightCache.entries()]
+      .sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0))
+      .slice(0, maxEntries);
     const obj = {};
-    for (const [id, v] of insightCache.entries()) {
-      obj[id] = { ...v, v: INSIGHT_PROMPT_VERSION, ts: Date.now() };
+    const now = Date.now();
+    for (const [id, v] of sorted) {
+      obj[id] = { insight: v.insight, available: v.available, v: INSIGHT_PROMPT_VERSION, ts: v.ts || now };
     }
     localStorage.setItem(LS_KEY, JSON.stringify(obj));
+  };
+  try {
+    write(LS_MAX_ENTRIES);
   } catch {
-    /* 配额超限 / 隐私模式 — 静默忽略 */
+    /* 配额超限 / 隐私模式：砍掉最旧一半再重试一次，仍失败则静默降级（仅内存缓存）。 */
+    try {
+      write(Math.max(1, Math.floor(LS_MAX_ENTRIES / 2)));
+    } catch {
+      /* 静默忽略 */
+    }
   }
 }
 
@@ -101,6 +133,7 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
 
     const cached = insightCache.get(n.id);
     if (cached) {
+      cached.ts = Date.now(); // LRU：命中即续期，避免常用洞察被淘汰
       setInsight(cached.insight || '');
       setInsightAvailable(cached.available);
       setInsightState(cached.available && cached.insight ? 'done' : 'error');
@@ -146,7 +179,7 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
         setInsightAvailable(available);
         setInsight((finalText) => {
           // 缓存落盘 + 切态都在 setInsight 回调里，拿到最终累积文本
-          insightCache.set(n.id, { insight: finalText || '', available });
+          insightCache.set(n.id, { insight: finalText || '', available, ts: Date.now() });
           persistLSCache();
           return finalText;
         });
@@ -165,7 +198,7 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
           const data = await exploreApi.getNodeInsight(n.id);
           const text = data?.insight || '';
           const available = !!data?.available;
-          insightCache.set(n.id, { insight: text, available });
+          insightCache.set(n.id, { insight: text, available, ts: Date.now() });
           persistLSCache();
           setInsight(text);
           setInsightAvailable(available);

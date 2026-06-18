@@ -59,6 +59,7 @@
 /* ===================================
    响应式
    =================================== */
+/* 640 须与 index.css 的 --bp-narrow 保持同步（JS 侧由该变量驱动） */
 @media (max-width: 640px) {
   .explore-hero {
     padding: var(--space-5) 0 var(--space-4);
