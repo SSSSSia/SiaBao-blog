@@ -6,6 +6,7 @@
 
 import { useMemo, useState } from 'react';
 import { ChevronRight, Flame, TrendingUp } from 'lucide-react';
+import { cx } from './utils';
 
 const TOP_N = 10;
 
@@ -38,7 +39,7 @@ export default function TrendingSidebar({ nodes, flyToNode }) {
         <span>上升榜</span>
         <ChevronRight
           size={14}
-          className={`constellation-trending-chevron${collapsed ? ' is-collapsed' : ''}`}
+          className={cx('constellation-trending-chevron', collapsed && 'is-collapsed')}
         />
       </button>
       {!collapsed && (

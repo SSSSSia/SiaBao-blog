@@ -215,6 +215,10 @@ def _build_node_insight_prompt(node: dict, neighbor_labels: list) -> str:
 # Common prefixes the model sometimes echoes from the prompt's trailing「解读：」.
 _INSIGHT_PREFIXES = ("解读：", "解读:", "洞察：", "洞察:")
 
+# 统一的洞察字符上限：非流式与流式共用同一阈值，避免两条路径长度不一致。
+# 中文 token 密度高，300 字符足以承载「70-150 字」目标并留余量。
+MAX_INSIGHT_CHARS = 300
+
 
 def _strip_insight_prefix(text: str) -> str:
     """Strip a leading「解读：/ 洞察：」echo if present."""
@@ -251,8 +255,8 @@ async def generate_node_insight(node: dict, neighbor_labels: list) -> str:
         response = await model.ainvoke(prompt)
         text = _strip_insight_prefix(response.content.strip())
 
-        if len(text) > 400:
-            text = text[:400].rstrip() + "…"
+        if len(text) > MAX_INSIGHT_CHARS:
+            text = text[:MAX_INSIGHT_CHARS].rstrip() + "…"
 
         return text
 
@@ -278,6 +282,7 @@ async def generate_node_insight_stream(node: dict, neighbor_labels: list):
     prompt = _build_node_insight_prompt(node, neighbor_labels)
 
     started = False
+    emitted = 0  # 已输出字符数，用于在到达上限时优雅收尾
     async for chunk in model.astream(prompt):
         delta = chunk.content
         if not delta:
@@ -291,4 +296,12 @@ async def generate_node_insight_stream(node: dict, neighbor_labels: list):
             started = True
             if not delta:
                 continue
+        # 到达字符上限：截断本段、补省略号后停止，与非流式路径长度一致。
+        if emitted + len(delta) >= MAX_INSIGHT_CHARS:
+            remaining = MAX_INSIGHT_CHARS - emitted
+            if remaining > 0:
+                yield delta[:remaining].rstrip()
+            yield "…"
+            return
+        emitted += len(delta)
         yield delta

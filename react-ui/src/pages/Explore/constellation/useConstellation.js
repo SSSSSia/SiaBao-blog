@@ -51,13 +51,16 @@ function buildPalette() {
     textSecondary: token('--text-secondary', '#6B6B6B'),
     textTertiary: token('--text-tertiary', '#A0A0A0'),
     bgPrimary: token('--bg-primary', '#FAFAFA'),
+    // 节点专属色池：与 UI 灰阶解耦，4 档均匀拉开明度（原 900/800/600 三档过近，分类辨识度低），
+    // 最浅档上抬以在 #F5F5F5 舞台上仍可辨。保持单色，不引入色相。
+    nodeColors: ['#1A1A1A', '#4A4A4A', '#7E7E7E', '#ACACAC'],
   };
 }
 
 /** 分类 → 灰阶明度（纯灰阶区分，不引入彩虹色） */
 function categoryColor(category, palette) {
   // 把不同分类映射到不同明度，深浅交错
-  const pool = [palette.gray900, palette.gray600, palette.gray800, palette.gray400];
+  const pool = palette.nodeColors;
   let h = 0;
   for (let i = 0; i < category.length; i++) h = (h * 31 + category.charCodeAt(i)) | 0;
   return pool[Math.abs(h) % pool.length];

@@ -6,8 +6,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, FileText, Focus, GitBranch, Sparkles, Star, X } from 'lucide-react';
+import { Check, ExternalLink, FileText, Focus, GitBranch, Link2, Sparkles, Star, X } from 'lucide-react';
 import { exploreApi, streamNodeInsight } from '../../../api/explore';
+import { cx } from './utils';
 
 // 模块级缓存：同一节点切换回来时秒出，避免重复烧 AI。
 // 形如 { [nodeId]: { insight: string, available: boolean } }。
@@ -58,53 +59,89 @@ function persistLSCache() {
 // 模块加载时预填跨会话缓存（一次性）
 loadLSCache();
 
-export default function NodePanel({ node, neighbors, getNode, onSelectNode, onClose, onDrill }) {
+export default function NodePanel({ node, neighbors, getNode, onSelectNode, onClose, onDrill, closing = false }) {
   const [insight, setInsight] = useState(null); // string | null
+  const [linkCopied, setLinkCopied] = useState(false); // 复制链接成功的瞬时反馈
   const [insightAvailable, setInsightAvailable] = useState(true);
   const [insightState, setInsightState] = useState('idle'); // idle | loading | streaming | done | error
+  // 错误细分：'slow'（首字超时）/ 'unavailable'（AI 未启用）/ 'fail'（其余失败）
+  const [insightErrorKind, setInsightErrorKind] = useState('fail');
+  // 阶段化加载文案：超过 3s 仍未出首字，切到更有进度感的提示
+  const [insightLoadingText, setInsightLoadingText] = useState('正在解读…');
   // 在途流式的 AbortController：节点切换 / 卸载 / 关闭时取消，避免旧流覆盖新节点的 insight。
   const streamRef = useRef(null);
+  const stageTimerRef = useRef(null); // 3s 切换加载文案
+  const firstByteTimerRef = useRef(null); // 8s 首字超时 → 降级
+  const receivedAnyRef = useRef(false);
+
+  const clearTimers = useCallback(() => {
+    if (stageTimerRef.current) {
+      clearTimeout(stageTimerRef.current);
+      stageTimerRef.current = null;
+    }
+    if (firstByteTimerRef.current) {
+      clearTimeout(firstByteTimerRef.current);
+      firstByteTimerRef.current = null;
+    }
+  }, []);
 
   const cancelStream = useCallback(() => {
+    clearTimers();
     if (streamRef.current) {
       streamRef.current.abort();
       streamRef.current = null;
     }
-  }, []);
+  }, [clearTimers]);
 
   const fetchInsight = useCallback(async (n) => {
     if (!n) return;
     // 先取消上一个节点的在途流式请求
     cancelStream();
+    receivedAnyRef.current = false;
 
     const cached = insightCache.get(n.id);
     if (cached) {
       setInsight(cached.insight || '');
       setInsightAvailable(cached.available);
       setInsightState(cached.available && cached.insight ? 'done' : 'error');
+      setInsightErrorKind(cached.available ? 'fail' : 'unavailable');
       return;
     }
 
     // 未命中缓存：清掉旧文案，进入加载态，待首字到达切到 streaming
     setInsight(null);
+    setInsightLoadingText('正在解读…');
     setInsightState('loading');
 
     const controller = new AbortController();
     streamRef.current = controller;
-    let receivedAny = false;
+    // 阶段化文案：3s 后仍无首字，给用户进度感
+    stageTimerRef.current = setTimeout(() => {
+      setInsightLoadingText('正在结合关联节点组织…');
+    }, 3000);
+    // 首字超时：8s 仍未收到任何 delta → 友好降级，保留重试入口，避免无限转圈
+    firstByteTimerRef.current = setTimeout(() => {
+      if (receivedAnyRef.current) return;
+      controller.abort();
+      streamRef.current = null;
+      setInsightErrorKind('slow');
+      setInsightState('error');
+    }, 8000);
 
     await streamNodeInsight(n.id, {
       signal: controller.signal,
       onDelta: (text) => {
         if (!text) return;
-        if (!receivedAny) {
-          receivedAny = true;
+        if (!receivedAnyRef.current) {
+          receivedAnyRef.current = true;
+          clearTimers();
           setInsightState('streaming');
         }
         setInsight((prev) => `${prev || ''}${text}`);
       },
       onDone: ({ available }) => {
         if (controller.signal.aborted) return;
+        clearTimers();
         streamRef.current = null;
         setInsightAvailable(available);
         setInsight((finalText) => {
@@ -113,10 +150,16 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
           persistLSCache();
           return finalText;
         });
-        setInsightState(available && receivedAny ? 'done' : 'error');
+        if (available && receivedAnyRef.current) {
+          setInsightState('done');
+        } else {
+          setInsightErrorKind(available ? 'fail' : 'unavailable');
+          setInsightState('error');
+        }
       },
       onError: async () => {
         if (controller.signal.aborted) return;
+        clearTimers();
         // 回退非流式（代理可能不支持 SSE）
         try {
           const data = await exploreApi.getNodeInsight(n.id);
@@ -126,13 +169,15 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
           persistLSCache();
           setInsight(text);
           setInsightAvailable(available);
+          setInsightErrorKind(available ? 'fail' : 'unavailable');
           setInsightState(text ? 'done' : 'error');
         } catch {
+          setInsightErrorKind('fail');
           setInsightState('error');
         }
       },
     });
-  }, [cancelStream]);
+  }, [cancelStream, clearTimers]);
 
   // 节点切换时拉取（或命中缓存）AI 洞察 —— 这是「同步外部 API 数据到 state」的合法 effect。
   useEffect(() => {
@@ -143,6 +188,18 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
 
   if (!node) return null;
 
+  // 复制当前节点选中态的分享链接（深链 ?select= 已支持双向同步）
+  const handleCopyLink = async () => {
+    const url = `${window.location.origin}/explore?select=${encodeURIComponent(node.id)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      /* 剪贴板不可用（非 HTTPS / 无权限）— 静默忽略 */
+    }
+  };
+
   const blog = node.blog;
   const github = node.github;
   const relatedIds = neighbors ? Array.from(neighbors) : [];
@@ -151,7 +208,11 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
     : relatedIds.map((id) => ({ id, node: null }));
 
   return (
-    <aside className='constellation-panel' role='region' aria-label='节点详情'>
+    <aside
+      className={cx('constellation-panel', closing && 'is-closing')}
+      role='region'
+      aria-label='节点详情'
+    >
       <header className='constellation-panel-header'>
         <div className='constellation-panel-title-wrap'>
           <h3 className='constellation-panel-title'>{node.label || node.id}</h3>
@@ -165,6 +226,15 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
           </div>
         </div>
         <div className='constellation-panel-actions'>
+          <button
+            className='constellation-panel-copy'
+            onClick={handleCopyLink}
+            aria-label={linkCopied ? '已复制链接' : '复制分享链接'}
+            title={linkCopied ? '已复制' : '复制此节点的分享链接'}
+            type='button'
+          >
+            {linkCopied ? <Check size={16} /> : <Link2 size={16} />}
+          </button>
           {onDrill && (
             <button
               className='constellation-panel-drill'
@@ -198,7 +268,7 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
               <span className='constellation-loading-dots constellation-loading-dots--inline'>
                 <span /> <span /> <span />
               </span>
-              <span className='constellation-panel-insight-loading-text'>正在解读…</span>
+              <span className='constellation-panel-insight-loading-text'>{insightLoadingText}</span>
             </div>
           )}
           {insightState === 'done' && insight && (
@@ -212,9 +282,11 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
           )}
           {insightState === 'error' && (
             <p className='constellation-panel-insight-fallback'>
-              {insightAvailable === false
-                ? 'AI 洞察暂未启用'
-                : '洞察加载失败'}
+              {insightErrorKind === 'slow'
+                ? '解读较慢，请稍后重试'
+                : insightAvailable === false
+                  ? 'AI 洞察暂未启用'
+                  : '洞察加载失败'}
               <button
                 type='button'
                 className='constellation-panel-insight-retry'

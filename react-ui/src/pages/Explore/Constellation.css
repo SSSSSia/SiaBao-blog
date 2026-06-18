@@ -38,6 +38,27 @@
   color: var(--text-tertiary);
 }
 
+/* GitHub 取数失败降级横幅：顶部居中浮层，柔和提示 */
+.constellation-banner {
+  position: absolute;
+  top: var(--space-2);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: calc(100% - var(--space-4));
+  padding: 0.4rem 0.8rem;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.06));
+  pointer-events: none;
+}
+
 .constellation-refresh {
   display: inline-flex;
   align-items: center;
@@ -307,6 +328,23 @@
   overflow: hidden;
 }
 
+/* 关闭退场：与入场 fadeIn 反向，0.24s 后由 Constellation 的 EXIT_MS 定时真正卸载 */
+.constellation-panel.is-closing {
+  animation: constellation-panel-out 0.24s ease-in forwards;
+  pointer-events: none; /* 退场中禁用交互，避免点击命中正在消失的面板 */
+}
+
+@keyframes constellation-panel-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
 .constellation-panel-header {
   display: flex;
   align-items: flex-start;
@@ -346,7 +384,8 @@
   border-radius: var(--radius-sm);
 }
 
-.constellation-panel-close {
+.constellation-panel-close,
+.constellation-panel-copy {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -361,9 +400,15 @@
   transition: var(--transition-base);
 }
 
-.constellation-panel-close:hover {
+.constellation-panel-close:hover,
+.constellation-panel-copy:hover {
   background: var(--bg-secondary);
   color: var(--text-primary);
+}
+
+/* 复制成功反馈：accent 着色 */
+.constellation-panel-copy[aria-label='已复制链接'] {
+  color: var(--color-accent);
 }
 
 .constellation-panel-actions {
@@ -516,7 +561,7 @@
   height: 5px;
   background: var(--color-accent);
   border-radius: 50%;
-  animation: loadingPulse 1.2s ease-in-out infinite;
+  animation: constellation-pulse 1.2s ease-in-out infinite;
 }
 
 .constellation-loading-dots--inline span:nth-child(2) {
@@ -525,11 +570,6 @@
 
 .constellation-loading-dots--inline span:nth-child(3) {
   animation-delay: 0.3s;
-}
-
-@keyframes loadingPulse {
-  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-  40% { opacity: 1; transform: scale(1); }
 }
 
 .constellation-panel-insight-loading-text {
@@ -785,6 +825,23 @@
   }
 }
 
+/* ---------- 触屏：扩大小尺寸控件的点击命中区（视觉不变） ----------
+   图例按钮与面板关闭按钮默认 < 44px，用 ::after 透明区域补足命中区，
+   不改 padding / 视觉盒子，桌面密度不受影响。 */
+@media (pointer: coarse) {
+  .constellation-legend-item,
+  .constellation-panel-close {
+    position: relative;
+  }
+  .constellation-legend-item::after,
+  .constellation-panel-close::after {
+    content: '';
+    position: absolute;
+    inset: -0.6rem;
+    border-radius: inherit;
+  }
+}
+
 /* ---------- 减弱动效 ---------- */
 @media (prefers-reduced-motion: reduce) {
   .constellation-spin,
@@ -792,11 +849,13 @@
     animation: none;
   }
   .constellation-panel,
+  .constellation-panel.is-closing,
   .constellation-tooltip {
     animation: none;
   }
   .constellation-refresh,
   .constellation-panel-close,
+  .constellation-panel-copy,
   .constellation-panel-article-link,
   .constellation-panel-related-chip {
     transition: none;

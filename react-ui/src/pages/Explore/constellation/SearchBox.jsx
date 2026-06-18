@@ -6,6 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
+import { cx } from './utils';
 
 const MAX_RESULTS = 10;
 
@@ -92,7 +93,7 @@ export default function SearchBox({ nodes, flyToNode }) {
             <li key={n.id} role='option' aria-selected={i === activeIdx}>
               <button
                 type='button'
-                className={`constellation-search-result${i === activeIdx ? ' is-active' : ''}`}
+                className={cx('constellation-search-result', i === activeIdx && 'is-active')}
                 onMouseEnter={() => setActiveIdx(i)}
                 onClick={() => pick(n.id)}
               >

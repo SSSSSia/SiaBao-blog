@@ -444,11 +444,18 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
         edges = [e for e in edges if e["source"] in keep_ids and e["target"] in keep_ids]
         node_list = [n for n in node_list if n["id"] in keep_ids]
 
+    # githubHealthy: 数据源开关开启且确实取到了仓库（失败降级时为 False，
+    # 前端据此显示「GitHub Trending 暂不可用」横幅，而非静默缺数据）。
+    github_enabled = settings.explore_github_enabled
     meta = {
         "nodeCount": len(node_list),
         "edgeCount": len(edges),
         "maxWeight": round(max((n.get("weight", 0) for n in node_list), default=0), 3),
-        "githubEnabled": bool(repos),
+        "githubEnabled": github_enabled,
+        "githubHealthy": github_enabled and bool(repos),
+        "githubLastFetch": (github or {}).get("fetched_at") if github else None,
+        # 图构建时刻（缓存命中时保留原值），供前端展示「上次更新 X 前」。
+        "builtAt": _now_dt().isoformat(),
         "blogHash": blog_hash,
     }
     return {"nodes": node_list, "edges": edges, "meta": meta}

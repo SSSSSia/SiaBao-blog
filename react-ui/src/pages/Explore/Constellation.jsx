@@ -19,6 +19,21 @@ import CategoryLegend from './constellation/CategoryLegend';
 import { useConstellation } from './constellation/useConstellation';
 import './Constellation.css';
 
+/** 相对时间：「3 分钟前 / 2 小时前 / 3 天前 / 日期」。与 Comment.jsx 同源写法。 */
+function formatRelativeTime(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const diffMins = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (diffMins < 1) return '刚刚';
+  if (diffMins < 60) return `${diffMins} 分钟前`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} 小时前`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays} 天前`;
+  return date.toLocaleDateString('zh-CN');
+}
+
 export default function Constellation() {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -83,6 +98,43 @@ export default function Constellation() {
   useEffect(() => {
     syncUrl({ focus: focusId || null, select: selectedId || null });
   }, [focusId, selectedId, syncUrl]);
+
+  // ---- 节点面板：关闭时延迟卸载，留出退场过渡动画 ----
+  // 直接条件渲染 {selectedNode && <NodePanel/>} 会让面板瞬切消失、无过渡。
+  // 这里用 panelNode 滞留上一节点 + panelClosing 标记驱动 CSS 退场，EXIT_MS 后真正卸载。
+  const EXIT_MS = 240;
+  const [panelNode, setPanelNode] = useState(null); // 实际渲染的节点（含退场期滞留）
+  const [panelClosing, setPanelClosing] = useState(false);
+  const exitTimerRef = useRef(null);
+  const prevSelectedRef = useRef(selectedNode);
+
+  useEffect(() => {
+    if (exitTimerRef.current) {
+      clearTimeout(exitTimerRef.current);
+      exitTimerRef.current = null;
+    }
+    if (selectedNode) {
+      // 打开 / 切换节点：立即渲染新节点，不触发退场
+      setPanelNode(selectedNode);
+      setPanelClosing(false);
+    } else if (prevSelectedRef.current) {
+      // 关闭：保留上一节点做退场动画，到期再卸载
+      setPanelClosing(true);
+      exitTimerRef.current = setTimeout(() => {
+        setPanelNode(null);
+        setPanelClosing(false);
+        exitTimerRef.current = null;
+      }, EXIT_MS);
+    }
+    prevSelectedRef.current = selectedNode;
+  }, [selectedNode]);
+
+  useEffect(
+    () => () => {
+      if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    },
+    [],
+  );
 
   // 浮层坐标（屏幕坐标，相对容器）
   const [tipPos, setTipPos] = useState({ x: 0, y: 0 });
@@ -192,6 +244,7 @@ export default function Constellation() {
           {meta && (
             <span className='constellation-meta'>
               {meta.nodeCount} 节点 · {meta.edgeCount} 连线
+              {meta.builtAt && <> · 更新 {formatRelativeTime(meta.builtAt)}</>}
               {meta.githubEnabled === false && ' · GitHub 已关闭'}
             </span>
           )}
@@ -293,6 +346,14 @@ export default function Constellation() {
           onMouseMove={handleMouseMove}
         />
 
+        {/* GitHub 取数失败降级提示：开关开启但无仓库数据时，柔和提示而非静默缺数据 */}
+        {meta && meta.githubEnabled && !meta.githubHealthy && !loading && !error && (
+          <div className='constellation-banner' role='status'>
+            <AlertCircle size={14} />
+            <span>GitHub Trending 暂不可用，当前仅展示策展 + 博客内容</span>
+          </div>
+        )}
+
         {/* 悬停浮层（仅 hover 设备） */}
         {showHoverTip && (
           <HoverTooltip node={hoveredNode} x={tipPos.x} y={tipPos.y} />
@@ -310,15 +371,16 @@ export default function Constellation() {
           getCategoryColor={getCategoryColor}
         />
 
-        {/* 选中下钻面板 */}
-        {selectedNode && (
+        {/* 选中下钻面板（关闭时延迟卸载以播放退场动画） */}
+        {panelNode && (
           <NodePanel
-            node={selectedNode}
-            neighbors={getNeighbors(selectedNode.id)}
+            node={panelNode}
+            neighbors={getNeighbors(panelNode.id)}
             getNode={getNode}
             onSelectNode={selectNode}
             onClose={clearSelection}
             onDrill={enterFocus}
+            closing={panelClosing}
           />
         )}
       </div>

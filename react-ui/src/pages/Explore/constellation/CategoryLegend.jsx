@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
+import { cx } from './utils';
 
 const LS_KEY = 'explore_legend_collapsed';
 
@@ -61,7 +62,7 @@ export default function CategoryLegend({
 
   return (
     <div
-      className={`constellation-legend${collapsed ? ' is-collapsed' : ''}`}
+      className={cx('constellation-legend', collapsed && 'is-collapsed')}
       role='group'
       aria-label='分类显隐'
     >
@@ -91,7 +92,7 @@ export default function CategoryLegend({
                 <button
                   key={cat}
                   type='button'
-                  className={`constellation-legend-item${isHidden ? ' is-hidden' : ''}`}
+                  className={cx('constellation-legend-item', isHidden && 'is-hidden')}
                   onClick={() => toggleCategory(cat)}
                   aria-pressed={!isHidden}
                   title={isHidden ? `显示「${cat}」` : `隐藏「${cat}」`}
