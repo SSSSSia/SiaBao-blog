@@ -9,7 +9,6 @@ import Pagination from '../../components/ui/Pagination'
 import Loading from '../../components/ui/Loading'
 import { useScrollFade } from '../../hooks/useScrollFade'
 import { articleRepository } from '../../repositories/articleRepository'
-import { categoryRepository } from '../../repositories/categoryRepository'
 import './ArticleList.css'
 import '../../components/article/ArticleIndex.css'
 
@@ -49,11 +48,8 @@ const getTagSlug = (tagItem) => {
 
 export default function ArticleList() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [articles, setArticles] = useState([])
-  const [categories, setCategories] = useState([])
-  const [tags, setTags] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [inputQuery, setInputQuery] = useState('')
   const [isComposing, setIsComposing] = useState(false)
@@ -69,6 +65,7 @@ export default function ArticleList() {
   const tag = searchParams.get('tag')
   const query = searchParams.get('q') || ''
   const sort = searchParams.get('sort') || 'latest'
+  const rawPage = parseInt(searchParams.get('page')) || 1
 
   const selectedSort =
     SORT_OPTIONS.find((item) => item.value === sort) || SORT_OPTIONS[0]
@@ -81,20 +78,13 @@ export default function ArticleList() {
     const loadData = async () => {
       setIsLoading(true)
       try {
-        const [articlesRes, categoriesRes, tagsRes] = await Promise.all([
-          articleRepository.getArticleList({ status: 'published' }),
-          categoryRepository.getCategories({ status: 'published' }),
-          categoryRepository.getTags({ status: 'published' }),
-        ])
-
+        const articlesRes = await articleRepository.getArticleList({
+          status: 'published',
+        })
         setArticles(articlesRes.data || [])
-        setCategories(categoriesRes.data || [])
-        setTags(tagsRes.data || [])
       } catch (error) {
         console.error('加载数据失败:', error)
         setArticles([])
-        setCategories([])
-        setTags([])
       } finally {
         setIsLoading(false)
       }
@@ -102,6 +92,37 @@ export default function ArticleList() {
 
     loadData()
   }, [])
+
+  // 分类 / 标签从已加载的文章派生（含 count，slug 与筛选逻辑共用同一套归一化）
+  const { categories, tags } = useMemo(() => {
+    const catMap = new Map()
+    const tagMap = new Map()
+    articles.forEach((a) => {
+      const catName = getCategoryName(a)
+      if (catName) {
+        const slug = getCategorySlug(a)
+        const key = slug || catName
+        const exist = catMap.get(key)
+        exist
+          ? exist.count++
+          : catMap.set(key, { id: `cat-${key}`, name: catName, slug, count: 1 })
+      }
+      ;(a.tags || []).forEach((t) => {
+        const name = typeof t === 'string' ? t : t?.name
+        if (!name) return
+        const slug = getTagSlug(t)
+        const key = slug || name
+        const exist = tagMap.get(key)
+        exist
+          ? exist.count++
+          : tagMap.set(key, { id: `tag-${key}`, name, slug, count: 1 })
+      })
+    })
+    return {
+      categories: [...catMap.values()],
+      tags: [...tagMap.values()].sort((a, b) => b.count - a.count),
+    }
+  }, [articles])
 
   const { filteredArticles, total, totalPages } = useMemo(() => {
     let filtered = articles
@@ -169,36 +190,46 @@ export default function ArticleList() {
     [setSearchParams],
   )
 
+  // 钳制页码：渲染即正确，越界页（如 ?page=99）收敛到末页，空结果收敛到第 1 页
+  const currentPage = totalPages > 0 ? Math.min(rawPage, totalPages) : 1
+
+  useEffect(() => {
+    if (totalPages > 0 && rawPage > totalPages) {
+      updateSearchParam('page', String(totalPages))
+    } else if (totalPages === 0 && rawPage > 1) {
+      updateSearchParam('page', null)
+    }
+  }, [rawPage, totalPages, updateSearchParam])
+
   const handlePageChange = (page) => {
-    setCurrentPage(page)
+    updateSearchParam('page', String(page))
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleCategoryClick = (categorySlug) => {
-    setCurrentPage(1)
+    updateSearchParam('page', null)
     updateSearchParam('category', categorySlug)
   }
 
   const handleTagClick = (tagSlug) => {
-    setCurrentPage(1)
+    updateSearchParam('page', null)
     updateSearchParam('tag', tagSlug)
   }
 
   const handleSortSelect = (value) => {
-    setCurrentPage(1)
+    updateSearchParam('page', null)
     updateSearchParam('sort', value === 'latest' ? null : value)
     setIsSortOpen(false)
   }
 
   const handlePageSizeSelect = (size) => {
     setPageSize(size)
-    setCurrentPage(1)
+    updateSearchParam('page', null)
     setIsPageSizeOpen(false)
   }
 
   const handleReset = () => {
     setInputQuery('')
-    setCurrentPage(1)
     setSearchParams({})
   }
 
@@ -210,7 +241,7 @@ export default function ArticleList() {
     if (isComposing) return
     const timer = setTimeout(() => {
       const normalized = inputQuery.trim()
-      setCurrentPage(1)
+      updateSearchParam('page', null)
       updateSearchParam('q', normalized ? normalized : null)
     }, 250)
     return () => clearTimeout(timer)
@@ -433,7 +464,6 @@ export default function ArticleList() {
                 <button
                   className='btn'
                   onClick={() => {
-                    setCurrentPage(1)
                     setSearchParams({})
                   }}
                 >
