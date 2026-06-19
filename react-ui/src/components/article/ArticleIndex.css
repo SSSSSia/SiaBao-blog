@@ -1,0 +1,325 @@
+/**
+ * 文章索引页共享版式 - 编辑杂志目录式
+ * 被 ArticleList / Search / Category / Tag 四页共用
+ */
+
+/* ===================================
+   单列全宽布局（替代原 main-grid 双列）
+   =================================== */
+.index-page .main-grid {
+  grid-template-columns: 1fr;
+}
+
+/* ===================================
+   顶部编辑式页眉条
+   =================================== */
+.index-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-gray-900);
+}
+
+.index-band-head {
+  min-width: 0;
+  flex: 1;
+}
+
+.index-band-eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  font-weight: 500;
+  margin-bottom: var(--space-1);
+}
+
+.index-title {
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.index-subtitle {
+  margin-top: var(--space-1);
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+}
+
+.index-subtitle strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.index-band-side {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* ===================================
+   横向分段药丸筛选条
+   =================================== */
+.filter-rail {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.filter-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-pill {
+  position: relative;
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  border-radius: var(--radius-sm);
+}
+
+.filter-pill:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.filter-pill-active {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.filter-pill-active::after {
+  content: '';
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  bottom: -3px;
+  height: 2px;
+  background: var(--color-accent);
+  animation: pillUnderline 0.25s ease;
+}
+
+@keyframes pillUnderline {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* 标签小号 chips 行 */
+.tag-rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.tag-chip {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tag-chip:hover {
+  color: var(--text-primary);
+  border-color: var(--color-gray-400);
+}
+
+.tag-chip-active {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: rgba(200, 168, 233, 0.08);
+}
+
+/* ===================================
+   搜索行（band 下方）
+   =================================== */
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.search-row .search-input {
+  flex: 1;
+  height: 44px;
+  font-size: 1rem;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+.search-row .search-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.search-row .search-kbd {
+  font-family: 'SF Mono', 'Fira Code', 'Monaco', 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+/* hero 搜索（搜索页用） */
+.search-hero {
+  width: 100%;
+  margin-bottom: var(--space-5);
+}
+
+.search-hero-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-5) var(--space-2) 0;
+  font-size: clamp(1.25rem, 4vw, 2rem);
+  font-weight: 500;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--bg-tertiary);
+  letter-spacing: -0.01em;
+}
+
+.search-hero-input:focus {
+  outline: none;
+  border-bottom-color: var(--color-gray-900);
+}
+
+.search-hero-input::placeholder {
+  color: var(--color-gray-200);
+  font-weight: 400;
+}
+
+/* ===================================
+   结果计数 + 排序
+   =================================== */
+.result-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+}
+
+.result-meta strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ===================================
+   索引条目列表
+   =================================== */
+.entry-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--bg-tertiary);
+}
+
+/* ===================================
+   空态 / 加载
+   =================================== */
+.index-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  gap: var(--space-3);
+}
+
+.index-empty svg {
+  color: var(--text-tertiary);
+  opacity: 0.4;
+}
+
+.index-empty h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.index-empty p {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  max-width: 420px;
+  margin: 0;
+}
+
+/* ===================================
+   响应式
+   =================================== */
+@media (max-width: 640px) {
+  .index-band {
+    align-items: flex-start;
+  }
+
+  .index-band-side {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .filter-rail {
+    margin-left: calc(var(--space-1) * -1);
+    margin-right: calc(var(--space-1) * -1);
+    padding: 0 var(--space-1);
+  }
+
+  /* 搜索行在窄屏换行，避免横向溢出 */
+  .search-row {
+    flex-wrap: wrap;
+  }
+
+  .search-row .search-input {
+    order: 2;
+    flex-basis: 100%;
+    margin-top: var(--space-1);
+  }
+
+  .page-size-group {
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-pill-active::after {
+    animation: none;
+  }
+}

@@ -1,18 +1,17 @@
-﻿import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { FileText, Filter, SlidersHorizontal, X } from 'lucide-react'
+import { FileText, Search as SearchIcon } from 'lucide-react'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
-import Sidebar from '../../components/layout/Sidebar'
-import ArticleCard from '../../components/article/ArticleCard'
+import ArticleEntry from '../../components/article/ArticleEntry'
 import Pagination from '../../components/ui/Pagination'
 import Loading from '../../components/ui/Loading'
 import { articleRepository } from '../../repositories/articleRepository'
 import { categoryRepository } from '../../repositories/categoryRepository'
 import './ArticleList.css'
+import '../../components/article/ArticleIndex.css'
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50]
-const MOBILE_FILTER_BREAKPOINT = 1024
 const SORT_OPTIONS = [
   { value: 'latest', label: '最新发布' },
   { value: 'popular', label: '阅读最多' },
@@ -49,7 +48,7 @@ const getTagSlug = (tagItem) => {
 export default function ArticleList() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(5)
+  const [pageSize, setPageSize] = useState(10)
   const [articles, setArticles] = useState([])
   const [categories, setCategories] = useState([])
   const [tags, setTags] = useState([])
@@ -58,8 +57,7 @@ export default function ArticleList() {
   const [isComposing, setIsComposing] = useState(false)
   const [isSortOpen, setIsSortOpen] = useState(false)
   const [isPageSizeOpen, setIsPageSizeOpen] = useState(false)
-  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
-  const [draftFilters, setDraftFilters] = useState({ category: null, tag: null })
+  const searchInputRef = useRef(null)
   const sortRef = useRef(null)
   const pageSizeRef = useRef(null)
 
@@ -68,62 +66,12 @@ export default function ArticleList() {
   const query = searchParams.get('q') || ''
   const sort = searchParams.get('sort') || 'latest'
 
-  const selectedCategory = categories.find((item) => item.slug === category)
-  const selectedTag = tags.find((item) => item.slug === tag)
   const selectedSort =
     SORT_OPTIONS.find((item) => item.value === sort) || SORT_OPTIONS[0]
-  const activeFilterCount = [category, tag, query].filter(Boolean).length
-  const hasPendingFilterChanges =
-    (draftFilters.category || null) !== (category || null) ||
-    (draftFilters.tag || null) !== (tag || null)
 
   useEffect(() => {
     setInputQuery(query)
   }, [query])
-
-  useEffect(() => {
-    if (!isMobileFilterOpen) return undefined
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isMobileFilterOpen])
-
-  useEffect(() => {
-    if (!isMobileFilterOpen) return undefined
-
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        setIsMobileFilterOpen(false)
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isMobileFilterOpen])
-
-  useEffect(() => {
-    if (!isMobileFilterOpen) return
-    setDraftFilters({
-      category: category || null,
-      tag: tag || null,
-    })
-  }, [isMobileFilterOpen, category, tag])
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > MOBILE_FILTER_BREAKPOINT) {
-        setIsMobileFilterOpen(false)
-      }
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => {
-      window.removeEventListener('resize', handleResize)
-    }
-  }, [])
 
   useEffect(() => {
     const loadData = async () => {
@@ -232,51 +180,6 @@ export default function ArticleList() {
     updateSearchParam('tag', tagSlug)
   }
 
-  const handleDraftCategoryClick = (categorySlug) => {
-    setDraftFilters((prev) => ({
-      ...prev,
-      category: categorySlug,
-    }))
-  }
-
-  const handleDraftTagClick = (tagSlug) => {
-    setDraftFilters((prev) => ({
-      ...prev,
-      tag: tagSlug,
-    }))
-  }
-
-  const handleApplyMobileFilters = () => {
-    setCurrentPage(1)
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      if (draftFilters.category) {
-        next.set('category', draftFilters.category)
-      } else {
-        next.delete('category')
-      }
-      if (draftFilters.tag) {
-        next.set('tag', draftFilters.tag)
-      } else {
-        next.delete('tag')
-      }
-      return next
-    })
-    setIsMobileFilterOpen(false)
-  }
-
-  const handleClearMobileFilters = () => {
-    setCurrentPage(1)
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      next.delete('category')
-      next.delete('tag')
-      return next
-    })
-    setDraftFilters({ category: null, tag: null })
-    setIsMobileFilterOpen(false)
-  }
-
   const handleSortSelect = (value) => {
     setCurrentPage(1)
     updateSearchParam('sort', value === 'latest' ? null : value)
@@ -303,6 +206,7 @@ export default function ArticleList() {
     return () => clearTimeout(timer)
   }, [inputQuery, isComposing, updateSearchParam])
 
+  // 点击外部关闭下拉
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (sortRef.current && !sortRef.current.contains(event.target)) {
@@ -319,271 +223,220 @@ export default function ArticleList() {
     }
   }, [])
 
-  const handleClearFilters = () => {
-    setCurrentPage(1)
-    setSearchParams({})
-  }
+  // ⌘K / "/" 聚焦搜索
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      const isModK = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k'
+      const isSlash =
+        event.key === '/' &&
+        !['INPUT', 'TEXTAREA'].includes(event.target?.tagName)
+      if (isModK || isSlash) {
+        event.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
-  const getPageTitle = () => {
-    if (selectedCategory && selectedTag) {
-      return `${selectedCategory.name} / ${selectedTag.name}`
-    }
-    if (selectedCategory) {
-      return `分类: ${selectedCategory.name}`
-    }
-    if (selectedTag) {
-      return `标签: ${selectedTag.name}`
-    }
-    return '全部文章'
-  }
+  const hasAnyFilter = Boolean(category || tag || query)
 
   return (
-    <div className='page'>
+    <div className='page index-page'>
       <Header />
 
       <main className='main'>
         <div className='container main-grid fade-in'>
-          <div className='main-content'>
-            <div className='page-header'>
-              <div className='page-header-top'>
-                <h1 className='page-title'>{getPageTitle()}</h1>
+          {/* 顶部编辑式页眉条 */}
+          <div className='index-band'>
+            <div className='index-band-head'>
+              <p className='index-band-eyebrow'>Index</p>
+              <h1 className='index-title'>{query ? '搜索结果' : '全部文章'}</h1>
+            </div>
+            <div className='index-band-side'>
+              <span>共 <strong>{total}</strong> 篇</span>
+            </div>
+          </div>
+
+          {/* 分类分段药丸 */}
+          {categories.length > 0 && (
+            <div className='filter-rail' role='tablist' aria-label='按分类筛选'>
+              <button
+                type='button'
+                role='tab'
+                aria-selected={!category}
+                className={`filter-pill ${!category ? 'filter-pill-active' : ''}`}
+                onClick={() => handleCategoryClick(null)}
+              >
+                全部
+              </button>
+              {categories.map((item) => (
                 <button
+                  key={item.id}
                   type='button'
-                  className='mobile-filter-toggle'
-                  onClick={() => setIsMobileFilterOpen((prev) => !prev)}
-                  aria-label='切换筛选面板'
-                  aria-expanded={isMobileFilterOpen}
-                  aria-controls='articles-filter-sidebar'
+                  role='tab'
+                  aria-selected={category === item.slug}
+                  className={`filter-pill ${category === item.slug ? 'filter-pill-active' : ''}`}
+                  onClick={() => handleCategoryClick(item.slug)}
                 >
-                  {isMobileFilterOpen ? <X size={20} /> : <SlidersHorizontal size={20} />}
-                  <span>筛选</span>
-                  {activeFilterCount > 0 && (
-                    <span className='mobile-filter-badge' aria-hidden='true'>
-                      {activeFilterCount}
-                    </span>
-                  )}
+                  {item.name}
+                  <span className='filter-pill-count'>{item.count}</span>
                 </button>
-              </div>
+              ))}
+            </div>
+          )}
 
-              <div className='list-tools'>
-                <label className='search-field' htmlFor='article-search'>
-                  搜索
-                  <input
-                    id='article-search'
-                    className='search-input'
-                    type='search'
-                    value={inputQuery}
-                    onChange={handleQueryChange}
-                    onCompositionStart={() => setIsComposing(true)}
-                    onCompositionEnd={(event) => {
-                      setIsComposing(false)
-                      setInputQuery(event.currentTarget.value)
-                    }}
-                    placeholder='搜索标题或摘要...'
-                  />
-                </label>
+          {/* 标签 chips */}
+          {tags.length > 0 && (
+            <div className='tag-rail'>
+              {tags.map((item) => (
+                <button
+                  key={item.id}
+                  type='button'
+                  className={`tag-chip ${tag === item.slug ? 'tag-chip-active' : ''}`}
+                  onClick={() => handleTagClick(tag === item.slug ? null : item.slug)}
+                  aria-pressed={tag === item.slug}
+                >
+                  #{item.name}
+                </button>
+              ))}
+            </div>
+          )}
 
-                <div className='sort-field sort-custom' ref={sortRef}>
-                  <span>排序</span>
-                  <button
-                    type='button'
-                    className='sort-trigger'
-                    onClick={() => setIsSortOpen((prev) => !prev)}
-                    aria-haspopup='listbox'
-                    aria-expanded={isSortOpen}
-                  >
-                    <span>{selectedSort.label}</span>
-                    <span className={`sort-caret ${isSortOpen ? 'sort-caret-open' : ''}`} />
-                  </button>
+          {/* 搜索 + 排序 + 每页 */}
+          <div className='search-row'>
+            <SearchIcon size={18} aria-hidden='true' />
+            <input
+              ref={searchInputRef}
+              className='search-input'
+              type='search'
+              value={inputQuery}
+              onChange={handleQueryChange}
+              onCompositionStart={() => setIsComposing(true)}
+              onCompositionEnd={(event) => {
+                setIsComposing(false)
+                setInputQuery(event.currentTarget.value)
+              }}
+              placeholder='搜索标题或摘要…'
+              aria-label='搜索文章'
+            />
+            <span className='search-kbd'>/</span>
 
-                  {isSortOpen && (
-                    <ul className='sort-menu' role='listbox'>
-                      {SORT_OPTIONS.map((option) => (
-                        <li key={option.value}>
-                          <button
-                            type='button'
-                            role='option'
-                            aria-selected={sort === option.value}
-                            className={`sort-option ${sort === option.value ? 'sort-option-active' : ''}`}
-                            onClick={() => handleSortSelect(option.value)}
-                          >
-                            {option.label}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+            <div className='sort-field sort-custom' ref={sortRef}>
+              <button
+                type='button'
+                className='sort-trigger'
+                onClick={() => setIsSortOpen((prev) => !prev)}
+                aria-haspopup='listbox'
+                aria-expanded={isSortOpen}
+              >
+                <span>{selectedSort.label}</span>
+                <span className={`sort-caret ${isSortOpen ? 'sort-caret-open' : ''}`} />
+              </button>
 
-                <div className='filter-group page-size-group' ref={pageSizeRef}>
-                  <label>每页条数</label>
-                  <div className='admin-select'>
-                    <button
-                      type='button'
-                      className='admin-select-trigger'
-                      onClick={() => setIsPageSizeOpen((prev) => !prev)}
-                      aria-haspopup='listbox'
-                      aria-expanded={isPageSizeOpen}
-                    >
-                      <span>{pageSize}</span>
-                      <span
-                        className={`admin-select-caret ${isPageSizeOpen ? 'admin-select-caret-open' : ''}`}
-                      />
-                    </button>
-
-                    {isPageSizeOpen && (
-                      <ul className='admin-select-menu' role='listbox'>
-                        {PAGE_SIZE_OPTIONS.map((size) => (
-                          <li key={size}>
-                            <button
-                              type='button'
-                              role='option'
-                              aria-selected={pageSize === size}
-                              className={`admin-select-option ${pageSize === size ? 'admin-select-option-active' : ''}`}
-                              onClick={() => handlePageSizeSelect(size)}
-                            >
-                              {size}
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {(category || tag || query) && (
-                <div className='filter-status'>
-                  <span className='filter-info'>
-                    <Filter size={14} />
-                    当前筛选
-                  </span>
-
-                  {query && (
-                    <span className='filter-tag filter-tag-query'>
-                      关键词: {query}
+              {isSortOpen && (
+                <ul className='sort-menu' role='listbox'>
+                  {SORT_OPTIONS.map((option) => (
+                    <li key={option.value}>
                       <button
-                        className='filter-tag-remove'
-                        onClick={() => updateSearchParam('q', null)}
-                        aria-label='移除搜索关键词'
+                        type='button'
+                        role='option'
+                        aria-selected={sort === option.value}
+                        className={`sort-option ${sort === option.value ? 'sort-option-active' : ''}`}
+                        onClick={() => handleSortSelect(option.value)}
                       >
-                        ×
+                        {option.label}
                       </button>
-                    </span>
-                  )}
-
-                  {selectedCategory && (
-                    <span className='filter-tag filter-tag-category'>
-                      分类: {selectedCategory.name}
-                      <button
-                        className='filter-tag-remove'
-                        onClick={() => handleCategoryClick(null)}
-                        aria-label='移除分类筛选'
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )}
-
-                  {selectedTag && (
-                    <span className='filter-tag filter-tag-tag'>
-                      标签: {selectedTag.name}
-                      <button
-                        className='filter-tag-remove'
-                        onClick={() => handleTagClick(null)}
-                        aria-label='移除标签筛选'
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )}
-
-                  <button className='filter-clear' onClick={handleClearFilters}>
-                    清除全部
-                  </button>
-                </div>
-              )}
-
-              {!isLoading && articles.length > 0 && (
-                <p className='result-count'>
-                  共找到<strong>{total}</strong> 篇文章
-                </p>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
 
-            {isLoading && (
-              <div className='loading-container'>
-                <Loading text='加载文章中...' />
-              </div>
-            )}
-
-            {!isLoading && filteredArticles.length === 0 && (
-              <div className='empty-state'>
-                <FileText size={64} />
-                <h3>暂无文章</h3>
-                <p>
-                  {category || tag || query
-                    ? '该筛选条件下暂无文章，请尝试调整筛选条件。'
-                    : '还没有发布任何文章。'}
-                </p>
-                {(category || tag || query) && (
-                  <button className='btn' onClick={handleClearFilters}>
-                    查看全部文章
-                  </button>
-                )}
-              </div>
-            )}
-
-            {!isLoading && filteredArticles.length > 0 && (
-              <>
-                <div className='article-list'>
-                  {filteredArticles.map((article) => (
-                    <ArticleCard key={article.id} article={article} />
-                  ))}
-                </div>
-
-                {totalPages > 1 && (
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={handlePageChange}
+            <div className='filter-group page-size-group' ref={pageSizeRef}>
+              <div className='admin-select'>
+                <button
+                  type='button'
+                  className='admin-select-trigger'
+                  onClick={() => setIsPageSizeOpen((prev) => !prev)}
+                  aria-haspopup='listbox'
+                  aria-expanded={isPageSizeOpen}
+                >
+                  <span>{pageSize}</span>
+                  <span
+                    className={`admin-select-caret ${isPageSizeOpen ? 'admin-select-caret-open' : ''}`}
                   />
+                </button>
+
+                {isPageSizeOpen && (
+                  <ul className='admin-select-menu' role='listbox'>
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <li key={size}>
+                        <button
+                          type='button'
+                          role='option'
+                          aria-selected={pageSize === size}
+                          className={`admin-select-option ${pageSize === size ? 'admin-select-option-active' : ''}`}
+                          onClick={() => handlePageSizeSelect(size)}
+                        >
+                          {size}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
-              </>
-            )}
+              </div>
+            </div>
           </div>
 
-          <aside
-            id='articles-filter-sidebar'
-            className={`main-sidebar ${isMobileFilterOpen ? 'main-sidebar-open' : ''}`}
-            role={isMobileFilterOpen ? 'dialog' : undefined}
-            aria-modal={isMobileFilterOpen ? 'true' : undefined}
-            aria-label='筛选面板'
-          >
-            <Sidebar
-              categories={categories}
-              tags={tags}
-              onCategoryClick={
-                isMobileFilterOpen ? handleDraftCategoryClick : handleCategoryClick
-              }
-              onTagClick={isMobileFilterOpen ? handleDraftTagClick : handleTagClick}
-              selectedCategory={isMobileFilterOpen ? draftFilters.category : category}
-              selectedTag={isMobileFilterOpen ? draftFilters.tag : tag}
-              filterMode
-              hasActiveFilters={Boolean(draftFilters.category || draftFilters.tag)}
-              hasPendingFilterChanges={hasPendingFilterChanges}
-              onApplyFilters={handleApplyMobileFilters}
-              onClearFilters={handleClearMobileFilters}
-              onMobileClose={() => setIsMobileFilterOpen(false)}
-            />
-          </aside>
+          {/* 加载 */}
+          {isLoading && (
+            <div className='loading-container'>
+              <Loading text='加载文章中...' />
+            </div>
+          )}
 
-          {isMobileFilterOpen && (
-            <div
-              className='sidebar-overlay'
-              onClick={() => setIsMobileFilterOpen(false)}
-              aria-hidden='true'
-            />
+          {/* 空态 */}
+          {!isLoading && filteredArticles.length === 0 && (
+            <div className='index-empty'>
+              <FileText size={56} />
+              <h3>{hasAnyFilter ? '暂无匹配文章' : '暂无文章'}</h3>
+              <p>
+                {hasAnyFilter
+                  ? '该筛选条件下暂无文章，请尝试调整筛选条件。'
+                  : '还没有发布任何文章。'}
+              </p>
+              {hasAnyFilter && (
+                <button
+                  className='btn'
+                  onClick={() => {
+                    setCurrentPage(1)
+                    setSearchParams({})
+                  }}
+                >
+                  查看全部文章
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* 索引列表 */}
+          {!isLoading && filteredArticles.length > 0 && (
+            <>
+              <div className='entry-list'>
+                {filteredArticles.map((article, index) => (
+                  <ArticleEntry key={article.id} article={article} index={index} />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              )}
+            </>
           )}
         </div>
       </main>

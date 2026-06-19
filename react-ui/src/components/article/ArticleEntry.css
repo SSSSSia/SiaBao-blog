@@ -1,0 +1,238 @@
+/**
+ * 文章索引条目样式 - 编辑杂志目录式
+ */
+
+.entry {
+  position: relative;
+  border-bottom: 1px solid var(--bg-tertiary);
+  /* 入场动画 */
+  opacity: 0;
+  animation: entryIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes entryIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.entry-link {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2);
+  color: inherit;
+  text-decoration: none;
+  /* 取消全站 a::after 下划线对本链接的干扰 */
+}
+
+.entry-link::after {
+  display: none;
+}
+
+/* 序号 */
+.entry-index {
+  font-family: 'SF Mono', 'Fira Code', 'Monaco', 'Courier New', monospace;
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--color-gray-200);
+  letter-spacing: 0.02em;
+  padding-top: 0.25rem;
+  transition: var(--transition-base);
+  user-select: none;
+}
+
+/* 正文区 */
+.entry-body {
+  min-width: 0;
+}
+
+.entry-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.entry-category {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.entry-kicker .entry-date::before {
+  content: '·';
+  margin-right: var(--space-2);
+  color: var(--color-gray-400);
+}
+
+/* 标题 + 滑入下划线（复刻全站 a::after 语言） */
+.entry-title {
+  position: relative;
+  display: inline-block;
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-1);
+  padding-bottom: 2px;
+}
+
+.entry-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: 1px;
+  background: var(--color-accent);
+  transition: width 0.3s ease;
+}
+
+.entry-excerpt {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.entry-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-size: 0.8125rem;
+  color: var(--text-tertiary);
+}
+
+.entry-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.entry-meta-item svg {
+  width: 13px;
+  height: 13px;
+}
+
+.entry-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.entry-tag {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  transition: all 0.2s ease;
+}
+
+/* 右侧箭头 */
+.entry-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  color: var(--color-gray-400);
+  transition: var(--transition-base);
+  padding-top: 0.25rem;
+}
+
+/* —— hover 联动 —— */
+.entry:hover {
+  background: var(--bg-secondary);
+}
+
+.entry:hover .entry-index {
+  color: var(--color-accent);
+}
+
+.entry:hover .entry-title::after {
+  width: 100%;
+}
+
+.entry:hover .entry-arrow {
+  color: var(--color-accent);
+  transform: translateX(4px);
+}
+
+.entry:hover .entry-tag {
+  border-color: var(--color-gray-400);
+  color: var(--text-secondary);
+}
+
+/* ===================================
+   响应式
+   =================================== */
+@media (max-width: 768px) {
+  .entry-link {
+    grid-template-columns: auto 1fr;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-1);
+  }
+
+  .entry-index {
+    font-size: 1.125rem;
+  }
+
+  .entry-title {
+    font-size: 1.125rem;
+  }
+
+  .entry-excerpt {
+    font-size: 0.875rem;
+    -webkit-line-clamp: 2;
+  }
+
+  /* 移动端隐藏右箭头，腾出空间 */
+  .entry-arrow {
+    display: none;
+  }
+
+  .entry-meta {
+    gap: var(--space-2);
+    font-size: 0.75rem;
+  }
+}
+
+/* 无障碍：尊重 reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .entry {
+    animation: none;
+    opacity: 1;
+  }
+
+  .entry-title::after,
+  .entry-arrow,
+  .entry-index {
+    transition: none;
+  }
+}

@@ -1,6 +1,6 @@
 /**
- * 标签页面
- * 显示特定标签下的所有文章
+ * 标签页面 - 编辑杂志目录式
+ * 显示特定标签下的所有文章，顶部可切换同级标签
  */
 
 import { useState, useEffect, useMemo } from 'react'
@@ -8,13 +8,13 @@ import { useParams, Link } from 'react-router-dom'
 import { FileText, Tag as TagIcon } from 'lucide-react'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
-import Sidebar from '../../components/layout/Sidebar'
-import ArticleCard from '../../components/article/ArticleCard'
+import ArticleEntry from '../../components/article/ArticleEntry'
 import Pagination from '../../components/ui/Pagination'
 import Loading from '../../components/ui/Loading'
 import { articleRepository } from '../../repositories/articleRepository'
 import { categoryRepository } from '../../repositories/categoryRepository'
 import './Tag.css'
+import '../../components/article/ArticleIndex.css'
 
 const PAGE_SIZE = 10
 
@@ -22,23 +22,18 @@ export default function Tag() {
   const { slug } = useParams()
   const [currentPage, setCurrentPage] = useState(1)
   const [articles, setArticles] = useState([])
-  const [categories, setCategories] = useState([])
   const [tags, setTags] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [tagName, setTagName] = useState('')
 
-  // 获取分类和标签
+  // 获取标签
   useEffect(() => {
     const loadSidebarData = async () => {
       try {
-        const [categoriesRes, tagsRes] = await Promise.all([
-          categoryRepository.getCategories({ status: 'published' }),
-          categoryRepository.getTags({ status: 'published' }),
-        ])
-        setCategories(categoriesRes.data || [])
+        const tagsRes = await categoryRepository.getTags({ status: 'published' })
         setTags(tagsRes.data || [])
       } catch (error) {
-        console.error('加载分类标签失败:', error)
+        console.error('加载标签失败:', error)
       }
     }
     loadSidebarData()
@@ -54,7 +49,6 @@ export default function Tag() {
 
       setIsLoading(true)
       try {
-        // 查找标签名称
         const tag = tags.find((item) => item.slug === slug)
         if (tag) {
           setTagName(tag.name)
@@ -65,9 +59,8 @@ export default function Tag() {
           status: 'published',
         })
 
-        // 前端过滤包含该标签的文章
         const filteredArticles = (response.data || []).filter((article) =>
-          article.tags?.some((item) => item.slug === slug || item === slug)
+          article.tags?.some((item) => item.slug === slug || item === slug),
         )
 
         setArticles(filteredArticles)
@@ -84,35 +77,27 @@ export default function Tag() {
 
   const { total, totalPages } = useMemo(() => {
     const total = articles.length
-    const totalPages = Math.ceil(total / PAGE_SIZE)
-    return { total, totalPages }
+    return { total, totalPages: Math.ceil(total / PAGE_SIZE) }
   }, [articles])
 
   const paginatedArticles = useMemo(() => {
     const startIndex = (currentPage - 1) * PAGE_SIZE
-    const endIndex = startIndex + PAGE_SIZE
-    return articles.slice(startIndex, endIndex)
+    return articles.slice(startIndex, startIndex + PAGE_SIZE)
   }, [articles, currentPage])
 
-  const handlePageChange = (page) => {
-    setCurrentPage(page)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  // 标签不存在
   const tagNotFound = !isLoading && !tagName && slug
 
   if (tagNotFound) {
     return (
-      <div className="page">
+      <div className='page index-page'>
         <Header />
-        <main className="main">
-          <div className="container">
-            <div className="empty-state">
-              <TagIcon size={64} />
+        <main className='main'>
+          <div className='container'>
+            <div className='index-empty'>
+              <TagIcon size={56} />
               <h3>标签不存在</h3>
               <p>您访问的标签不存在或已被删除。</p>
-              <Link to="/articles" className="btn">
+              <Link to='/articles' className='btn'>
                 浏览所有文章
               </Link>
             </div>
@@ -124,61 +109,75 @@ export default function Tag() {
   }
 
   return (
-    <div className="page">
+    <div className='page index-page'>
       <Header />
 
-      <main className="main">
-        <div className="container main-grid fade-in">
-          <div className="main-content">
-            <div className="page-header">
-              <h1 className="page-title">
-                <TagIcon size={28} />
-                {tagName || '加载中...'}
-              </h1>
-              <p className="page-description">
-                共 <strong>{total}</strong> 篇文章
-              </p>
+      <main className='main'>
+        <div className='container main-grid fade-in'>
+          {/* 顶部编辑式页眉 */}
+          <div className='index-band'>
+            <div className='index-band-head'>
+              <p className='index-band-eyebrow'>Tag</p>
+              <h1 className='index-title'>#{tagName || '加载中…'}</h1>
             </div>
-
-            {isLoading && (
-              <div className="loading-container">
-                <Loading text="加载文章中..." />
-              </div>
-            )}
-
-            {!isLoading && paginatedArticles.length === 0 && (
-              <div className="empty-state">
-                <FileText size={64} />
-                <h3>暂无文章</h3>
-                <p>该标签下还没有发布任何文章。</p>
-                <Link to="/articles" className="btn">
-                  浏览其他文章
-                </Link>
-              </div>
-            )}
-
-            {!isLoading && paginatedArticles.length > 0 && (
-              <>
-                <div className="article-list">
-                  {paginatedArticles.map((article) => (
-                    <ArticleCard key={article.id} article={article} />
-                  ))}
-                </div>
-
-                {totalPages > 1 && (
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={handlePageChange}
-                  />
-                )}
-              </>
-            )}
+            <div className='index-band-side'>
+              <span>共 <strong>{total}</strong> 篇</span>
+            </div>
           </div>
 
-          <aside className="main-sidebar">
-            <Sidebar categories={categories} tags={tags} />
-          </aside>
+          {/* 同级标签切换 */}
+          {tags.length > 0 && (
+            <div className='tag-rail'>
+              {tags.map((item) => (
+                <Link
+                  key={item.id}
+                  to={`/tag/${item.slug}`}
+                  className={`tag-chip ${slug === item.slug ? 'tag-chip-active' : ''}`}
+                  aria-pressed={slug === item.slug}
+                >
+                  #{item.name}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {isLoading && (
+            <div className='loading-container'>
+              <Loading text='加载文章中...' />
+            </div>
+          )}
+
+          {!isLoading && paginatedArticles.length === 0 && (
+            <div className='index-empty'>
+              <FileText size={56} />
+              <h3>暂无文章</h3>
+              <p>该标签下还没有发布任何文章。</p>
+              <Link to='/articles' className='btn'>
+                浏览其他文章
+              </Link>
+            </div>
+          )}
+
+          {!isLoading && paginatedArticles.length > 0 && (
+            <>
+              <div className='entry-list'>
+                {paginatedArticles.map((article, index) => (
+                  <ArticleEntry key={article.id} article={article} index={index} />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={(page) => {
+                    setCurrentPage(page)
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                />
+              )}
+            </>
+          )}
         </div>
       </main>
 

@@ -88,7 +88,7 @@ export default function ArticleCard({ article, featured = false }) {
             {readingTime && (
               <span className='meta-item'>
                 <Clock size={14} />
-                {readingTime} 鍒嗛挓
+                {readingTime} 分钟
               </span>
             )}
 
