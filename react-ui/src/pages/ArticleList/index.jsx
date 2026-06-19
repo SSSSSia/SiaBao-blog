@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { FileText, Search as SearchIcon } from 'lucide-react'
+import { FileText, Search as SearchIcon, RotateCcw } from 'lucide-react'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
 import ArticleEntry from '../../components/article/ArticleEntry'
@@ -196,6 +196,12 @@ export default function ArticleList() {
     setIsPageSizeOpen(false)
   }
 
+  const handleReset = () => {
+    setInputQuery('')
+    setCurrentPage(1)
+    setSearchParams({})
+  }
+
   const handleQueryChange = (event) => {
     setInputQuery(event.target.value)
   }
@@ -244,6 +250,7 @@ export default function ArticleList() {
   }, [])
 
   const hasAnyFilter = Boolean(category || tag || query)
+  const hasReset = Boolean(category || tag || query || sort !== 'latest')
 
   return (
     <div className='page index-page'>
@@ -301,7 +308,7 @@ export default function ArticleList() {
 
           {/* 搜索 + 排序 + 每页 */}
           <div className='search-row'>
-            <SearchIcon size={18} aria-hidden='true' />
+            <SearchIcon size={18} className='search-row-icon' aria-hidden='true' />
             <input
               ref={searchInputRef}
               className='search-input'
@@ -316,7 +323,15 @@ export default function ArticleList() {
               placeholder='搜索标题或摘要…'
               aria-label='搜索文章'
             />
-            <span className='search-kbd'>/</span>
+            <button
+              type='button'
+              className='search-kbd'
+              onClick={() => searchInputRef.current?.focus()}
+              title='按 / 或 ⌘K 聚焦搜索'
+              aria-label='聚焦搜索'
+            >
+              /
+            </button>
 
             <div className='sort-field sort-custom' ref={sortRef}>
               <button
@@ -383,6 +398,18 @@ export default function ArticleList() {
                 )}
               </div>
             </div>
+
+            {hasReset && (
+              <button
+                type='button'
+                className='reset-btn'
+                onClick={handleReset}
+                title='清除所有筛选'
+              >
+                <RotateCcw size={14} />
+                重置
+              </button>
+            )}
           </div>
 
           {/* 加载 */}

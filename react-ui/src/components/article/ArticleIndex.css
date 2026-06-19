@@ -267,6 +267,38 @@
   border-radius: var(--radius-sm);
   padding: 2px 6px;
   white-space: nowrap;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search-row .search-kbd:hover {
+  color: var(--text-primary);
+  border-color: var(--color-gray-400);
+}
+
+/* 重置按钮 */
+.reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 38px;
+  padding: 0 var(--space-3);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition-base);
+}
+
+.reset-btn:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
 }
 
 /* hero 搜索（搜索页用） */
@@ -369,25 +401,57 @@
     justify-content: flex-end;
   }
 
+  .index-title {
+    font-size: 2rem;
+  }
+
   .filter-rail {
     margin-left: calc(var(--space-1) * -1);
     margin-right: calc(var(--space-1) * -1);
     padding: 0 var(--space-1);
   }
 
-  /* 搜索行在窄屏换行，避免横向溢出 */
+  /* 标签 chips 紧凑换行 */
+  .tag-rail {
+    gap: 6px;
+  }
+
+  .tag-chip {
+    padding: 4px 9px;
+  }
+
+  /* 搜索行：窄屏下输入框独占一行（满宽），下方控件平铺 */
   .search-row {
     flex-wrap: wrap;
   }
 
-  .search-row .search-input {
-    order: 2;
-    flex-basis: 100%;
-    margin-top: var(--space-1);
+  .search-row > .search-row-icon {
+    display: none;
   }
 
-  .page-size-group {
+  /* 移动端无物理键盘，隐藏快捷键提示 */
+  .search-row .search-kbd {
+    display: none;
+  }
+
+  .search-row .search-input {
+    order: -1;
+    flex-basis: 100%;
+    margin-bottom: var(--space-2);
+  }
+
+  .sort-field,
+  .page-size-group,
+  .reset-btn {
+    flex: 1;
     margin-left: 0;
+  }
+
+  .sort-trigger,
+  .admin-select-trigger,
+  .reset-btn {
+    height: 40px;
+    justify-content: center;
   }
 }
 
