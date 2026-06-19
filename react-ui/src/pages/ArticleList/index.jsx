@@ -6,7 +6,6 @@ import Footer from '../../components/layout/Footer'
 import ArticleEntry from '../../components/article/ArticleEntry'
 import TagRail from '../../components/article/TagRail'
 import Pagination from '../../components/ui/Pagination'
-import Loading from '../../components/ui/Loading'
 import { useScrollFade } from '../../hooks/useScrollFade'
 import { articleRepository } from '../../repositories/articleRepository'
 import './ArticleList.css'
@@ -124,7 +123,7 @@ export default function ArticleList() {
     }
   }, [articles])
 
-  const { filteredArticles, total, totalPages } = useMemo(() => {
+  const { sortedArticles, total, totalPages } = useMemo(() => {
     let filtered = articles
 
     if (query.trim()) {
@@ -165,15 +164,13 @@ export default function ArticleList() {
 
     const total = sorted.length
     const totalPages = Math.ceil(total / pageSize)
-    const startIndex = (currentPage - 1) * pageSize
-    const endIndex = startIndex + pageSize
 
     return {
-      filteredArticles: sorted.slice(startIndex, endIndex),
+      sortedArticles: sorted,
       total,
       totalPages,
     }
-  }, [articles, category, tag, query, sort, currentPage, pageSize])
+  }, [articles, category, tag, query, sort, pageSize])
 
   const updateSearchParam = useCallback(
     (key, value) => {
@@ -192,6 +189,11 @@ export default function ArticleList() {
 
   // 钳制页码：渲染即正确，越界页（如 ?page=99）收敛到末页，空结果收敛到第 1 页
   const currentPage = totalPages > 0 ? Math.min(rawPage, totalPages) : 1
+
+  const filteredArticles = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return sortedArticles.slice(startIndex, startIndex + pageSize)
+  }, [sortedArticles, currentPage, pageSize])
 
   useEffect(() => {
     if (totalPages > 0 && rawPage > totalPages) {
@@ -295,7 +297,12 @@ export default function ArticleList() {
               <p className='index-band-eyebrow'>Index</p>
               <h1 className='index-title'>{query ? '搜索结果' : '全部文章'}</h1>
             </div>
-            <div className='index-band-side'>
+            <div
+              className='index-band-side'
+              role={!isLoading ? 'status' : undefined}
+              aria-live={!isLoading ? 'polite' : undefined}
+              aria-atomic='true'
+            >
               <span>共 <strong>{total}</strong> 篇</span>
             </div>
           </div>
@@ -443,10 +450,19 @@ export default function ArticleList() {
             </button>
           </div>
 
-          {/* 加载 */}
+          {/* 加载骨架屏 */}
           {isLoading && (
-            <div className='loading-container'>
-              <Loading text='加载文章中...' />
+            <div className='entry-list' aria-hidden='true'>
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div className='entry-skeleton' key={i}>
+                  <div className='entry-skeleton-index' />
+                  <div className='entry-skeleton-body'>
+                    <div className='entry-skeleton-line entry-skeleton-line-sm' />
+                    <div className='entry-skeleton-line entry-skeleton-line-lg' />
+                    <div className='entry-skeleton-line entry-skeleton-line-md' />
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
