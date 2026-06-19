@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { FileText, Search as SearchIcon, RotateCcw } from 'lucide-react'
+import { FileText, Search as SearchIcon, RotateCcw, X } from 'lucide-react'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
 import ArticleEntry from '../../components/article/ArticleEntry'
@@ -239,6 +239,11 @@ export default function ArticleList() {
     setInputQuery(event.target.value)
   }
 
+  const handleClearQuery = () => {
+    setInputQuery('')
+    searchInputRef.current?.focus()
+  }
+
   useEffect(() => {
     if (isComposing) return
     const timer = setTimeout(() => {
@@ -347,29 +352,33 @@ export default function ArticleList() {
           {/* 搜索 + 排序 + 每页 */}
           <div className='search-row'>
             <SearchIcon size={18} className='search-row-icon' aria-hidden='true' />
-            <input
-              ref={searchInputRef}
-              className='search-input'
-              type='search'
-              value={inputQuery}
-              onChange={handleQueryChange}
-              onCompositionStart={() => setIsComposing(true)}
-              onCompositionEnd={(event) => {
-                setIsComposing(false)
-                setInputQuery(event.currentTarget.value)
-              }}
-              placeholder='搜索标题或摘要…'
-              aria-label='搜索文章'
-            />
-            <button
-              type='button'
-              className='search-kbd'
-              onClick={() => searchInputRef.current?.focus()}
-              title='按 / 或 ⌘K 聚焦搜索'
-              aria-label='聚焦搜索'
-            >
-              /
-            </button>
+            <div className='search-field'>
+              <input
+                ref={searchInputRef}
+                className='search-input'
+                type='search'
+                value={inputQuery}
+                onChange={handleQueryChange}
+                onCompositionStart={() => setIsComposing(true)}
+                onCompositionEnd={(event) => {
+                  setIsComposing(false)
+                  setInputQuery(event.currentTarget.value)
+                }}
+                placeholder='搜索标题或摘要…'
+                aria-label='搜索文章'
+              />
+              {inputQuery.trim() && (
+                <button
+                  type='button'
+                  className='search-clear'
+                  onClick={handleClearQuery}
+                  title='清除搜索'
+                  aria-label='清除搜索'
+                >
+                  <X size={14} strokeWidth={2} />
+                </button>
+              )}
+            </div>
 
             <div className='sort-field sort-custom' ref={sortRef}>
               <button

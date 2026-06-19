@@ -245,9 +245,20 @@
   border-bottom: 1px solid var(--bg-tertiary);
 }
 
+.search-field {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
 .search-row .search-input {
   flex: 1;
+  width: 100%;
   height: 44px;
+  /* 右侧留出清除按钮的点击空间 */
+  padding-right: 28px;
   font-size: 1rem;
   border: none;
   background: transparent;
@@ -259,22 +270,36 @@
   box-shadow: none;
 }
 
-.search-row .search-kbd {
-  font-family: 'SF Mono', 'Fira Code', 'Monaco', 'Courier New', monospace;
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
-  border: 1px solid var(--bg-tertiary);
-  border-radius: var(--radius-sm);
-  padding: 2px 6px;
-  white-space: nowrap;
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
+/* 隐藏原生丑陋的清除按钮（webkit/blink），改用自定义 .search-clear */
+.search-row .search-input::-webkit-search-cancel-button,
+.search-row .search-input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-.search-row .search-kbd:hover {
+.search-clear {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  padding: 0;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.search-clear:hover {
   color: var(--text-primary);
-  border-color: var(--color-gray-400);
+  background: var(--bg-secondary);
 }
 
 /* 重置按钮 */
@@ -440,12 +465,8 @@
     display: none;
   }
 
-  /* 移动端无物理键盘，隐藏快捷键提示 */
-  .search-row .search-kbd {
-    display: none;
-  }
-
-  .search-row .search-input {
+  /* 窄屏下搜索框独占一行（满宽），下方控件平铺 */
+  .search-field {
     order: -1;
     flex-basis: 100%;
     margin-bottom: var(--space-2);
