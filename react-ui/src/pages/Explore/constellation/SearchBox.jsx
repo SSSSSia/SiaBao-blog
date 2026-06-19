@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { cx } from './utils';
 
 const MAX_RESULTS = 10;
@@ -52,6 +52,12 @@ export default function SearchBox({ nodes, flyToNode }) {
     inputRef.current?.blur();
   };
 
+  const clear = () => {
+    setQ('');
+    setOpen(false);
+    inputRef.current?.focus();
+  };
+
   const onKeyDown = (e) => {
     if (!open || results.length === 0) return;
     if (e.key === 'ArrowDown') {
@@ -87,6 +93,17 @@ export default function SearchBox({ nodes, flyToNode }) {
         onFocus={() => q && setOpen(true)}
         onKeyDown={onKeyDown}
       />
+      {q.trim() && (
+        <button
+          type='button'
+          className='constellation-search-clear'
+          onClick={clear}
+          aria-label='清除搜索'
+          title='清除搜索'
+        >
+          <X size={13} strokeWidth={2} />
+        </button>
+      )}
       {open && results.length > 0 && (
         <ul className='constellation-search-results' role='listbox'>
           {results.map((n, i) => (

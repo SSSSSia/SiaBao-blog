@@ -876,38 +876,79 @@
   outline-offset: -2px;
 }
 
-/* ---------- 搜索框 ---------- */
+/* ---------- 搜索框（参考文章页 .search-row 的编辑式语言） ---------- */
 .constellation-search {
   position: relative;
   display: inline-flex;
   align-items: center;
   flex: 1 1 200px;
-  max-width: 240px;
-  padding: 0.3rem 0.6rem;
+  max-width: 260px;
+  height: 36px;
+  padding: 0 0.55rem;
   background: var(--bg-primary);
   border: 1px solid var(--bg-tertiary);
   border-radius: var(--radius-sm);
-  transition: var(--transition-base);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.constellation-search:focus-within {
+.constellation-search:hover {
   border-color: var(--color-gray-400);
+}
+
+/* 聚焦选中态：accent 描边 + 柔光晕，与文章页搜索框同一套聚焦语言 */
+.constellation-search:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(200, 168, 233, 0.15);
 }
 
 .constellation-search-icon {
   flex-shrink: 0;
   color: var(--text-tertiary);
+  transition: color 0.2s ease;
+}
+
+/* 聚焦时图标染上 accent，强化选中态 */
+.constellation-search:focus-within .constellation-search-icon {
+  color: var(--color-accent);
 }
 
 .constellation-search-input {
   flex: 1;
   min-width: 0;
-  margin-left: 0.4rem;
+  height: 100%;
+  margin-left: 0.45rem;
   font-size: 0.8rem;
   color: var(--text-primary);
   background: transparent;
   border: none;
   outline: none;
+}
+
+.constellation-search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* 清除按钮（与文章页 .search-clear 一致的自定义 X） */
+.constellation-search-clear {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 0.3rem;
+  padding: 0;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.constellation-search-clear:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
 }
 
 .constellation-search-results {
