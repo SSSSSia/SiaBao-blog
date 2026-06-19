@@ -39,7 +39,7 @@
 /* 序号 */
 .entry-index {
   font-family: 'SF Mono', 'Fira Code', 'Monaco', 'Courier New', monospace;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 500;
   line-height: 1;
   color: var(--color-gray-200);
@@ -62,12 +62,11 @@
   margin-bottom: var(--space-1);
   font-size: 0.75rem;
   color: var(--text-tertiary);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .entry-category {
-  color: var(--color-accent);
+  color: var(--color-gray-800);
   font-weight: 500;
 }
 
@@ -166,15 +165,7 @@
   padding-top: 0.25rem;
 }
 
-/* —— hover 联动 —— */
-.entry:hover {
-  background: var(--bg-secondary);
-}
-
-.entry:hover .entry-index {
-  color: var(--color-accent);
-}
-
+/* —— hover 联动（收敛为单一信号：标题下划线滑入 + 箭头轻移）—— */
 .entry:hover .entry-title::after {
   width: 100%;
 }
@@ -182,11 +173,6 @@
 .entry:hover .entry-arrow {
   color: var(--color-accent);
   transform: translateX(4px);
-}
-
-.entry:hover .entry-tag {
-  border-color: var(--color-gray-400);
-  color: var(--text-secondary);
 }
 
 /* ===================================
@@ -200,7 +186,7 @@
   }
 
   .entry-index {
-    font-size: 1.125rem;
+    font-size: 1rem;
   }
 
   .entry-title {
