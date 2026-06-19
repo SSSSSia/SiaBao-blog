@@ -399,17 +399,17 @@ export default function ArticleList() {
               </div>
             </div>
 
-            {hasReset && (
-              <button
-                type='button'
-                className='reset-btn'
-                onClick={handleReset}
-                title='清除所有筛选'
-              >
-                <RotateCcw size={14} />
-                重置
-              </button>
-            )}
+            <button
+              type='button'
+              className={`reset-btn ${!hasReset ? 'reset-btn-disabled' : ''}`}
+              onClick={handleReset}
+              disabled={!hasReset}
+              title={hasReset ? '清除所有筛选' : '当前无筛选'}
+              aria-label='重置筛选'
+            >
+              <RotateCcw size={14} />
+              重置
+            </button>
           </div>
 
           {/* 加载 */}

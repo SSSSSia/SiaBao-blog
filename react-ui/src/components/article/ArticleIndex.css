@@ -301,6 +301,17 @@
   border-color: var(--color-accent);
 }
 
+.reset-btn-disabled {
+  color: var(--color-gray-200);
+  border-color: var(--bg-tertiary);
+  cursor: not-allowed;
+}
+
+.reset-btn-disabled:hover {
+  color: var(--color-gray-200);
+  border-color: var(--bg-tertiary);
+}
+
 /* hero 搜索（搜索页用） */
 .search-hero {
   width: 100%;
