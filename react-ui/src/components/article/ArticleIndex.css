@@ -70,11 +70,16 @@
 /* ===================================
    横向分段药丸筛选条
    =================================== */
+/* 外层包裹用于承载左右渐变遮罩（遮罩不能放在 overflow 容器自身，会被裁剪） */
+.filter-rail-wrap {
+  position: relative;
+  margin-bottom: var(--space-4);
+}
+
 .filter-rail {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  margin-bottom: var(--space-4);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -83,6 +88,31 @@
 
 .filter-rail::-webkit-scrollbar {
   display: none;
+}
+
+/* 右侧渐变遮罩：还有更多可横滑 */
+.filter-rail-wrap[data-fade-end='true']::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 2px;
+  width: 40px;
+  background: linear-gradient(to right, transparent, var(--bg-primary));
+  pointer-events: none;
+}
+
+/* 左侧渐变遮罩：已向右滑 */
+.filter-rail-wrap[data-fade-start='true']::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 2px;
+  width: 40px;
+  background: linear-gradient(to left, transparent, var(--bg-primary));
+  pointer-events: none;
+  z-index: 1;
 }
 
 .filter-pill {
@@ -158,6 +188,49 @@
   color: var(--color-accent);
   border-color: var(--color-accent);
   background: rgba(200, 168, 233, 0.08);
+}
+
+.tag-chip-count {
+  margin-left: 4px;
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.tag-chip-active .tag-chip-count {
+  color: var(--color-accent);
+}
+
+/* 展开全部按钮 */
+.tag-rail-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px dashed var(--color-gray-400);
+  border-radius: var(--radius-sm);
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tag-rail-more:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  border-style: solid;
+}
+
+.tag-rail-more-icon {
+  transition: transform 0.2s ease;
+}
+
+.tag-rail-more-icon-open {
+  transform: rotate(180deg);
 }
 
 /* ===================================

@@ -4,8 +4,10 @@ import { FileText, Search as SearchIcon } from 'lucide-react'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
 import ArticleEntry from '../../components/article/ArticleEntry'
+import TagRail from '../../components/article/TagRail'
 import Pagination from '../../components/ui/Pagination'
 import Loading from '../../components/ui/Loading'
+import { useScrollFade } from '../../hooks/useScrollFade'
 import { articleRepository } from '../../repositories/articleRepository'
 import { categoryRepository } from '../../repositories/categoryRepository'
 import './ArticleList.css'
@@ -60,6 +62,8 @@ export default function ArticleList() {
   const searchInputRef = useRef(null)
   const sortRef = useRef(null)
   const pageSizeRef = useRef(null)
+  const categoryRailRef = useRef(null)
+  const categoryFade = useScrollFade(categoryRailRef)
 
   const category = searchParams.get('category')
   const tag = searchParams.get('tag')
@@ -258,50 +262,42 @@ export default function ArticleList() {
             </div>
           </div>
 
-          {/* 分类分段药丸 */}
+          {/* 分类分段药丸（横向滚动 + 渐变遮罩） */}
           {categories.length > 0 && (
-            <div className='filter-rail' role='tablist' aria-label='按分类筛选'>
-              <button
-                type='button'
-                role='tab'
-                aria-selected={!category}
-                className={`filter-pill ${!category ? 'filter-pill-active' : ''}`}
-                onClick={() => handleCategoryClick(null)}
-              >
-                全部
-              </button>
-              {categories.map((item) => (
+            <div
+              className='filter-rail-wrap'
+              data-fade-start={!categoryFade.atStart}
+              data-fade-end={categoryFade.scrollable && !categoryFade.atEnd}
+            >
+              <div className='filter-rail' ref={categoryRailRef} role='tablist' aria-label='按分类筛选'>
                 <button
-                  key={item.id}
                   type='button'
                   role='tab'
-                  aria-selected={category === item.slug}
-                  className={`filter-pill ${category === item.slug ? 'filter-pill-active' : ''}`}
-                  onClick={() => handleCategoryClick(item.slug)}
+                  aria-selected={!category}
+                  className={`filter-pill ${!category ? 'filter-pill-active' : ''}`}
+                  onClick={() => handleCategoryClick(null)}
                 >
-                  {item.name}
-                  <span className='filter-pill-count'>{item.count}</span>
+                  全部
                 </button>
-              ))}
+                {categories.map((item) => (
+                  <button
+                    key={item.id}
+                    type='button'
+                    role='tab'
+                    aria-selected={category === item.slug}
+                    className={`filter-pill ${category === item.slug ? 'filter-pill-active' : ''}`}
+                    onClick={() => handleCategoryClick(item.slug)}
+                  >
+                    {item.name}
+                    <span className='filter-pill-count'>{item.count}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* 标签 chips */}
-          {tags.length > 0 && (
-            <div className='tag-rail'>
-              {tags.map((item) => (
-                <button
-                  key={item.id}
-                  type='button'
-                  className={`tag-chip ${tag === item.slug ? 'tag-chip-active' : ''}`}
-                  onClick={() => handleTagClick(tag === item.slug ? null : item.slug)}
-                  aria-pressed={tag === item.slug}
-                >
-                  #{item.name}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* 标签 chips（多则折叠） */}
+          <TagRail items={tags} activeSlug={tag} onSelect={handleTagClick} />
 
           {/* 搜索 + 排序 + 每页 */}
           <div className='search-row'>

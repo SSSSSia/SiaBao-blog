@@ -3,7 +3,7 @@
  * 显示特定分类下的所有文章，顶部可切换同级分类
  */
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { FileText, FolderOpen } from 'lucide-react'
 import Header from '../../components/layout/Header'
@@ -11,6 +11,7 @@ import Footer from '../../components/layout/Footer'
 import ArticleEntry from '../../components/article/ArticleEntry'
 import Pagination from '../../components/ui/Pagination'
 import Loading from '../../components/ui/Loading'
+import { useScrollFade } from '../../hooks/useScrollFade'
 import { articleRepository } from '../../repositories/articleRepository'
 import { categoryRepository } from '../../repositories/categoryRepository'
 import './Category.css'
@@ -25,6 +26,8 @@ export default function Category() {
   const [categories, setCategories] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [categoryName, setCategoryName] = useState('')
+  const categoryRailRef = useRef(null)
+  const categoryFade = useScrollFade(categoryRailRef)
 
   // 获取分类
   useEffect(() => {
@@ -123,28 +126,34 @@ export default function Category() {
             </div>
           </div>
 
-          {/* 同级分类切换 */}
+          {/* 同级分类切换（横向滚动 + 渐变遮罩） */}
           {categories.length > 0 && (
-            <div className='filter-rail' role='tablist' aria-label='切换分类'>
-              <Link
-                to='/articles'
-                role='tab'
-                className={`filter-pill ${!slug ? 'filter-pill-active' : ''}`}
-              >
-                全部
-              </Link>
-              {categories.map((item) => (
+            <div
+              className='filter-rail-wrap'
+              data-fade-start={!categoryFade.atStart}
+              data-fade-end={categoryFade.scrollable && !categoryFade.atEnd}
+            >
+              <div className='filter-rail' ref={categoryRailRef} role='tablist' aria-label='切换分类'>
                 <Link
-                  key={item.id}
-                  to={`/category/${item.slug}`}
+                  to='/articles'
                   role='tab'
-                  aria-selected={slug === item.slug}
-                  className={`filter-pill ${slug === item.slug ? 'filter-pill-active' : ''}`}
+                  className={`filter-pill ${!slug ? 'filter-pill-active' : ''}`}
                 >
-                  {item.name}
-                  <span className='filter-pill-count'>{item.count}</span>
+                  全部
                 </Link>
-              ))}
+                {categories.map((item) => (
+                  <Link
+                    key={item.id}
+                    to={`/category/${item.slug}`}
+                    role='tab'
+                    aria-selected={slug === item.slug}
+                    className={`filter-pill ${slug === item.slug ? 'filter-pill-active' : ''}`}
+                  >
+                    {item.name}
+                    <span className='filter-pill-count'>{item.count}</span>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
 

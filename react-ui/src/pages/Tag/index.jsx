@@ -9,6 +9,7 @@ import { FileText, Tag as TagIcon } from 'lucide-react'
 import Header from '../../components/layout/Header'
 import Footer from '../../components/layout/Footer'
 import ArticleEntry from '../../components/article/ArticleEntry'
+import TagRail from '../../components/article/TagRail'
 import Pagination from '../../components/ui/Pagination'
 import Loading from '../../components/ui/Loading'
 import { articleRepository } from '../../repositories/articleRepository'
@@ -125,21 +126,8 @@ export default function Tag() {
             </div>
           </div>
 
-          {/* 同级标签切换 */}
-          {tags.length > 0 && (
-            <div className='tag-rail'>
-              {tags.map((item) => (
-                <Link
-                  key={item.id}
-                  to={`/tag/${item.slug}`}
-                  className={`tag-chip ${slug === item.slug ? 'tag-chip-active' : ''}`}
-                  aria-pressed={slug === item.slug}
-                >
-                  #{item.name}
-                </Link>
-              ))}
-            </div>
-          )}
+          {/* 同级标签切换（多则折叠） */}
+          <TagRail items={tags} activeSlug={slug} linkPrefix='/tag/' />
 
           {isLoading && (
             <div className='loading-container'>
