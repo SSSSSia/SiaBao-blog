@@ -113,6 +113,11 @@ export function useConstellation(canvasRef, containerRef, isFullscreen = false) 
   const pressTimerRef = useRef(null); // 触屏长按计时器
   const renderNodesRef = useRef([]); // 渲染子集（窄屏裁剪）
   const renderEdgesRef = useRef([]); // 与渲染子集匹配的边
+  // 渲染子集的派生标志：在 recomputeRenderSubset 中一次性算好，供每帧 loop() 的
+  // hasAnimatableMotion() 与 hitTest() 以 O(1) 读取，避免逐帧全量扫描/排序。
+  const hasFlowEdgesRef = useRef(false); // 子集中是否存在强连接流动边
+  const hasPulseNodesRef = useRef(false); // 子集中是否存在高 momentum 脉动节点
+  const hitListRef = useRef([]); // 按半径降序预排的命中检测列表（{n,r}）
   const initializedRef = useRef(false);
   const prevFullscreenRef = useRef(false); // 上一次的 isFullscreen，用于判定 resize 是否由全屏切换引起
   const suppressRelayoutUntilRef = useRef(0); // 全屏切换后短窗内抑制仿真重排，避免 RO 初始回调二次触发粒子跳变
@@ -157,13 +162,8 @@ export function useConstellation(canvasRef, containerRef, isFullscreen = false) 
   // 注意：脉冲与流动粒子都用 time 驱动，必须纳入判定，否则休眠后视觉会冻结。
   // 阈值统一来自 constants.js（与 render.js 的脉动 / 流动粒子保持一致）。
   const hasAnimatableMotion = useCallback(() => {
-    for (const n of renderNodesRef.current) {
-      if ((n.momentum || 0) > MOMENTUM_PULSE) return true;
-    }
-    for (const e of renderEdgesRef.current) {
-      if ((e.strength || 0) >= FLOW_EDGE_STRENGTH) return true;
-    }
-    return false;
+    // 读取 recomputeRenderSubset 预算好的派生标志，避免逐帧遍历全部节点/边。
+    return hasPulseNodesRef.current || hasFlowEdgesRef.current;
   }, []);
 
   const loop = useCallback(() => {
@@ -246,9 +246,19 @@ export function useConstellation(canvasRef, containerRef, isFullscreen = false) 
     }
     const idSet = new Set(visible.map((n) => n.id));
     renderNodesRef.current = visible;
-    renderEdgesRef.current = edgesRef.current.filter(
+    const matchedEdges = edgesRef.current.filter(
       (e) => idSet.has(e.source) && idSet.has(e.target),
     );
+    renderEdgesRef.current = matchedEdges;
+    // 派生标志：weight/momentum 来自后端图数据且载入后不变，故在此一次算好。
+    hasFlowEdgesRef.current = matchedEdges.some(
+      (e) => (e.strength || 0) >= FLOW_EDGE_STRENGTH,
+    );
+    hasPulseNodesRef.current = visible.some((n) => (n.momentum || 0) > MOMENTUM_PULSE);
+    // 命中检测预排序：半径是 weight 的纯函数且不变，按降序排好供 hitTest 直接遍历。
+    hitListRef.current = visible
+      .map((n) => ({ n, r: nodeRadius(n.weight) }))
+      .sort((a, b) => b.r - a.r);
   }, []);
 
   // ---- 节点拖动（桌面即时 / 触屏长按后启动）----
@@ -492,11 +502,8 @@ export function useConstellation(canvasRef, containerRef, isFullscreen = false) 
     const { tx, ty, scale } = transformRef.current;
     const sx = (clientX - rect.left - tx) / scale;
     const sy = (clientY - rect.top - ty) / scale;
-    // 从大节点（半径大）优先命中：按半径降序遍历
-    const sorted = renderNodesRef.current
-      .map((n) => ({ n, r: nodeRadius(n.weight) }))
-      .sort((a, b) => b.r - a.r);
-    for (const { n, r } of sorted) {
+    // 从大节点（半径大）优先命中：hitListRef 已在 recomputeRenderSubset 中按半径降序预排
+    for (const { n, r } of hitListRef.current) {
       if (n.x == null) continue;
       const dx = n.x - sx;
       const dy = n.y - sy;

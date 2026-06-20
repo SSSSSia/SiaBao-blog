@@ -63,6 +63,17 @@ export function draw(ctx, params) {
 
   const inFocusSet = (id) => !!focusSet && focusSet.has(id);
 
+  // 分类→颜色在本帧内缓存：palette 固定、分类有限，避免逐节点逐帧重算字符串哈希。
+  const colorCache = new Map();
+  const colorOf = (category) => {
+    let c = colorCache.get(category);
+    if (c === undefined) {
+      c = categoryColor(category, palette);
+      colorCache.set(category, c);
+    }
+    return c;
+  };
+
   // ---- 连线 ----
   ctx.lineWidth = 1 / scale;
   for (const e of edges) {
@@ -123,11 +134,8 @@ export function draw(ctx, params) {
         alpha = involved ? 0.95 : dimAlpha;
       }
       if (alpha <= 0) continue;
-      // 用边的 source id 末位做相位偏移，避免所有粒子同步
-      let seed = 0;
-      const key = String(e.source || '');
-      for (let i = 0; i < key.length; i++) seed = (seed * 31 + key.charCodeAt(i)) | 0;
-      const offset = (Math.abs(seed) % 1000) / 1000;
+      // 相位偏移恒定（仅依赖 source id），由 resolveEdgeNodes 预算到 e.__offset
+      const offset = e.__offset || 0;
       // 强度越高粒子越快、越靠前的进度
       const progress = ((time / FLOW_SPEED_MS) * (0.6 + (e.strength || 0.5) * 0.6) + offset) % 1;
       const px = sn.x + (tn.x - sn.x) * progress;
@@ -173,7 +181,7 @@ export function draw(ctx, params) {
 
     ctx.beginPath();
     ctx.arc(n.x, n.y, pr, 0, Math.PI * 2);
-    ctx.fillStyle = categoryColor(n.category, palette);
+    ctx.fillStyle = colorOf(n.category);
     ctx.fill();
 
     // 选中/悬停描边
@@ -231,6 +239,11 @@ export function resolveEdgeNodes(edges, nodeById) {
   for (const e of edges) {
     e.__sn = nodeById.get(e.source);
     e.__tn = nodeById.get(e.target);
+    // 流动粒子相位偏移：仅依赖 source id 且恒定，一次算好供绘制逐帧复用。
+    let seed = 0;
+    const key = String(e.source || '');
+    for (let i = 0; i < key.length; i++) seed = (seed * 31 + key.charCodeAt(i)) | 0;
+    e.__offset = (Math.abs(seed) % 1000) / 1000;
   }
   return edges;
 }

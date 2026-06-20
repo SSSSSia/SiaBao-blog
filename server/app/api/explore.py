@@ -27,12 +27,22 @@ router = APIRouter(prefix="/explore", tags=["Explore"])
 # unchanged. Lost on process restart — acceptable for this derived, idempotent
 # payload.
 _INSIGHT_CACHE: dict[str, dict] = {}
+# 软上限：进程长期运行时避免随不同 node_id 无界增长。dict 保序（CPython 插入序），
+# 超限时淘汰最旧一条，近似 LRU。单人博客流量低，不做并发锁。
+_INSIGHT_CACHE_MAX = 200
 
 # Bump when the insight prompt's framing/wording materially changes, so the
 # fingerprint (and thus the cache key) shifts and stale insights regenerate
 # without a manual backend restart. The fingerprint only hashes node content,
 # so a prompt-only edit would otherwise keep serving the old text forever.
 _INSIGHT_PROMPT_VERSION = "2"
+
+
+def _store_insight(cache_key: str, fingerprint: str, insight: str) -> None:
+    """Write an insight into the cache, evicting the oldest entry when full."""
+    _INSIGHT_CACHE[cache_key] = {"fp": fingerprint, "insight": insight}
+    if len(_INSIGHT_CACHE) > _INSIGHT_CACHE_MAX:
+        _INSIGHT_CACHE.pop(next(iter(_INSIGHT_CACHE)), None)
 
 
 def _node_insight_fingerprint(node: dict, neighbor_labels: list) -> str:
@@ -238,7 +248,7 @@ async def get_node_insight(payload: dict) -> R:
         # ImportError (langchain 缺失) / transient AI failure — 同样降级，UI 照常工作。
         return R.ok(data={"insight": "", "node_id": node_id, "available": False})
 
-    _INSIGHT_CACHE[cache_key] = {"fp": fingerprint, "insight": insight}
+    _store_insight(cache_key, fingerprint, insight)
     return R.ok(data={"insight": insight, "node_id": node_id, "available": True})
 
 
@@ -294,7 +304,7 @@ async def _node_insight_stream(node_id: str):
 
     full = "".join(accumulated)
     if full:
-        _INSIGHT_CACHE[cache_key] = {"fp": fingerprint, "insight": full}
+        _store_insight(cache_key, fingerprint, full)
     yield _sse("[DONE]")
 
 
