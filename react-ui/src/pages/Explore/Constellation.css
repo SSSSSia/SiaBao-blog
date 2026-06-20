@@ -59,6 +59,13 @@
   pointer-events: none;
 }
 
+/* 陈旧数据提示：比「不可用」更柔和的警示色调 */
+.constellation-banner--warn {
+  color: var(--warn-text, #b07a00);
+  border-color: var(--warn-border, #f0d488);
+  background: var(--warn-bg, #fff8e1);
+}
+
 .constellation-refresh {
   display: inline-flex;
   align-items: center;

@@ -26,9 +26,13 @@ settings = get_settings()
 logger = logging.getLogger(__name__)
 
 CURATED_FILE = DATA_DIR.parent / "app" / "data" / "explore_curated.json"
+TAG_ALIASES_FILE = DATA_DIR.parent / "app" / "data" / "explore_tag_aliases.json"
 
 RING_BASE = {"adopt": 0.8, "trial": 0.6, "assess": 0.4, "hold": 0.2}
 MIN_EDGE_STRENGTH = 0.15
+# GitHub 缓存「陈旧」阈值系数：fetched_at 距今超过 TTL×此值视为过期（刷新持续失败时
+# get_github_data 会静默回退旧缓存，这里给前端一个可展示的「数据已过期」信号）。
+GITHUB_STALE_FACTOR = 1.5
 
 # In-memory graph cache
 _graph_cache: dict | None = None
@@ -40,6 +44,58 @@ _GRAPH_TTL_SECONDS = 3600  # 1h
 # 文章内容指纹——指纹未变即可复用，跳过 O(文章×标签²) 重算。机制同 _graph_blog_hash。
 _cooccur_cache: dict[tuple[str, str], int] | None = None
 _cooccur_blog_hash: str = ""
+
+# 标签别名表（规范名 -> 变体列表）+ 反查映射（变体小写 -> 规范名），加载一次。
+# None 表示尚未加载；空 dict 表示加载过但为空（仍走快速路径）。
+_tag_alias_map: dict[str, str] | None = None
+
+
+def _load_tag_aliases() -> dict[str, str]:
+    """加载标签别名表，返回「变体小写 -> 规范名」反查映射。
+
+    别名表 (explore_tag_aliases.json) 的 key 是规范名、value 是变体列表。这里摊平
+    成 O(1) 查找：任何变体（大小写不敏感）都归一到规范名。加载失败/缺失时返回空映射，
+    归一化退化为「原样返回」，星图照常工作。
+    """
+    global _tag_alias_map
+    if _tag_alias_map is not None:
+        return _tag_alias_map
+    mapping: dict[str, str] = {}
+    for path in (
+        TAG_ALIASES_FILE,
+        Path(__file__).resolve().parent.parent / "data" / "explore_tag_aliases.json",
+    ):
+        if not path.exists():
+            continue
+        try:
+            with open(path, encoding="utf-8-sig") as f:
+                raw = json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            logger.warning("Failed to load tag aliases %s: %s", path, e)
+            break
+        for canonical, variants in raw.items():
+            if canonical.startswith("_") or not isinstance(variants, list):
+                continue
+            mapping[canonical.lower()] = canonical.lower()
+            for v in variants:
+                if isinstance(v, str):
+                    mapping[v.lower()] = canonical.lower()
+        break
+    _tag_alias_map = mapping
+    return mapping
+
+
+def _normalize_tag(tag: str) -> str:
+    """归一化单个标签：大小写折叠 + 别名合并。None/空原样返回。
+
+    仅影响聚合键（哪些 tag 被视为同一个），articles 等原始字段不动。
+    """
+    if not tag:
+        return tag
+    key = tag.strip().lower()
+    if not key:
+        return tag
+    return _load_tag_aliases().get(key, key)
 
 
 # ---------------------------------------------------------------------------
@@ -84,13 +140,40 @@ def _days_since(date_iso: str | None) -> float:
     return max(days, 1.0)
 
 
-def _mom_score(views: int, latest_date: str | None) -> float:
-    """Blog momentum proxy: reading volume scaled down by age of latest post.
+def _github_is_stale(github: dict | None) -> bool:
+    """GitHub 缓存是否陈旧：fetched_at 距今超过 explore_cache_ttl × GITHUB_STALE_FACTOR。
 
-    Recent + heavily-read topics get higher momentum. No historical velocity is
-    tracked, so recency × volume is the best available signal.
+    用于捕获「刷新持续失败、get_github_data 静默回退旧缓存」的情形——此时数据仍在，
+    githubHealthy 为真，但早已过期。无法解析时间或缺失时返回 False（交由其它字段表达）。
     """
-    return (views or 0) / _days_since(latest_date)
+    if not github:
+        return False
+    fetched = github.get("fetched_at")
+    if not fetched:
+        return False
+    try:
+        dt = datetime.fromisoformat(str(fetched).replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return False
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    age = (_now_dt() - dt).total_seconds()
+    return age > settings.explore_cache_ttl * GITHUB_STALE_FACTOR
+
+
+def _mom_score(views: int, latest_date: str | None) -> float:
+    """Blog momentum proxy: reading volume × exponential decay by age of latest post.
+
+    ``views × exp(-days / λ)`` —— 近期且高阅读量的话题得分更高；λ 由配置
+    ``explore_blog_momentum_lambda_days`` 控制（默认 60 天）。相比旧的线性
+    ``views / days`` 衰减更平滑，旧话题不会断崖式归零，近期话题也不会被一条
+    爆款老文章永久压制。
+    """
+    import math
+
+    days = _days_since(latest_date)
+    lam = settings.explore_blog_momentum_lambda_days or 60.0
+    return (views or 0) * math.exp(-days / lam)
 
 
 def _blog_hash(articles: list[dict]) -> str:
@@ -116,7 +199,8 @@ def _build_tag_cooccurrence(blog_hash: str) -> dict[tuple[str, str], int]:
     for a in index.values():
         if a.get("status") != "published":
             continue
-        ts = sorted(set(a.get("tags", []) or []))
+        # 归一化后再去重排序：合并大小写/中英变体，避免「React / react」算成两个节点。
+        ts = sorted({_normalize_tag(t) for t in (a.get("tags", []) or [])})
         for i in range(len(ts)):
             for j in range(i + 1, len(ts)):
                 key = (ts[i], ts[j])
@@ -201,7 +285,7 @@ def _build_blog_signals() -> tuple[dict, dict, list[dict], str]:
 
     for article in published:
         for tag in article.get("tags", []) or []:
-            bump(tag_agg, tag, article)
+            bump(tag_agg, _normalize_tag(tag), article)
         cat = article.get("category")
         if cat:
             bump(cat_agg, cat, article)
@@ -253,6 +337,19 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
         logger.warning("GitHub data unavailable for graph: %s", e)
         github = None
     repos = (github or {}).get("repos", []) if github else []
+
+    # --- 可选外部信号源（各自默认关闭；失败返回 None，优雅降级）---
+    npm = None
+    hn = None
+    feed = None
+    try:
+        from app.services import npm_trending_service, hn_service, feed_service
+
+        npm = await npm_trending_service.get_npm_data()
+        hn = await hn_service.get_hn_data(concepts)
+        feed = await feed_service.get_feed_data()
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Aux explore signals unavailable: %s", e)
 
     nodes: dict[str, dict] = {}
     raw_weights: dict[str, float] = {}
@@ -378,6 +475,11 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
             category = nodes[concept_id]["category"] if concept_id and concept_id in nodes else "github"
             gh_weight = (r.get("stars", 0) / star_max)
             gh_momentum = (r.get("momentum", 0.0) / mom_max) if mom_max else 0.0
+            # 权重融合 stars（使用量代理）+ momentum（上升势能）：让「新星」也能浮上来，
+            # 不被 stars 长期霸榜的老仓库压死。mw 控制动量占比，默认 0.2。
+            mw = settings.explore_github_momentum_weight
+            mw = max(0.0, min(mw, 0.6))  # 钳制，避免动量占比过高喧宾夺主
+            gh_score = (1.0 - mw) * gh_weight + mw * gh_momentum
             add_node(
                 nid,
                 label=repo.split("/", 1)[-1],
@@ -390,12 +492,12 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
                     "url": r.get("url", ""),
                     "description": r.get("description", ""),
                 },
-                weight=0.3 + 0.6 * gh_weight,
+                weight=0.3 + 0.6 * gh_score,
                 momentum=gh_momentum,
                 tags=topics[:6],
                 sources=["github"],
             )
-            raw_weights[nid] = 0.3 + 0.6 * gh_weight
+            raw_weights[nid] = 0.3 + 0.6 * gh_score
             raw_momentum[nid] = gh_momentum
 
             if concept_id:
@@ -445,6 +547,52 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
         for nid, m in bm_norm.items():
             raw_momentum[nid] = max(raw_momentum.get(nid, 0.0), m)
 
+    # --- 8. Optional external signals (npm / HN / feed), each a soft boost ---
+    # npm 下载量 → 概念节点「使用量」维度（补 stars 之外的采用度），小权重加成 + popularity 字段
+    if npm:
+        pkgs = npm.get("packages", [])
+        if pkgs:
+            mx_dl = max((p.get("downloads", 0) for p in pkgs), default=1) or 1
+            for p in pkgs:
+                cid = p.get("concept")
+                if cid and cid in nodes:
+                    pop = (p.get("downloads", 0) or 0) / mx_dl
+                    nodes[cid].setdefault("popularity", round(pop, 3))
+                    nodes[cid].setdefault("sources", [])
+                    if "npm" not in nodes[cid]["sources"]:
+                        nodes[cid]["sources"].append("npm")
+                    raw_weights[cid] = raw_weights.get(cid, 0.0) + 0.15 * pop
+
+    # HN 热度 → 概念节点 momentum（「破圈」信号，叠加而非取代）
+    if hn:
+        buzz = hn.get("buzz", [])
+        if buzz:
+            hn_score = {b["concept"]: b.get("points", 0) for b in buzz}
+            hn_norm = _normalize(hn_score)
+            for cid, m in hn_norm.items():
+                if cid in nodes:
+                    nodes[cid].setdefault("sources", [])
+                    if "hn" not in nodes[cid]["sources"]:
+                        nodes[cid]["sources"].append("hn")
+                    raw_momentum[cid] = max(raw_momentum.get(cid, 0.0), m * 0.6)
+
+    # feed tag 频次 → 对应 tag/概念节点权重（「社区在写什么」内容侧加成）
+    if feed:
+        ftags = feed.get("tags", [])
+        if ftags:
+            mx_cnt = max((t.get("count", 0) for t in ftags), default=1) or 1
+            for t in ftags:
+                tag = _normalize_tag(t.get("tag", ""))
+                if not tag:
+                    continue
+                nid = _tag_node_id(tag, nodes)
+                if nid:
+                    boost = (t.get("count", 0) or 0) / mx_cnt
+                    nodes[nid].setdefault("sources", [])
+                    if "feed" not in nodes[nid]["sources"]:
+                        nodes[nid]["sources"].append("feed")
+                    raw_weights[nid] = raw_weights.get(nid, 0.0) + 0.1 * boost
+
     # final weight / momentum normalization to 0..1
     if raw_weights:
         mx = max(raw_weights.values()) or 1.0
@@ -475,7 +623,17 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
         "maxWeight": round(max((n.get("weight", 0) for n in node_list), default=0), 3),
         "githubEnabled": github_enabled,
         "githubHealthy": github_enabled and bool(repos),
+        # 数据存在但 fetched_at 已超 TTL×1.5：刷新持续失败、静默回退旧缓存的信号，
+        # 前端据此提示「数据已过期，正在重试」而非把陈旧数据当作新鲜数据展示。
+        "githubStale": github_enabled and bool(repos) and _github_is_stale(github),
         "githubLastFetch": (github or {}).get("fetched_at") if github else None,
+        # 额外信号源健康状态（开关 + 是否取到数据），供前端/health 端点展示。
+        "npmEnabled": settings.explore_npm_enabled,
+        "npmHealthy": settings.explore_npm_enabled and bool(npm and npm.get("packages")),
+        "hnEnabled": settings.explore_hn_enabled,
+        "hnHealthy": settings.explore_hn_enabled and bool(hn and hn.get("buzz")),
+        "feedEnabled": settings.explore_feed_enabled,
+        "feedHealthy": settings.explore_feed_enabled and bool(feed and feed.get("tags")),
         # 图构建时刻（缓存命中时保留原值），供前端展示「上次更新 X 前」。
         "builtAt": _now_dt().isoformat(),
         "blogHash": blog_hash,

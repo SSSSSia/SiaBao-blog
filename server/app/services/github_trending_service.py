@@ -31,8 +31,12 @@ settings = get_settings()
 logger = logging.getLogger(__name__)
 
 CACHE_FILE = DATA_DIR / "explore_github_cache.json"
+HISTORY_FILE = DATA_DIR / "explore_github_history.json"
 GITHUB_API = "https://api.github.com"
 REQUEST_TIMEOUT = 15.0  # seconds — project rule: all network calls must time out
+# Star 历史保留窗口：超过此时长的快照剪枝，控制 history 文件体积。
+HISTORY_MAX_AGE_DAYS = 90
+HISTORY_MAX_POINTS = 16
 
 # Topics / languages to query. Keys match curated concept github_topics where
 # possible so fetched repos can be joined back to concepts.
@@ -87,6 +91,101 @@ def _save_cache_atomic(data: dict) -> None:
         if temp_file.exists():
             temp_file.unlink()
         raise
+
+
+def _load_history() -> dict:
+    """Load star-history snapshots: {repo: [{ts, stars}, ...]}.
+
+    Returns ``{}`` on any failure (never raises) — velocity just degrades to
+    raw stars when no history is available.
+    """
+    if not HISTORY_FILE.exists():
+        return {}
+    try:
+        with open(HISTORY_FILE, encoding="utf-8-sig") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError) as e:
+        logger.warning("Failed to load github history: %s", e)
+        return {}
+
+
+def _save_history_atomic(data: dict) -> None:
+    HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temp_file = HISTORY_FILE.with_suffix(".tmp")
+    try:
+        with open(temp_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        temp_file.replace(HISTORY_FILE)
+    except Exception:
+        if temp_file.exists():
+            temp_file.unlink()
+        raise
+
+
+def _update_history(repos: list[dict]) -> dict:
+    """Append today's stars snapshot per repo, prune old points, persist.
+
+    ``repos`` is the assembled repo list (each needs ``repo`` + ``stars``).
+    Returns the updated history dict. Pure-persistence step — velocity itself
+    is computed in ``_apply_velocity`` from the *previous* run's snapshot.
+    """
+    history = _load_history()
+    now = _now_iso()
+    for r in repos:
+        name = r.get("repo")
+        if not name:
+            continue
+        points = history.setdefault(name, [])
+        # 同一天覆盖，避免同一天多次刷新堆叠。
+        if points and points[-1].get("ts", "")[:10] == now[:10]:
+            points[-1] = {"ts": now, "stars": r.get("stars", 0)}
+        else:
+            points.append({"ts": now, "stars": r.get("stars", 0)})
+        # 剪枝：超龄或超条数都丢弃旧点，控制体积。
+        points[:] = points[-HISTORY_MAX_POINTS:]
+
+    # 顺带清理已不在榜的 repo（避免无限膨胀），但保留有历史的以备回归。
+    current = {r.get("repo") for r in repos if r.get("repo")}
+    stale = [k for k in history if k not in current]
+    # 仅当 history 整体偏大时才清理冷数据，避免频繁丢历史。
+    if len(history) > 500:
+        for k in stale:
+            history.pop(k, None)
+
+    _save_history_atomic(history)
+    return history
+
+
+def _velocity_from_history(repo: str, history: dict) -> int | None:
+    """Stars gained since the oldest snapshot within the window.
+
+    Returns ``None`` when there's only one point (no baseline yet) so the caller
+    can fall back to the existing momentum proxy. A genuine *weekly-ish* rising
+    signal that the fragile HTML scrape can only approximate.
+    """
+    points = history.get(repo) or []
+    if len(points) < 2:
+        return None
+    baseline = points[0].get("stars", 0) or 0
+    latest = points[-1].get("stars", 0) or 0
+    return max(latest - baseline, 0)
+
+
+def _apply_velocity(repos: list[dict], history: dict) -> None:
+    """Fold star velocity into each repo's ``momentum`` (in place), if enabled.
+
+    Velocity = stars gained since the oldest snapshot. When available it replaces
+    the raw ``stars``/``stars-per-age`` proxy used during normalization — but
+    only for repos that have a baseline; others keep their existing momentum so
+    first-run (no history yet) still ranks sensibly.
+    """
+    if not settings.explore_star_history_enabled:
+        return
+    for r in repos:
+        v = _velocity_from_history(r.get("repo", ""), history)
+        if v is not None:
+            r["momentum"] = float(v)
 
 
 def _build_query(*qualifiers: str) -> str:
@@ -218,6 +317,45 @@ async def _fetch_via_search_api() -> tuple[dict[str, dict], int | None]:
     return seen, rate_remaining
 
 
+def _parse_trending_html(html: str, lang: str) -> dict[str, dict]:
+    """Parse repo + stars out of a github.com/trending HTML payload.
+
+    Kept as a pure function so the regex contract is unit-testable. The selector
+    is intentionally lenient; if GitHub changes its markup this returns an empty
+    map — callers treat that as a parse-failure signal worth logging.
+    """
+    out: dict[str, dict] = {}
+    for href, stars in re.findall(
+        r'href="/([^"]+)"[^>]*>.*?(\d[\d,]*)\s*stars',
+        html,
+        flags=re.S,
+    ):
+        if (
+            "/" not in href
+            or href.startswith("settings/")
+            or href.endswith("/marketplace")
+        ):
+            continue
+        repo = href.strip("/")
+        try:
+            star_n = int(stars.replace(",", ""))
+        except ValueError:
+            continue
+        out[repo] = {
+            "repo": repo,
+            "stars": star_n,
+            "language": lang.capitalize(),
+            "description": "",
+            "url": f"https://github.com/{repo}",
+            "topics": [],
+            "created_at": None,
+            "pushed_at": None,
+            "momentum": float(star_n),
+            "_src": "scrape",
+        }
+    return out
+
+
 async def _fetch_via_scrape() -> dict[str, dict]:
     """Auxiliary path: scrape github.com/trending?since=weekly HTML.
 
@@ -238,34 +376,18 @@ async def _fetch_via_scrape() -> dict[str, dict]:
             )
             if resp.status_code != 200:
                 return out
-            for href, stars in re.findall(
-                r'href="/([^"]+)"[^>]*>.*?(\d[\d,]*)\s*stars',
-                resp.text,
-                flags=re.S,
-            ):
-                if (
-                    "/" not in href
-                    or href.startswith("settings/")
-                    or href.endswith("/marketplace")
-                ):
-                    continue
-                repo = href.strip("/")
-                try:
-                    star_n = int(stars.replace(",", ""))
-                except ValueError:
-                    continue
-                out[repo] = {
-                    "repo": repo,
-                    "stars": star_n,
-                    "language": lang.capitalize(),
-                    "description": "",
-                    "url": f"https://github.com/{repo}",
-                    "topics": [],
-                    "created_at": None,
-                    "pushed_at": None,
-                    "momentum": float(star_n),
-                    "_src": "scrape",
-                }
+            parsed = _parse_trending_html(resp.text, lang)
+            # Got a 200 (so HTML was served) but matched nothing → the regex
+            # likely broke after a GitHub markup change. Surface it so it isn't
+            # silently mistaken for "no trending repos this week".
+            if not parsed:
+                logger.warning(
+                    "GitHub trending scrape parsed 0 repos for %s "
+                    "(markup changed? payload=%d bytes)",
+                    lang,
+                    len(resp.text),
+                )
+            return parsed
         except httpx.HTTPError as e:
             logger.warning("GitHub trending scrape failed (%s): %s", lang, e)
         return out
@@ -281,7 +403,9 @@ async def _fetch_via_scrape() -> dict[str, dict]:
     return seen
 
 
-def _assemble_cache(seen: dict[str, dict], rate_remaining: int | None) -> dict:
+def _assemble_cache(
+    seen: dict[str, dict], rate_remaining: int | None, history: dict | None = None
+) -> dict:
     """Build the cache payload, ranking rising-fast repos first.
 
     Two sources have incomparable raw momentum scales — Search API uses
@@ -290,8 +414,15 @@ def _assemble_cache(seen: dict[str, dict], rate_remaining: int | None) -> dict:
     drowns the other, then floor scrape momentum: those repos are on the weekly
     trending list by definition, so they must stay visible even if their raw
     stars are modest. Final order is momentum desc, stars desc as tiebreaker.
+
+    If ``history`` (star snapshots) is provided and ``explore_star_history_enabled``
+    is on, genuine star velocity overrides the raw momentum proxy before
+    normalization — a more truthful «rising» signal than the scrape heuristic.
     """
     repos = list(seen.values())
+
+    if history is not None:
+        _apply_velocity(repos, history)
 
     def _norm(group: list[dict]) -> None:
         vals = [r.get("momentum", 0.0) or 0.0 for r in group]
@@ -367,8 +498,13 @@ async def _refresh() -> dict | None:
             logger.warning("GitHub fetch returned no data; keeping old cache if any")
             return None
 
-        data = _assemble_cache(merged, rate_remaining)
+        # Star 历史：velocity 需在归一化前覆盖 momentum，故先加载、传入 assembly；
+        # 落库后再用本次快照更新历史，供下一次刷新计算增量。
+        history = _load_history() if settings.explore_star_history_enabled else None
+        data = _assemble_cache(merged, rate_remaining, history=history)
         _save_cache_atomic(data)
+        if settings.explore_star_history_enabled:
+            _update_history(data["repos"])
         logger.info(
             "GitHub explore cache refreshed: %d repos (search=%d, scrape=%d)",
             len(data["repos"]),

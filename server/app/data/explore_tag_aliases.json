@@ -1,0 +1,16 @@
+{
+  "_comment": "标签归一化别名表。key 为「规范名」，value 为需合并到该规范名的变体列表（含中英、大小写、缩写）。归一化只影响聚合键，原始 articles 字段不变。博客标签节点与共现边据此降噪。新增条目前先确认规范名不会与现有 curated concept 冲突。",
+  "react": ["React", "reactjs", "react.js", "reactjs18", "react19"],
+  "vue": ["Vue", "vuejs", "vue.js", "vue3"],
+  "typescript": ["TypeScript", "ts", "ts语言"],
+  "javascript": ["JavaScript", "JS", "js"],
+  "frontend": ["前端", "Frontend", "front-end", "前端开发"],
+  "backend": ["后端", "Backend", "back-end", "后端开发"],
+  "ai": ["AI", "人工智能", "A.I."],
+  "llm": ["LLM", "大模型", "大语言模型"],
+  "rust": ["Rust", "rustlang"],
+  "python": ["Python", "py"],
+  "docker": ["Docker", "容器", "container"],
+  "css": ["CSS", "样式"],
+  "node": ["Node", "Node.js", "nodejs", "NodeJS"]
+}

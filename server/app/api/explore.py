@@ -88,6 +88,79 @@ async def get_github(
     return R.ok(data=data)
 
 
+@router.get("/health")
+async def explore_health() -> R:
+    """Aggregate health of every Explore signal source.
+
+    Summarizes each source's enabled flag, whether it currently has data, its
+    last fetch time, and (for GitHub) rate-limit remaining + staleness. Intended
+    for monitoring / ops dashboards. Cheap: reuses caches, triggers no refresh.
+    """
+    from datetime import datetime, timezone
+
+    def _age_hours(iso: str | None) -> float | None:
+        if not iso:
+            return None
+        try:
+            dt = datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return round((datetime.now(timezone.utc) - dt).total_seconds() / 3600.0, 2)
+
+    gh = await github_trending_service.get_github_data()
+    gh_data = gh or {}
+    gh_repos = gh_data.get("repos", []) if gh_data else []
+
+    sources = {
+        "github": {
+            "enabled": settings.explore_github_enabled,
+            "healthy": settings.explore_github_enabled and bool(gh_repos),
+            "count": len(gh_repos),
+            "rate_limit_remaining": gh_data.get("rate_limit_remaining"),
+            "last_fetch": gh_data.get("fetched_at"),
+            "age_hours": _age_hours(gh_data.get("fetched_at")),
+        },
+    }
+
+    # 轻量读缓存（不触发刷新）；各源默认关闭时 enabled=False。
+    from app.services import npm_trending_service, hn_service, feed_service
+    from app.services.explore_service import _load_curated, _github_is_stale
+
+    npm = await npm_trending_service.get_npm_data()
+    sources["npm"] = {
+        "enabled": settings.explore_npm_enabled,
+        "healthy": settings.explore_npm_enabled and bool(npm and npm.get("packages")),
+        "count": len((npm or {}).get("packages", [])),
+        "last_fetch": (npm or {}).get("fetched_at"),
+        "age_hours": _age_hours((npm or {}).get("fetched_at")),
+    }
+    hn = await hn_service.get_hn_data(_load_curated().get("concepts", []))
+    sources["hn"] = {
+        "enabled": settings.explore_hn_enabled,
+        "healthy": settings.explore_hn_enabled and bool(hn and hn.get("buzz")),
+        "count": len((hn or {}).get("buzz", [])),
+        "last_fetch": (hn or {}).get("fetched_at"),
+        "age_hours": _age_hours((hn or {}).get("fetched_at")),
+    }
+    feed = await feed_service.get_feed_data()
+    sources["feed"] = {
+        "enabled": settings.explore_feed_enabled,
+        "healthy": settings.explore_feed_enabled and bool(feed and feed.get("tags")),
+        "count": len((feed or {}).get("tags", [])),
+        "last_fetch": (feed or {}).get("fetched_at"),
+        "age_hours": _age_hours((feed or {}).get("fetched_at")),
+    }
+
+    return R.ok(data={
+        "sources": sources,
+        "github_stale": _github_is_stale(gh),
+        "star_history_enabled": settings.explore_star_history_enabled,
+        "refresh_interval_seconds": settings.explore_refresh_interval_seconds,
+    })
+
+
 async def _resolve_insight_context(node_id: str) -> tuple[dict, list, str] | None:
     """Locate a node + its 1-hop neighbor labels + content fingerprint.
 

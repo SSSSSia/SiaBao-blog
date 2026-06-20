@@ -354,6 +354,14 @@ export default function Constellation() {
           </div>
         )}
 
+        {/* GitHub 数据陈旧提示：有数据但 fetched_at 已超阈值（刷新持续失败、回退旧缓存） */}
+        {meta && meta.githubHealthy && meta.githubStale && !loading && !error && (
+          <div className='constellation-banner constellation-banner--warn' role='status'>
+            <AlertCircle size={14} />
+            <span>GitHub 数据已过期，正在后台重试</span>
+          </div>
+        )}
+
         {/* 悬停浮层（仅 hover 设备） */}
         {showHoverTip && (
           <HoverTooltip node={hoveredNode} x={tipPos.x} y={tipPos.y} />

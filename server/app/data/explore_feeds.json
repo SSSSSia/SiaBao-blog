@@ -1,0 +1,4 @@
+{
+  "_comment": "RSS/Atom feed 列表（知识星图内容侧新源）。仅在后端 EXPLORE_FEED_ENABLED=true 时生效。每项 {name, url}，可选 tags 手工标注。空数组 = 该源休眠，不抓任何内容。建议先做 B1 标签归一化再启用，否则 tag 噪声较大。",
+  "feeds": []
+}
