@@ -22,6 +22,8 @@ import confirm from '../../utils/confirmDialog.jsx'
 import { toast } from 'react-toastify'
 import { adminToast } from '../../utils/adminToast'
 import Pagination from '../../components/common/Pagination'
+import Select from '../../components/ui/Select'
+import { useDebounce } from '../../hooks/useDebounce'
 import './ArticleManage.css'
 
 const STATUS_OPTIONS = [
@@ -30,7 +32,10 @@ const STATUS_OPTIONS = [
   { value: 'draft', label: '草稿' },
 ]
 
-const PAGE_SIZE_OPTIONS = [5, 10, 20, 50]
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50].map((size) => ({
+  value: size,
+  label: String(size),
+}))
 
 function ArticleManage() {
   const navigate = useNavigate()
@@ -38,15 +43,12 @@ function ArticleManage() {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [isStatusOpen, setIsStatusOpen] = useState(false)
-  const [isCategoryOpen, setIsCategoryOpen] = useState(false)
-  const [isPageSizeOpen, setIsPageSizeOpen] = useState(false)
   const [filters, setFilters] = useState({
     status: 'all',
     category: '',
     keyword: '',
   })
-  const [debouncedKeyword, setDebouncedKeyword] = useState('')
+  const debouncedKeyword = useDebounce(filters.keyword.trim(), 300)
   const [uploadStatus, setUploadStatus] = useState({
     loading: false,
     message: '',
@@ -65,9 +67,6 @@ function ArticleManage() {
     total: 0,
   })
 
-  const statusSelectRef = useRef(null)
-  const categorySelectRef = useRef(null)
-  const pageSizeSelectRef = useRef(null)
   const fileInputRef = useRef(null)
 
   const featuredIdSet = useMemo(
@@ -90,20 +89,6 @@ function ArticleManage() {
       })),
     ],
     [categories],
-  )
-
-  const selectedStatus = useMemo(
-    () =>
-      STATUS_OPTIONS.find((option) => option.value === filters.status) ||
-      STATUS_OPTIONS[0],
-    [filters.status],
-  )
-
-  const selectedCategory = useMemo(
-    () =>
-      categoryOptions.find((option) => option.value === filters.category) ||
-      categoryOptions[0],
-    [filters.category, categoryOptions],
   )
 
   const fetchConfig = useCallback(async () => {
@@ -166,13 +151,6 @@ function ArticleManage() {
   )
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedKeyword(filters.keyword.trim())
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [filters.keyword])
-
-  useEffect(() => {
     const loadBaseData = async () => {
       try {
         const categoryRes = await categoryRepository.getCategories()
@@ -219,19 +197,6 @@ function ArticleManage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.current])
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (statusSelectRef.current?.contains(event.target)) return
-      if (categorySelectRef.current?.contains(event.target)) return
-      if (pageSizeSelectRef.current?.contains(event.target)) return
-      setIsStatusOpen(false)
-      setIsCategoryOpen(false)
-      setIsPageSizeOpen(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const handleDelete = (id, title) => {
     confirm(
@@ -471,100 +436,26 @@ function ArticleManage() {
         >
           <div className='filter-group'>
           <label>状态</label>
-          <div className='admin-select' ref={statusSelectRef}>
-            <button
-              type='button'
-              className='admin-select-trigger'
-              onClick={() => setIsStatusOpen((prev) => !prev)}
-              aria-haspopup='listbox'
-              aria-expanded={isStatusOpen}
-            >
-              <span>{selectedStatus.label}</span>
-              <span
-                className={
-                  'admin-select-caret ' +
-                  (isStatusOpen ? 'admin-select-caret-open' : '')
-                }
-              />
-            </button>
-            {isStatusOpen && (
-              <ul className='admin-select-menu' role='listbox'>
-                {STATUS_OPTIONS.map((option) => (
-                  <li key={option.value}>
-                    <button
-                      type='button'
-                      role='option'
-                      aria-selected={filters.status === option.value}
-                      className={
-                        'admin-select-option ' +
-                        (filters.status === option.value
-                          ? 'admin-select-option-active'
-                          : '')
-                      }
-                      onClick={() => {
-                        setFilters((prev) => ({
-                          ...prev,
-                          status: option.value,
-                        }))
-                        setIsStatusOpen(false)
-                      }}
-                    >
-                      {option.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <Select
+            value={filters.status}
+            options={STATUS_OPTIONS}
+            ariaLabel='状态'
+            onChange={(value) =>
+              setFilters((prev) => ({ ...prev, status: value }))
+            }
+          />
         </div>
 
         <div className='filter-group'>
           <label>分类</label>
-          <div className='admin-select' ref={categorySelectRef}>
-            <button
-              type='button'
-              className='admin-select-trigger'
-              onClick={() => setIsCategoryOpen((prev) => !prev)}
-              aria-haspopup='listbox'
-              aria-expanded={isCategoryOpen}
-            >
-              <span>{selectedCategory.label}</span>
-              <span
-                className={
-                  'admin-select-caret ' +
-                  (isCategoryOpen ? 'admin-select-caret-open' : '')
-                }
-              />
-            </button>
-            {isCategoryOpen && (
-              <ul className='admin-select-menu' role='listbox'>
-                {categoryOptions.map((option, idx) => (
-                  <li key={(option.value || 'all') + '-' + idx}>
-                    <button
-                      type='button'
-                      role='option'
-                      aria-selected={filters.category === option.value}
-                      className={
-                        'admin-select-option ' +
-                        (filters.category === option.value
-                          ? 'admin-select-option-active'
-                          : '')
-                      }
-                      onClick={() => {
-                        setFilters((prev) => ({
-                          ...prev,
-                          category: option.value,
-                        }))
-                        setIsCategoryOpen(false)
-                      }}
-                    >
-                      {option.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <Select
+            value={filters.category}
+            options={categoryOptions}
+            ariaLabel='分类'
+            onChange={(value) =>
+              setFilters((prev) => ({ ...prev, category: value }))
+            }
+          />
         </div>
 
         <div className='filter-group filter-search'>
@@ -582,48 +473,12 @@ function ArticleManage() {
 
         <div className='filter-group page-size-group'>
           <label>每页条数</label>
-          <div className='admin-select' ref={pageSizeSelectRef}>
-            <button
-              type='button'
-              className='admin-select-trigger'
-              onClick={() => setIsPageSizeOpen((prev) => !prev)}
-              aria-haspopup='listbox'
-              aria-expanded={isPageSizeOpen}
-            >
-              <span>{pagination.pageSize}</span>
-              <span
-                className={
-                  'admin-select-caret ' +
-                  (isPageSizeOpen ? 'admin-select-caret-open' : '')
-                }
-              />
-            </button>
-            {isPageSizeOpen && (
-              <ul className='admin-select-menu' role='listbox'>
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <li key={size}>
-                    <button
-                      type='button'
-                      role='option'
-                      aria-selected={pagination.pageSize === size}
-                      className={
-                        'admin-select-option ' +
-                        (pagination.pageSize === size
-                          ? 'admin-select-option-active'
-                          : '')
-                      }
-                      onClick={() => {
-                        handlePageSizeChange(size)
-                        setIsPageSizeOpen(false)
-                      }}
-                    >
-                      {size}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <Select
+            value={pagination.pageSize}
+            options={PAGE_SIZE_OPTIONS}
+            ariaLabel='每页条数'
+            onChange={(size) => handlePageSizeChange(size)}
+          />
         </div>
         </div>
       </div>

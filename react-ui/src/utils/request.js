@@ -51,6 +51,91 @@ const getAuthToken = () => {
 };
 
 /**
+ * 401/403 处理：清除本地凭据并跳转登录页。
+ * request() 与 upload() 共用，避免两份重复实现。
+ */
+const handleUnauthorized = () => {
+  window.localStorage.removeItem('my-blog_token');
+  window.localStorage.removeItem('my-blog_user');
+  // 跳转到登录页（避免在登录页本身跳转造成死循环）
+  if (!window.location.pathname.startsWith('/admin/login')) {
+    window.location.href = '/admin/login';
+  }
+};
+
+/**
+ * 统一解析 fetch 响应：非 2xx 抛 ApiError，成功则按统一格式返回 data。
+ * request() 与 upload() 共用，保证两者行为一致。
+ * @param {Response} response
+ * @param {any} jsonData 已经 await response.json() 拿到的体（可能为 null）
+ * @returns {any} 业务数据
+ */
+const processJsonResponse = (response, jsonData) => {
+  // 处理 HTTP 错误状态码
+  if (!response.ok) {
+    // 如果是 401/403，可能是 token 过期，清除本地存储并跳转到登录页
+    if (response.status === 401 || response.status === 403) {
+      handleUnauthorized();
+    }
+
+    // 如果返回的是统一格式，提取 message 和 code
+    if (jsonData && typeof jsonData === 'object') {
+      const { code, message, data } = jsonData;
+      throw new ApiError(
+        message || `HTTP ${response.status}: ${response.statusText}`,
+        code || String(response.status),
+        data,
+        response.status
+      );
+    }
+
+    // 否则抛出普通错误
+    const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
+    error.status = response.status;
+    error.data = jsonData;
+    throw error;
+  }
+
+  // 处理统一响应格式
+  if (jsonData && typeof jsonData === 'object' && 'code' in jsonData) {
+    const { code, message, data } = jsonData;
+
+    // 判断业务状态码
+    if (code === ResponseCode.SUCCESS) {
+      // 成功，返回 data 字段
+      return data;
+    } else {
+      // 失败，抛出错误
+      throw new ApiError(message, code, data, response.status);
+    }
+  }
+
+  // 如果不是统一格式，直接返回数据
+  return jsonData;
+};
+
+/**
+ * 包装 fetch promise 的错误处理：透传 ApiError，转换超时，其余原样抛出。
+ */
+const withErrorHandling = (promise, timeoutId) =>
+  promise.catch((error) => {
+    clearTimeout(timeoutId);
+
+    // 如果是 ApiError，直接抛出
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    // 如果是超时错误
+    if (error.name === 'AbortError') {
+      throw new Error('请求超时');
+    }
+
+    // 其他错误
+    throw error;
+  });
+
+/**
  * 发送 HTTP 请求
  * @param {string} url - 请求地址
  * @param {Object} options - 请求配置
@@ -84,52 +169,7 @@ export async function request(url, options = {}, timeout = DEFAULT_TIMEOUT) {
     // 解析 JSON 响应
     const jsonData = await response.json().catch(() => null);
 
-    // 处理 HTTP 错误状态码
-    if (!response.ok) {
-      // 如果是 401 错误，可能是 token 过期，清除本地存储并跳转到登录页
-      if (response.status === 401 || response.status === 403) {
-        window.localStorage.removeItem('my-blog_token');
-        window.localStorage.removeItem('my-blog_user');
-        // 跳转到登录页（避免在登录页本身跳转造成死循环）
-        if (!window.location.pathname.startsWith('/admin/login')) {
-          window.location.href = '/admin/login';
-        }
-      }
-
-      // 如果返回的是统一格式，提取 message 和 code
-      if (jsonData && typeof jsonData === 'object') {
-        const { code, message, data } = jsonData;
-        throw new ApiError(
-          message || `HTTP ${response.status}: ${response.statusText}`,
-          code || String(response.status),
-          data,
-          response.status
-        );
-      }
-
-      // 否则抛出普通错误
-      const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
-      error.status = response.status;
-      error.data = jsonData;
-      throw error;
-    }
-
-    // 处理统一响应格式
-    if (jsonData && typeof jsonData === 'object' && 'code' in jsonData) {
-      const { code, message, data } = jsonData;
-
-      // 判断业务状态码
-      if (code === ResponseCode.SUCCESS) {
-        // 成功，返回 data 字段
-        return data;
-      } else {
-        // 失败，抛出错误
-        throw new ApiError(message, code, data, response.status);
-      }
-    }
-
-    // 如果不是统一格式，直接返回数据
-    return jsonData;
+    return processJsonResponse(response, jsonData);
   } catch (error) {
     clearTimeout(timeoutId);
 
@@ -215,82 +255,23 @@ export function upload(url, formData, options = {}, timeout = DEFAULT_TIMEOUT) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  return fetch(url, {
+  const promise = fetch(url, {
     ...options,
     method: 'POST',
     signal: controller.signal,
     headers,
     body: formData,
     // 不设置 Content-Type，让浏览器自动设置 multipart/form-data 边界
-  })
-    .then(async (response) => {
-      clearTimeout(timeoutId);
+  }).then(async (response) => {
+    clearTimeout(timeoutId);
 
-      // 解析 JSON 响应
-      const jsonData = await response.json().catch(() => null);
+    // 解析 JSON 响应
+    const jsonData = await response.json().catch(() => null);
 
-      // 处理 HTTP 错误状态码
-      if (!response.ok) {
-        // 如果是 401 错误，可能是 token 过期，清除本地存储并跳转到登录页
-        if (response.status === 401 || response.status === 403) {
-          window.localStorage.removeItem('my-blog_token');
-          window.localStorage.removeItem('my-blog_user');
-          // 跳转到登录页（避免在登录页本身跳转造成死循环）
-          if (!window.location.pathname.startsWith('/admin/login')) {
-            window.location.href = '/admin/login';
-          }
-        }
-        // 如果返回的是统一格式，提取 message 和 code
-        if (jsonData && typeof jsonData === 'object') {
-          const { code, message, data } = jsonData;
-          throw new ApiError(
-            message || `HTTP ${response.status}: ${response.statusText}`,
-            code || String(response.status),
-            data,
-            response.status
-          );
-        }
+    return processJsonResponse(response, jsonData);
+  });
 
-        // 否则抛出普通错误
-        const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
-        error.status = response.status;
-        error.data = jsonData;
-        throw error;
-      }
-
-      // 处理统一响应格式
-      if (jsonData && typeof jsonData === 'object' && 'code' in jsonData) {
-        const { code, message, data } = jsonData;
-
-        // 判断业务状态码
-        if (code === ResponseCode.SUCCESS) {
-          // 成功，返回 data 字段
-          return data;
-        } else {
-          // 失败，抛出错误
-          throw new ApiError(message, code, data, response.status);
-        }
-      }
-
-      // 如果不是统一格式，直接返回数据
-      return jsonData;
-    })
-    .catch((error) => {
-      clearTimeout(timeoutId);
-
-      // 如果是 ApiError，直接抛出
-      if (error instanceof ApiError) {
-        throw error;
-      }
-
-      // 如果是超时错误
-      if (error.name === 'AbortError') {
-        throw new Error('请求超时');
-      }
-
-      // 其他错误
-      throw error;
-    });
+  return withErrorHandling(promise, timeoutId);
 }
 
 /**
@@ -312,7 +293,7 @@ export function download(url, filename, options = {}, timeout = DEFAULT_TIMEOUT)
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  return fetch(url, {
+  const promise = fetch(url, {
     ...options,
     method: 'GET',
     signal: controller.signal,
@@ -340,16 +321,9 @@ export function download(url, filename, options = {}, timeout = DEFAULT_TIMEOUT)
       window.URL.revokeObjectURL(downloadUrl);
 
       return blob;
-    })
-    .catch((error) => {
-      clearTimeout(timeoutId);
-
-      if (error.name === 'AbortError') {
-        throw new Error('请求超时');
-      }
-
-      throw error;
     });
+
+  return withErrorHandling(promise, timeoutId);
 }
 
 export default { request, get, post, put, del, upload, download };

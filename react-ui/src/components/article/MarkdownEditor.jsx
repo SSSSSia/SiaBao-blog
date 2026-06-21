@@ -13,24 +13,8 @@ import { X } from 'lucide-react'
 import { uploadImage } from '../../api/upload'
 import { toast } from 'react-toastify'
 import { renderMarkdown } from '../../utils/markdown'
+import { useDebounce } from '../../hooks/useDebounce'
 import './MarkdownEditor.css'
-
-// 防抖 Hook
-function useDebounce(value, delay) {
-  const [debouncedValue, setDebouncedValue] = useState(value)
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
-
-    return () => {
-      clearTimeout(handler)
-    }
-  }, [value, delay])
-
-  return debouncedValue
-}
 
 // Markdown 编辑器组件
 function MarkdownEditor({

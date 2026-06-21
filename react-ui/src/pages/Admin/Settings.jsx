@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'react-toastify'
 import { adminToast } from '../../utils/adminToast'
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
+import Select from '../../components/ui/Select'
 import {
   Save,
   RefreshCw,
@@ -46,8 +47,6 @@ export default function Settings() {
   const [featuredKeyword, setFeaturedKeyword] = useState('')
   const [featuredCategory, setFeaturedCategory] = useState('')
   const [showFeaturedOnly, setShowFeaturedOnly] = useState(false)
-  const [openSelect, setOpenSelect] = useState(null)
-  const categorySelectRef = useRef(null)
 
   // 未保存更改守卫：上报脏状态 + SPA 导航拦截（统一走 confirm 弹窗）
   useUnsavedChangesGuard({
@@ -154,15 +153,6 @@ export default function Settings() {
 
   useEffect(() => {
     loadData()
-  }, [])
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (categorySelectRef.current?.contains(event.target)) return
-      setOpenSelect(null)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   const handleSave = async () => {
@@ -439,58 +429,15 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className='admin-select' ref={categorySelectRef}>
-                  <button
-                    type='button'
-                    className='admin-select-trigger'
-                    onClick={() => {
-                      setOpenSelect((prev) =>
-                        prev === 'category' ? null : 'category',
-                      )
-                    }}
-                    aria-haspopup='listbox'
-                    aria-expanded={openSelect === 'category'}
-                  >
-                    <span>
-                      {categoryOptions.find(
-                        (opt) => opt === featuredCategory,
-                      ) || '全部分类'}
-                    </span>
-                    <span
-                      className={
-                        'admin-select-caret ' +
-                        (openSelect === 'category'
-                          ? 'admin-select-caret-open'
-                          : '')
-                      }
-                    />
-                  </button>
-                  {openSelect === 'category' && (
-                    <ul className='admin-select-menu' role='listbox'>
-                      {categoryOptions.map((category) => (
-                        <li key={category || 'all'}>
-                          <button
-                            type='button'
-                            role='option'
-                            aria-selected={featuredCategory === category}
-                            className={
-                              'admin-select-option ' +
-                              (featuredCategory === category
-                                ? 'admin-select-option-active'
-                                : '')
-                            }
-                            onClick={() => {
-                              setFeaturedCategory(category)
-                              setOpenSelect(null)
-                            }}
-                          >
-                            {category || '全部分类'}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                <Select
+                  value={featuredCategory}
+                  options={categoryOptions.map((category) => ({
+                    value: category,
+                    label: category || '全部分类',
+                  }))}
+                  ariaLabel='分类'
+                  onChange={(value) => setFeaturedCategory(value)}
+                />
               </div>
 
               <div className='featured-library-list'>

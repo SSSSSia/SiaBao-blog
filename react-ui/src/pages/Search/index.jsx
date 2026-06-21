@@ -14,27 +14,11 @@ import Pagination from '../../components/ui/Pagination'
 import Loading from '../../components/ui/Loading'
 import { articleApi } from '../../api/articles'
 import { categoryRepository } from '../../repositories/categoryRepository'
+import { useDebounce } from '../../hooks/useDebounce'
 import './Search.css'
 
 const PAGE_SIZE = 10
 const DEBOUNCE_DELAY = 300
-
-// 防抖 Hook
-function useDebounce(value, delay) {
-  const [debouncedValue, setDebouncedValue] = useState(value)
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
-
-    return () => {
-      clearTimeout(handler)
-    }
-  }, [value, delay])
-
-  return debouncedValue
-}
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams()

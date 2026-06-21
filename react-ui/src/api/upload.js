@@ -4,7 +4,7 @@
  * 支持按文章 UUID 分目录存储图片
  */
 
-import { upload } from '../utils/request'
+import { del, upload } from '../utils/request'
 
 const API_BASE = '/api'
 
@@ -46,26 +46,10 @@ export async function uploadImages(files, articleId = null) {
  * @returns {Promise} 删除结果
  */
 export async function deleteImage(filename, articleId = null) {
-  const params = articleId ? `?article_id=${articleId}` : ''
-  const url = `${API_BASE}/upload/image/${filename}${params}`
-
-  return fetch(url, {
-    method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  }).then(async res => {
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({}))
-      throw new Error(error.message || '删除失败')
-    }
-    return res.json()
-  }).then(data => {
-    if (data.code === '200') {
-      return data.data
-    }
-    throw new Error(data.message || '删除失败')
-  })
+  const query = articleId ? `?article_id=${encodeURIComponent(articleId)}` : ''
+  const url = `${API_BASE}/upload/image/${filename}${query}`
+  // del() 内部已处理统一响应格式与 401/403，无需再手写 fetch
+  return del(url)
 }
 
 export default {
