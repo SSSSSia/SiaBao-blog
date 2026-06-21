@@ -21,7 +21,7 @@ Thumbs.db
 
 # Node
 react-ui/node_modules
-react-ui/dist
+# 注意：react-ui/dist 不在此排除——前端镜像需要 COPY CI 预构建的 dist/
 react-ui/.vite
 react-ui/npm-debug.log*
 react-ui/yarn-debug.log*

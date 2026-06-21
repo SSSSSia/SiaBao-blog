@@ -1,28 +1,16 @@
 # 前端 Dockerfile
-# 多阶段构建：先构建，再使用轻量级 Nginx 镜像运行
+#
+# 注意：本镜像不再在容器内执行 Vite 构建，而是直接使用 CI（GitHub Actions）
+# 预构建好的 react-ui/dist/。原因：云服务器内存较小（1-2G），在服务器上跑
+# `npm run build`（尤其压缩 markdown/mermaid 大 chunk 时）会把内存吃满、整机
+# thrashing 卡死。把构建搬到 CI runner（7G 内存）后，服务器只需 COPY 产物，
+# 彻底避开内存瓶颈。因此部署流程必须先用 rsync/scp 把 dist/ 送到服务器，再
+# 执行 docker compose build。
 
-# 阶段1: 构建阶段
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-
-# 复制 package.json 和 lock 文件
-COPY react-ui/package*.json ./
-
-# 安装依赖。使用 lockfile 保证云端构建版本稳定，缓存也更可靠。
-RUN npm ci
-
-# 复制源代码
-COPY react-ui/ ./
-
-# 构建生产版本
-RUN npm run build
-
-# 阶段2: 运行阶段 - 使用 Nginx 提供静态文件服务
 FROM nginx:alpine
 
-# 复制构建产物到 Nginx 目录
-COPY --from=builder /app/dist /usr/share/nginx/html
+# 复制 CI 预构建的产物（由部署流程在 build 前同步到本目录）
+COPY react-ui/dist/ /usr/share/nginx/html/
 
 # 复制自定义 Nginx 配置
 COPY docker/nginx/frontend.conf /etc/nginx/conf.d/default.conf

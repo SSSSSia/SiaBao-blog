@@ -16,6 +16,52 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # ===== 1. 在 CI runner 上构建前端（7G 内存，远离小内存服务器）=====
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: react-ui/package-lock.json
+
+      - name: Build frontend
+        working-directory: react-ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: Verify dist produced
+        run: |
+          if [ ! -d react-ui/dist ] || [ -z "$(ls -A react-ui/dist 2>/dev/null)" ]; then
+            echo "::error::react-ui/dist 为空，构建失败"
+            exit 1
+          fi
+          echo "dist 文件数：$(find react-ui/dist -type f | wc -l)"
+
+      # ===== 2. 把 dist/ 用 rsync 同步到服务器（--delete 清掉旧 chunk）=====
+      - name: Configure SSH
+        run: |
+          install -m 600 -D /dev/null ~/.ssh/id_rsa
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Sync dist to server
+        env:
+          SSH_PORT: ${{ secrets.SERVER_PORT }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          PROJECT_DIR: ${{ secrets.SERVER_PROJECT_PATH }}
+        run: |
+          PROJECT_DIR="${PROJECT_DIR:-/root/blog/SiaBao-blog}"
+          echo "同步 dist -> ${SERVER_USER}@${SERVER_HOST}:${PROJECT_DIR}/react-ui/dist/"
+          rsync -az --delete -e "ssh -p ${SSH_PORT}" \
+            react-ui/dist/ \
+            "${SERVER_USER}@${SERVER_HOST}:${PROJECT_DIR}/react-ui/dist/"
+
+      # ===== 3. SSH：拉代码（不含 dist）→ 构建镜像 → 起服务 → 健康检查 =====
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -27,8 +73,7 @@ jobs:
           # passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script_stop: false
           timeout: 15m
-          # 依赖大改（如引入 langchain 全家桶）时，首次 pip install 较慢，
-          # 给足执行时间避免 docker compose build 被中途杀掉导致部署超时。
+          # 拉代码 + 构建后端镜像（pip install）+ 起服务，给足时间。
           command_timeout: 60m
           script: |
             set -e  # Exit immediately if a command exits with a non-zero status
@@ -52,16 +97,21 @@ jobs:
 
             echo "Pulling latest code..."
             # 使用 fetch + reset 确保与远程完全同步
-            # 这样可以避免分支分歧和合并冲突
             # 云服务器上的代码不应该有本地修改
+            # 注意：不要用 `git clean -fd`，否则会删掉上一步 rsync 送来的 react-ui/dist/
             if git fetch origin main && git reset --hard origin/main; then
               echo "✓ Code repository updated successfully"
-              # 清理未跟踪的文件（可选，保持环境干净）
-              git clean -fd || true
             else
               echo "❌ Error: Failed to pull code repository"
               exit 1
             fi
+
+            # 确认前端构建产物已就位（由上一步 rsync 同步）
+            if [ ! -d "$PROJECT_DIR/react-ui/dist" ] || [ -z "$(ls -A "$PROJECT_DIR/react-ui/dist" 2>/dev/null)" ]; then
+              echo "❌ Error: react-ui/dist not found on server. rsync step may have failed."
+              exit 1
+            fi
+            echo "✓ Frontend dist found"
 
             # 验证 .env 文件是否存在
             if [ ! -f "$PROJECT_DIR/server/.env" ]; then
@@ -72,7 +122,7 @@ jobs:
               echo "✓ .env file found"
             fi
 
-            echo "Building images..."
+            echo "Building images (frontend uses pre-built dist, backend runs pip install)..."
             docker compose -f docker-compose.prod.yml --env-file "$PROJECT_DIR/server/.env" build --progress=plain
 
             echo "Stopping existing services after successful build..."
