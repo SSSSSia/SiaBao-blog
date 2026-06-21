@@ -745,7 +745,7 @@ export default function Settings() {
         <div className='navigation-block-modal'>
           <div className='navigation-block-content'>
             <h3>检测到您的更改</h3>
-            <p>浣犳湁检测到您的更改锛岀‘瀹氳离开鍚楋紵</p>
+            <p>您有未保存的更改，确定要离开吗？</p>
             <div className='navigation-block-actions'>
               <button className='btn' onClick={handleNavigationCancel}>
                 留在此页
