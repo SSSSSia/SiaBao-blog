@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Save, FileText, Eye, AlertCircle, Sparkles } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { articleRepository } from '../../repositories/articleRepository'
 import { articleApi } from '../../api/articles'
 import { adminToast } from '../../utils/adminToast'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import { generateTempArticleId, isTempArticleId } from '../../utils/image'
 import MarkdownEditor from '../../components/article/MarkdownEditor'
 import { EditorSkeleton } from '../../components/ui/Skeleton'
@@ -23,10 +24,7 @@ const generateSlug = (title) => {
 function ArticleEdit() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const location = useLocation()
   const isEdit = !!id
-  const isInitializedRef = useRef(false)
-  const isNavigatingRef = useRef(false)
 
   // Get current time in text format for new articles (YYYY-MM-DD HH:mm)
   const getCurrentTimeForInput = () => {
@@ -99,11 +97,18 @@ function ArticleEdit() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-  const [showNavigationModal, setShowNavigationModal] = useState(false)
   const [errors, setErrors] = useState({})
   const [loadError, setLoadError] = useState(null)
   const [tempArticleId, setTempArticleId] = useState(null)
-  const pendingNavigationRef = useRef(null)
+
+  // 当前编辑页的规范化路径，供未保存守卫 bounce-back 使用
+  const currentEditPath = `/admin/articles/${id ? `${id}/edit` : 'new'}`
+  const { confirmLeave } = useUnsavedChangesGuard({
+    scope: 'article',
+    isDirty: hasUnsavedChanges,
+    currentPath: currentEditPath,
+    fallbackPath: '/admin/articles',
+  })
 
   // AI Summary states
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false)
@@ -168,10 +173,6 @@ function ArticleEdit() {
     loadArticle()
   }, [isEdit, id, navigate])
 
-  useEffect(() => {
-    window.__hasUnsavedArticleChanges__ = false
-  }, [])
-
   // Set current time for new articles (not when editing)
   useEffect(() => {
     if (!isEdit) {
@@ -181,41 +182,6 @@ function ArticleEdit() {
       }))
     }
   }, [isEdit])
-
-  useEffect(() => {
-    if (!isInitializedRef.current) {
-      isInitializedRef.current = true
-      return
-    }
-
-    if (isNavigatingRef.current) {
-      isNavigatingRef.current = false
-      return
-    }
-
-    const currentEditPath = `/admin/${id ? `articles/${id}/edit` : 'articles/new'}`
-    if (location.pathname !== currentEditPath && hasUnsavedChanges) {
-      pendingNavigationRef.current = location.pathname
-      isNavigatingRef.current = true
-      navigate(currentEditPath, { replace: true })
-      setTimeout(() => setShowNavigationModal(true), 0)
-    }
-  }, [location.pathname, hasUnsavedChanges, navigate, id])
-
-  useEffect(() => {
-    const handleBeforeUnload = (event) => {
-      if (!hasUnsavedChanges) return
-      event.preventDefault()
-      event.returnValue = ''
-      return ''
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-      window.__hasUnsavedArticleChanges__ = false
-    }
-  }, [hasUnsavedChanges])
 
   const validateForm = () => {
     const newErrors = {}
@@ -305,12 +271,11 @@ function ArticleEdit() {
         )
 
     setHasUnsavedChanges(hasChanges)
-    window.__hasUnsavedArticleChanges__ = hasChanges
   }
 
   const handleCancel = () => {
     if (hasUnsavedChanges) {
-      setShowNavigationModal(true)
+      confirmLeave(() => navigate('/admin/articles'))
     } else {
       navigate('/admin/articles')
     }
@@ -385,7 +350,6 @@ function ArticleEdit() {
           status === 'published' ? '文章已发布' : '草稿已保存',
         )
         setHasUnsavedChanges(false)
-        window.__hasUnsavedArticleChanges__ = false
 
         if (status === 'published') {
           navigate('/admin/articles')
@@ -406,7 +370,6 @@ function ArticleEdit() {
           status === 'published' ? '文章已发布' : '草稿已保存',
         )
         setHasUnsavedChanges(false)
-        window.__hasUnsavedArticleChanges__ = false
 
         const newArticle = response.data
         // 清除临时 ID，后续保存不再使用
@@ -424,19 +387,6 @@ function ArticleEdit() {
   const handleSubmit = (event) => {
     event.preventDefault()
     handleSave('published')
-  }
-
-  const handleNavigationConfirm = () => {
-    const targetPath = pendingNavigationRef.current || '/admin/articles'
-    setHasUnsavedChanges(false)
-    window.__hasUnsavedArticleChanges__ = false
-    setShowNavigationModal(false)
-    isNavigatingRef.current = true
-    navigate(targetPath)
-  }
-
-  const handleNavigationCancel = () => {
-    setShowNavigationModal(false)
   }
 
   const handleGenerateAISummary = async () => {
@@ -667,7 +617,6 @@ function ArticleEdit() {
                   )
 
               setHasUnsavedChanges(hasChanges)
-              window.__hasUnsavedArticleChanges__ = hasChanges
             }}
             placeholder='输入文章内容(支持 Markdown)'
             disabled={saving}
@@ -704,26 +653,6 @@ function ArticleEdit() {
           </button>
         </div>
       </form>
-
-      {showNavigationModal && (
-        <div className='navigation-block-modal'>
-          <div className='navigation-block-content'>
-            <h3>检测到您的更改</h3>
-            <p>您有未保存的更改，确定要离开吗？</p>
-            <div className='navigation-block-actions'>
-              <button className='btn' onClick={handleNavigationCancel}>
-                留在此页
-              </button>
-              <button
-                className='btn btn-primary'
-                onClick={handleNavigationConfirm}
-              >
-                离开
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showAISummaryModal && (
         <div className='navigation-block-modal'>

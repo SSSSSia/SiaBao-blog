@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { adminToast } from '../../utils/adminToast'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 import {
   Save,
   RefreshCw,
@@ -31,12 +31,6 @@ const EMPTY_PROFILE = {
 }
 
 export default function Settings() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const isInitializedRef = useRef(false)
-  const isNavigatingRef = useRef(false)
-  const pendingNavigationRef = useRef(null)
-
   const [config, setConfig] = useState({
     user_profile: EMPTY_PROFILE,
     featured_article_ids: [],
@@ -47,7 +41,6 @@ export default function Settings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-  const [showNavigationModal, setShowNavigationModal] = useState(false)
   const [skillsInput, setSkillsInput] = useState('')
   const [initialSkillsInput, setInitialSkillsInput] = useState('')
   const [featuredKeyword, setFeaturedKeyword] = useState('')
@@ -55,6 +48,14 @@ export default function Settings() {
   const [showFeaturedOnly, setShowFeaturedOnly] = useState(false)
   const [openSelect, setOpenSelect] = useState(null)
   const categorySelectRef = useRef(null)
+
+  // 未保存更改守卫：上报脏状态 + SPA 导航拦截（统一走 confirm 弹窗）
+  useUnsavedChangesGuard({
+    scope: 'settings',
+    isDirty: hasUnsavedChanges,
+    currentPath: '/admin/settings',
+    fallbackPath: '/admin',
+  })
 
   const featuredIdSet = useMemo(
     () => new Set(config.featured_article_ids || []),
@@ -152,46 +153,8 @@ export default function Settings() {
   }
 
   useEffect(() => {
-    window.__hasUnsavedSettingsChanges__ = false
-  }, [])
-
-  useEffect(() => {
     loadData()
   }, [])
-
-  useEffect(() => {
-    if (!isInitializedRef.current) {
-      isInitializedRef.current = true
-      return
-    }
-
-    if (isNavigatingRef.current) {
-      isNavigatingRef.current = false
-      return
-    }
-
-    if (location.pathname !== '/admin/settings' && hasUnsavedChanges) {
-      pendingNavigationRef.current = location.pathname
-      isNavigatingRef.current = true
-      navigate('/admin/settings', { replace: true })
-      setTimeout(() => setShowNavigationModal(true), 0)
-    }
-  }, [location.pathname, hasUnsavedChanges, navigate])
-
-  useEffect(() => {
-    const handleBeforeUnload = (event) => {
-      if (!hasUnsavedChanges) return
-      event.preventDefault()
-      event.returnValue = ''
-      return ''
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-      window.__hasUnsavedSettingsChanges__ = false
-    }
-  }, [hasUnsavedChanges])
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -209,7 +172,6 @@ export default function Settings() {
       setInitialConfig(config)
       setInitialSkillsInput(skillsInput)
       setHasUnsavedChanges(false)
-      window.__hasUnsavedSettingsChanges__ = false
       adminToast.saveSuccess('配置保存成功')
     } catch (saveError) {
       console.error('保存配置失败:', saveError)
@@ -222,17 +184,21 @@ export default function Settings() {
   const handleReset = async () => {
     await loadData()
     setHasUnsavedChanges(false)
-    window.__hasUnsavedSettingsChanges__ = false
     adminToast.saveInfo('配置已重置，请点击保存以应用更改')
   }
 
+  // 缓存初始配置的签名，避免每次输入都对 initialConfig 重复 JSON.stringify
+  const initialConfigSig = useMemo(
+    () => (initialConfig ? JSON.stringify(initialConfig) : null),
+    [initialConfig],
+  )
+
   const checkUnsavedChanges = (newConfig) => {
     if (!initialConfig) return false
-    const hasChanges =
-      JSON.stringify(newConfig) !== JSON.stringify(initialConfig) ||
+    return (
+      JSON.stringify(newConfig) !== initialConfigSig ||
       skillsInput !== initialSkillsInput
-    window.__hasUnsavedSettingsChanges__ = hasChanges
-    return hasChanges
+    )
   }
 
   const updateUserProfile = (field, value) => {
@@ -322,19 +288,6 @@ export default function Settings() {
         </div>
       </div>
     )
-  }
-
-  const handleNavigationConfirm = () => {
-    const targetPath = pendingNavigationRef.current || '/admin'
-    setHasUnsavedChanges(false)
-    window.__hasUnsavedSettingsChanges__ = false
-    setShowNavigationModal(false)
-    isNavigatingRef.current = true
-    navigate(targetPath)
-  }
-
-  const handleNavigationCancel = () => {
-    setShowNavigationModal(false)
   }
 
   return (
@@ -740,26 +693,6 @@ export default function Settings() {
           </div>
         </section>
       </div>
-
-      {showNavigationModal && (
-        <div className='navigation-block-modal'>
-          <div className='navigation-block-content'>
-            <h3>检测到您的更改</h3>
-            <p>您有未保存的更改，确定要离开吗？</p>
-            <div className='navigation-block-actions'>
-              <button className='btn' onClick={handleNavigationCancel}>
-                留在此页
-              </button>
-              <button
-                className='btn btn-primary'
-                onClick={handleNavigationConfirm}
-              >
-                离开
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

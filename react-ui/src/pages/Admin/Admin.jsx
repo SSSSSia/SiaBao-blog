@@ -2,11 +2,13 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { User, Menu, X } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import { confirm } from '../../utils/confirmDialog.jsx'
 import './Admin.css'
 
 function Admin() {
   const { user } = useAuth()
+  const { isAnyDirty, confirmLeave } = useUnsavedChanges()
   const navigate = useNavigate()
   const location = useLocation()
   const sidebarNavRef = useRef(null)
@@ -35,29 +37,15 @@ function Admin() {
     if (!navElement) return
 
     const handleNavClick = (e) => {
-      // 检查是否有未保存的更改标记
-      const hasUnsavedArticleChanges = window.__hasUnsavedArticleChanges__
-      const hasUnsavedSettingsChanges = window.__hasUnsavedSettingsChanges__
-
-      if (hasUnsavedArticleChanges || hasUnsavedSettingsChanges) {
+      // 检查是否有未保存的更改（来自 UnsavedChangesProvider）
+      if (isAnyDirty()) {
         e.preventDefault()
         const targetLink = e.target.closest('a')
         if (!targetLink) return
 
         const targetPath = targetLink.getAttribute('href')
 
-        confirm(
-          '您有未保存的更改，确定要离开吗？',
-          () => {
-            window.__hasUnsavedArticleChanges__ = false
-            window.__hasUnsavedSettingsChanges__ = false
-            navigate(targetPath)
-          },
-          {
-            confirmText: '离开',
-            cancelText: '留在此页'
-          }
-        )
+        confirmLeave(() => navigate(targetPath))
       } else {
         // 移动端：点击导航链接后关闭侧边栏
         const targetLink = e.target.closest('a')
@@ -72,7 +60,7 @@ function Admin() {
     return () => {
       navElement.removeEventListener('click', handleNavClick)
     }
-  }, [navigate])
+  }, [navigate, isAnyDirty, confirmLeave])
 
   // 移动端：侧边栏打开时禁止 body 滚动
   useEffect(() => {

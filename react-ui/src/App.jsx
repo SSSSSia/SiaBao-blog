@@ -4,6 +4,7 @@ import ErrorBoundary from './components/common/ErrorBoundary'
 import ScrollToTop from './components/common/ScrollToTop'
 import Loading from './components/ui/Loading'
 import { AuthProvider } from './providers/AuthProvider'
+import { UnsavedChangesProvider } from './providers/UnsavedChangesProvider'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import { ToastContainer } from 'react-toastify'
 import { retryLazy } from './utils/retryLazy'
@@ -47,6 +48,7 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <BrowserRouter>
+          <UnsavedChangesProvider>
           <ScrollToTop />
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -86,6 +88,7 @@ function App() {
               <Route path='*' element={<NotFound />} />
             </Routes>
           </Suspense>
+          </UnsavedChangesProvider>
         </BrowserRouter>
         <ToastContainer
           position='top-center'
