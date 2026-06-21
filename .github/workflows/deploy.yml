@@ -42,11 +42,18 @@ jobs:
           echo "dist 文件数：$(find react-ui/dist -type f | wc -l)"
 
       # ===== 2. 把 dist/ 用 rsync 同步到服务器（--delete 清掉旧 chunk）=====
+      # 不再用 ssh-keyscan（它拿到不全的密钥类型时返回非 0，配合 set -e 会误杀部署）。
+      # 改用 StrictHostKeyChecking=accept-new：首次连接自动记录指纹，之后指纹若变化
+      # 仍会拒绝连接，既稳妥又抗瞬时网络抖动。
       - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
           install -m 600 -D /dev/null ~/.ssh/id_rsa
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          ssh-keyscan -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          # 写一个最小的 ssh config，让后续 rsync/ssh 默认带 accept-new
+          printf '%s\n' 'Host *' '  StrictHostKeyChecking accept-new' '  UserKnownHostsFile ~/.ssh/known_hosts' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
 
       - name: Sync dist to server
         env:
@@ -57,7 +64,7 @@ jobs:
         run: |
           PROJECT_DIR="${PROJECT_DIR:-/root/blog/SiaBao-blog}"
           echo "同步 dist -> ${SERVER_USER}@${SERVER_HOST}:${PROJECT_DIR}/react-ui/dist/"
-          rsync -az --delete -e "ssh -p ${SSH_PORT}" \
+          rsync -az --delete -e "ssh -p ${SSH_PORT} -o StrictHostKeyChecking=accept-new" \
             react-ui/dist/ \
             "${SERVER_USER}@${SERVER_HOST}:${PROJECT_DIR}/react-ui/dist/"
 
