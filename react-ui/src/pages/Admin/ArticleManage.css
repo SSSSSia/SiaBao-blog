@@ -627,3 +627,99 @@
   padding: 4rem 0;
   text-align: center;
 }
+
+/* ===== 批量操作 ===== */
+.batch-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+  background: var(--bg-secondary);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-sm);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.batch-count {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.batch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.batch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.batch-btn:hover:not(:disabled) {
+  border-color: var(--color-black, #111);
+  background: var(--bg-tertiary);
+}
+
+.batch-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.batch-btn-danger {
+  color: var(--color-error);
+}
+
+.batch-btn-danger:hover:not(:disabled) {
+  border-color: var(--color-error);
+}
+
+.batch-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+
+/* 勾选列 */
+.article-check-cell {
+  width: 40px;
+  text-align: center;
+}
+
+.article-check-cell input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--color-black, #111);
+}
+
+.article-table tbody tr.row-selected {
+  background: var(--bg-secondary);
+}
+
+/* 移动端卡片视图下隐藏表头勾选格的 data-label 文案 */
+@media (max-width: 768px) {
+  .article-check-cell {
+    width: auto;
+  }
+  .batch-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .batch-actions {
+    margin-left: 0;
+  }
+}

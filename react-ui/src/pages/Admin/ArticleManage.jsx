@@ -56,6 +56,8 @@ function ArticleManage() {
   const [downloadStatus, setDownloadStatus] = useState({ downloading: null })
   const [featuredSavingId, setFeaturedSavingId] = useState(null)
   const [filtersCollapsed, setFiltersCollapsed] = useState(false) // 筛选器折叠状态
+  const [selectedIds, setSelectedIds] = useState(new Set()) // 当前页勾选的文章 id
+  const [batchSaving, setBatchSaving] = useState(false) // 批量操作进行中
   const [config, setConfig] = useState({
     featured_article_ids: [],
     recent_articles_count: 6,
@@ -197,6 +199,145 @@ function ArticleManage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.current])
+
+  // 筛选/分页变化时清空选择，避免跨页残留脏选择
+  // （解构出 pageNo/pageSize，避免 exhaustive-deps 把 pagination.current 误判为 ref）
+  const { current: pageNo, pageSize: pageSizeNo } = pagination
+  useEffect(() => {
+    setSelectedIds(new Set())
+  }, [pageNo, pageSizeNo, filters.status, filters.category, debouncedKeyword])
+
+  // 当前页全选/部分选中状态（供表头 checkbox 使用）
+  const pageIds = useMemo(() => articles.map((a) => a.id), [articles])
+  const allOnPageSelected =
+    pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id))
+  const someOnPageSelected =
+    pageIds.some((id) => selectedIds.has(id)) && !allOnPageSelected
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      if (allOnPageSelected) {
+        // 取消当前页全选
+        const next = new Set(prev)
+        pageIds.forEach((id) => next.delete(id))
+        return next
+      }
+      // 选中当前页全部（与已选合并）
+      const next = new Set(prev)
+      pageIds.forEach((id) => next.add(id))
+      return next
+    })
+  }
+
+  // 批量操作完成后统一刷新 + 清空选择
+  const refreshAfterBatch = () => {
+    setSelectedIds(new Set())
+    loadArticles(pagination.current)
+    fetchConfig()
+  }
+
+  const handleBatchDelete = () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    confirm(
+      `确定要删除选中的 ${ids.length} 篇文章吗？此操作不可恢复。`,
+      async () => {
+        setBatchSaving(true)
+        try {
+          const results = await Promise.all(
+            ids.map((id) => articleRepository.deleteArticle(id)),
+          )
+          const failed = results.filter((r) => r.error)
+          if (failed.length > 0) {
+            adminToast.saveError(`${failed.length} 篇删除失败`)
+          } else {
+            adminToast.saveSuccess(`已删除 ${ids.length} 篇文章`)
+          }
+          refreshAfterBatch()
+        } catch (batchError) {
+          console.error('批量删除失败:', batchError)
+          adminToast.saveError('批量删除失败')
+        } finally {
+          setBatchSaving(false)
+        }
+      },
+      { confirmText: '删除', cancelText: '取消' },
+    )
+  }
+
+  const handleBatchSetStatus = (status) => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    const actionText = status === 'published' ? '发布' : '设为草稿'
+    confirm(
+      `确定要${actionText}选中的 ${ids.length} 篇文章吗？`,
+      async () => {
+        setBatchSaving(true)
+        try {
+          const results = await Promise.all(
+            ids.map((id) =>
+              articleRepository.updateArticle(id, { status }),
+            ),
+          )
+          const failed = results.filter((r) => r.error)
+          if (failed.length > 0) {
+            adminToast.saveError(`${failed.length} 篇操作失败`)
+          } else {
+            adminToast.saveSuccess(`已${actionText} ${ids.length} 篇文章`)
+          }
+          refreshAfterBatch()
+        } catch (batchError) {
+          console.error('批量更新状态失败:', batchError)
+          adminToast.saveError('批量操作失败')
+        } finally {
+          setBatchSaving(false)
+        }
+      },
+      { confirmText: '确定', cancelText: '取消' },
+    )
+  }
+
+  const handleBatchFeatured = (add) => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    const featuredIds = config.featured_article_ids || []
+    const idSet = new Set(ids)
+    const nextFeaturedIds = add
+      ? Array.from(new Set([...featuredIds, ...ids]))
+      : featuredIds.filter((id) => !idSet.has(id))
+    const actionText = add ? '加入精选' : '移出精选'
+    confirm(
+      `确定要${actionText}选中的 ${ids.length} 篇文章吗？`,
+      async () => {
+        setBatchSaving(true)
+        try {
+          const nextConfig = { ...config, featured_article_ids: nextFeaturedIds }
+          await siteConfigApi.updateConfig(nextConfig)
+          setConfig(nextConfig)
+          adminToast.saveSuccess(actionText + '成功')
+          setSelectedIds(new Set())
+        } catch (batchError) {
+          console.error('批量精选失败:', batchError)
+          adminToast.saveError(actionText + '失败')
+        } finally {
+          setBatchSaving(false)
+        }
+      },
+      { confirmText: '确定', cancelText: '取消' },
+    )
+  }
 
   const handleDelete = (id, title) => {
     confirm(
@@ -510,9 +651,78 @@ function ArticleManage() {
         ) : (
           /* 只要有数据就渲染表格（即使在更新中，也靠上面的蒙层提示） */
           <>
+            {selectedIds.size > 0 && (
+              <div className='batch-toolbar'>
+                <span className='batch-count'>
+                  已选中 {selectedIds.size} 篇
+                </span>
+                <div className='batch-actions'>
+                  <button
+                    type='button'
+                    className='batch-btn'
+                    onClick={() => handleBatchSetStatus('published')}
+                    disabled={batchSaving}
+                  >
+                    <Eye size={15} /> 批量发布
+                  </button>
+                  <button
+                    type='button'
+                    className='batch-btn'
+                    onClick={() => handleBatchSetStatus('draft')}
+                    disabled={batchSaving}
+                  >
+                    <EyeOff size={15} /> 设为草稿
+                  </button>
+                  <button
+                    type='button'
+                    className='batch-btn'
+                    onClick={() => handleBatchFeatured(true)}
+                    disabled={batchSaving}
+                  >
+                    <Star size={15} /> 加入精选
+                  </button>
+                  <button
+                    type='button'
+                    className='batch-btn'
+                    onClick={() => handleBatchFeatured(false)}
+                    disabled={batchSaving}
+                  >
+                    <Star size={15} /> 移出精选
+                  </button>
+                  <button
+                    type='button'
+                    className='batch-btn batch-btn-danger'
+                    onClick={handleBatchDelete}
+                    disabled={batchSaving}
+                  >
+                    <Trash2 size={15} /> 批量删除
+                  </button>
+                  <button
+                    type='button'
+                    className='batch-btn batch-btn-ghost'
+                    onClick={() => setSelectedIds(new Set())}
+                    disabled={batchSaving}
+                  >
+                    取消选择
+                  </button>
+                </div>
+              </div>
+            )}
             <table className='article-table'>
               <thead>
                 <tr>
+                  <th className='article-check-cell'>
+                    <input
+                      type='checkbox'
+                      aria-label='全选当前页'
+                      checked={allOnPageSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someOnPageSelected
+                      }}
+                      onChange={toggleSelectAll}
+                      disabled={batchSaving}
+                    />
+                  </th>
                   <th>标题</th>
                   <th>分类</th>
                   <th>状态</th>
@@ -524,7 +734,19 @@ function ArticleManage() {
                 {articles.map((article) => {
                   const isFeatured = featuredIdSet.has(article.id)
                   return (
-                    <tr key={article.id}>
+                    <tr
+                      key={article.id}
+                      className={selectedIds.has(article.id) ? 'row-selected' : ''}
+                    >
+                      <td data-label='选择' className='article-check-cell'>
+                        <input
+                          type='checkbox'
+                          aria-label={`选择《${article.title}》`}
+                          checked={selectedIds.has(article.id)}
+                          onChange={() => toggleSelect(article.id)}
+                          disabled={batchSaving}
+                        />
+                      </td>
                       <td data-label='标题'>
                         <div className='article-title-cell'>
                           <FileText size={16} />
