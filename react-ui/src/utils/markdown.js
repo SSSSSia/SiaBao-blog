@@ -119,9 +119,12 @@ function generateHeadingId(text) {
 const renderer = new marked.Renderer();
 
 // 自定义标题渲染，添加 id
-renderer.heading = function({ text, depth, raw }) {
+renderer.heading = function({ text, depth, raw, tokens }) {
   const id = generateHeadingId(raw);
-  return `<h${depth} id="${id}" data-heading-id="${id}">${text}</h${depth}>\n`;
+  // marked v17 起，heading token 的 text 是未解析的原始拼接文本，
+  // 行内语法（行内代码、粗体、链接等）需通过 tokens 走 parseInline 才能渲染
+  const content = tokens && this.parser ? this.parser.parseInline(tokens) : text;
+  return `<h${depth} id="${id}" data-heading-id="${id}">${content}</h${depth}>\n`;
 };
 
 function resolveImageHref(value) {
