@@ -60,3 +60,6 @@ server/public/uploads/*
 !server/public/uploads/.gitkeep
 AGENTS.md
 /docs
+
+# WorkBuddy 本地数据（仅本地使用，不入库）
+.workbuddy/
