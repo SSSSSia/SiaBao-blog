@@ -19,7 +19,7 @@ const EMPTY_STATS = {
 };
 
 export const getStatistics = async () => {
-  const response = await articleApi.getList({ page: 1, pageSize: 100 });
+  const response = await articleApi.getList({ page: 1, pageSize: 1000 });
   const allArticles = response.articles || [];
 
   const published = allArticles.filter((article) => article.status === 'published');

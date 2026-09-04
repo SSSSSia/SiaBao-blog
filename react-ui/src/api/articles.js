@@ -20,11 +20,12 @@ export const articleApi = {
   getList: (params = {}) => {
     const {
       page = 1,
-      pageSize = 10,
+      pageSize = 1000, // 全量拉取（前端分页设计，配合后端 le=1000 上限）
       page_size,
       status,
       category,
       tag,
+      admin,
     } = params;
 
     return get(`${API_BASE}/articles`, {
@@ -33,6 +34,7 @@ export const articleApi = {
       status,
       category,
       tag,
+      admin: admin ? 1 : undefined,
     });
   },
 
@@ -130,11 +132,12 @@ export const articleApi = {
     const {
       q = '',
       page = 1,
-      pageSize = 10,
+      pageSize = 1000, // 全量拉取（前端分页设计，配合后端 le=1000 上限）
       page_size,
       status,
       category,
       tags,
+      admin,
     } = params;
 
     return get(`${API_BASE}/articles/search`, {
@@ -144,6 +147,7 @@ export const articleApi = {
       status,
       category,
       tags,
+      admin: admin ? 1 : undefined,
     });
   },
 

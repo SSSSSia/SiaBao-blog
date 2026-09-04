@@ -3,7 +3,7 @@
 from typing import Annotated
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
 
 from app.api.deps import get_admin_user, get_current_user_optional
@@ -95,10 +95,20 @@ async def list_articles(
     status: str | None = None,
     category: str | None = None,
     page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=100),
+    # 上限放宽到 1000：列表/首页/标签页为「全量拉取 + 前端分页」设计，需一次取回全部文章
+    page_size: int = Query(10, ge=1, le=1000),
+    admin: bool = Query(False, description="后台管理作用域：传 1 时要求管理员鉴权"),
     current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None,
 ) -> R:
     """Get list of articles with filtering and pagination."""
+    # 后台管理发起的请求必须携带有效管理员令牌，否则明确返回 401 跳转登录，
+    # 避免令牌失效时被静默降级为“仅已发布”视图（草稿消失、状态筛选错乱）。
+    if admin and not _is_admin_user(current_user):
+        raise HTTPException(
+            status_code=401,
+            detail="Admin authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     is_admin = _is_admin_user(current_user)
     effective_status = _resolve_public_status_filter(status, is_admin)
 
@@ -122,10 +132,19 @@ async def search_articles_endpoint(
     category: str | None = Query(None, description="Filter by category"),
     tags: str | None = Query(None, description="Filter by tags (comma-separated)"),
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
+    page_size: int = Query(10, ge=1, le=1000, description="Items per page"),
+    admin: bool = Query(False, description="后台管理作用域：传 1 时要求管理员鉴权"),
     current_user: Annotated[dict | None, Depends(get_current_user_optional)] = None,
 ) -> R:
     """Search articles by keyword in title, content, excerpt, or tags."""
+    # 后台管理发起的搜索必须携带有效管理员令牌，否则明确返回 401 跳转登录，
+    # 避免令牌失效时被静默降级为“仅已发布”视图（草稿消失、状态筛选错乱）。
+    if admin and not _is_admin_user(current_user):
+        raise HTTPException(
+            status_code=401,
+            detail="Admin authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     is_admin = _is_admin_user(current_user)
     effective_status = _resolve_public_status_filter(status, is_admin)
 

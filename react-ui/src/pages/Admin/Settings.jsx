@@ -121,7 +121,7 @@ export default function Settings() {
         siteConfigApi.getConfig(),
         articleRepository.getArticleList({
           status: 'published',
-          pageSize: 100,
+          pageSize: 1000, // 全量拉取，配合后端 le=1000 上限
         }),
       ])
 

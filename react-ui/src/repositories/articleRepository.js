@@ -47,8 +47,8 @@ export const articleRepository = {
         const data = articleStorage.getAllArticles();
         return createResponse(data);
       } else {
-        // 获取所有文章（不分页，page_size 设大一点）
-        const response = await articleApi.getList({ page: 1, pageSize: 100 });
+        // 获取所有文章（全量拉取，前端分页设计：配合后端 le=1000 上限）
+        const response = await articleApi.getList({ page: 1, pageSize: 1000 });
         // 后端返回 { articles: [], total: number, page: number, page_size: number }
         const articles = response.articles || [];
         const published = articles.filter((a) => a.status === 'published');

@@ -112,7 +112,9 @@ function ArticleManage() {
       setLoading(true)
       setError(null)
       try {
-        const params = { page, pageSize }
+        // admin: true 标记后台作用域，后端会强制校验管理员令牌；
+        // 令牌失效时返回 401 由前端跳转登录，避免被静默降级为“仅已发布”。
+        const params = { page, pageSize, admin: true }
         if (filters.status !== 'all') {
           params.status = filters.status
         }

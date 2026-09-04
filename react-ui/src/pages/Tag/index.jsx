@@ -65,9 +65,17 @@ export default function Tag() {
           status: 'published',
         })
 
-        // 前端过滤包含该标签的文章
+        // 前端过滤包含该标签的文章。
+        // 注意：文章 tags 是原始字符串数组（如 "MySQL"），而路由 slug 是小写化后的
+        // （如 "mysql"），需统一归一化后再比较，否则大小写不一致会导致匹配失败、列表为空。
+        const normalize = (value) =>
+          String(value || '')
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, '-')
+
         const filteredArticles = (response.data || []).filter((article) =>
-          article.tags?.some((item) => item.slug === slug || item === slug)
+          article.tags?.some((item) => normalize(item) === slug)
         )
 
         setArticles(filteredArticles)

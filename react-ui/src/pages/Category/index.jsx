@@ -55,15 +55,18 @@ export default function Category() {
       setIsLoading(true)
       try {
         // 查找分类名称
-        const category = categories.find((item) => item.slug === slug)
-        if (category) {
-          setCategoryName(category.name)
+        const matchedCategory = categories.find((item) => item.slug === slug)
+        const categoryName = matchedCategory ? matchedCategory.name : ''
+        if (matchedCategory) {
+          setCategoryName(matchedCategory.name)
         }
 
-        // 调用后端API获取该分类的文章
+        // 调用后端API获取该分类的文章。
+        // 注意：使用原始分类名而非 slug 向后端查询。后端按原始分类名（大小写/空格敏感）
+        // 精确匹配，slug 是小写化的（如 "mysql"），与索引中的 "MySQL" 不匹配会导致列表为空。
         const response = await articleRepository.getArticleList({
           status: 'published',
-          category: slug,
+          category: categoryName,
         })
 
         setArticles(response.data || [])

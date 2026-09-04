@@ -83,7 +83,7 @@ export const categoryRepository = {
         return createResponse(data);
       } else {
         // 从文章 API 聚合分类
-        const response = await articleApi.getList({ page: 1, pageSize: 100, status });
+        const response = await articleApi.getList({ page: 1, pageSize: 1000, status });
         const articles = response.articles || [];
         const { categories } = aggregateFromArticles(articles);
         return createResponse(categories);
@@ -107,7 +107,7 @@ export const categoryRepository = {
         return createResponse(data);
       } else {
         // 从文章 API 聚合标签
-        const response = await articleApi.getList({ page: 1, pageSize: 100, status });
+        const response = await articleApi.getList({ page: 1, pageSize: 1000, status });
         const articles = response.articles || [];
         const { tags } = aggregateFromArticles(articles);
         // 直接使用聚合结果，没有文章时不显示标签
