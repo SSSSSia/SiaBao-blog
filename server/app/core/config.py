@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     # Explore / Knowledge Constellation
     explore_github_enabled: bool = True  # GitHub Trending Agent 开关
     github_token: str = ""  # 可选；启用 5000/hr 配额（建议细粒度只读 PAT）
-    explore_cache_ttl: int = 86400  # GitHub 缓存 TTL 秒（24h，懒刷新）
+    explore_cache_ttl: int = 43200  # GitHub 缓存 TTL 秒（12h：每日榜一天一换，需比 24h 更勤）
     explore_github_fallback_scrape: bool = (
         True  # Search API 之外，合并 github.com/trending 周榜（真·本周上升）
     )

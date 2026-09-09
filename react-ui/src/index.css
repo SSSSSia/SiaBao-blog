@@ -20,6 +20,7 @@
 
   /* 强调色 - 仅一处使用 */
   --color-accent: #C8A8E9;  /* 淡紫，优雅克制 */
+  --color-flame: #E0653A;   /* 火焰色：仅标记官方 GitHub Trending 飙升榜节点 */
 
   /* 功能色 */
   --color-success: #7C9A6E;

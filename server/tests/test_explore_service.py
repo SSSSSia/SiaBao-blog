@@ -222,3 +222,74 @@ async def test_node_prune_respects_cap(monkeypatch):
     keep = {n["id"] for n in graph["nodes"]}
     for e in graph["edges"]:
         assert e["source"] in keep and e["target"] in keep
+
+
+# ---------------------------------------------------------------------------
+# GitHub trending — 官方飙升榜身份进图谱
+# ---------------------------------------------------------------------------
+async def test_trending_repo_bypasses_cap_and_carries_badge(monkeypatch):
+    """官方飙升榜仓库：豁免每话题上限、携带 trending 徽标、rank 动量 ≥0.4。"""
+
+    async def _gh():
+        return {
+            "repos": [
+                # 6 个同语言普通仓库：第 6 个应被 5 个/话题上限挤掉
+                *[
+                    {"repo": f"plain/p{i}", "stars": 100, "language": "Nim", "topics": [], "momentum": 0.1}
+                    for i in range(6)
+                ],
+                # 榜首仓库排在最后且动量更低，仍应入选并发光
+                {
+                    "repo": "rising/star",
+                    "stars": 50,
+                    "language": "Nim",
+                    "topics": [],
+                    "momentum": 0.05,
+                    "trending_since": "daily",
+                    "trending_rank": 1,
+                    "trending_stars": 812,
+                },
+            ]
+        }
+
+    monkeypatch.setattr(explore_service, "_build_blog_signals", _signals({}, {}))
+    monkeypatch.setattr(explore_service, "_load_index", lambda: {})
+    monkeypatch.setattr(explore_service.github_trending_service, "get_github_data", _gh)
+
+    graph = await explore_service._construct({}, {}, "h")
+    by_id = {n["id"]: n for n in graph["nodes"]}
+    assert "gh:plain/p4" in by_id and "gh:plain/p5" not in by_id  # 普通仓库仍受上限约束
+    tr = by_id["gh:rising/star"]  # trending 豁免上限
+    assert tr["github"]["trending"] == {"since": "daily", "rank": 1, "periodStars": 812}
+    assert tr["momentum"] >= 0.4  # rank 动量托底（前端辉光阈值）
+
+
+async def test_node_prune_keeps_trending_nodes(monkeypatch):
+    """节点硬上限裁剪时官方飙升榜节点优先保留。"""
+    monkeypatch.setattr(explore_service.settings, "explore_max_nodes", 3)
+
+    async def _gh():
+        return {
+            "repos": [
+                {
+                    "repo": "rising/star",
+                    "stars": 10,
+                    "language": "Nim",
+                    "topics": [],
+                    "momentum": 0.01,
+                    "trending_since": "weekly",
+                    "trending_rank": 8,
+                    "trending_stars": 45,
+                }
+            ]
+        }
+
+    tag_agg = {f"t{i}": _agg(1, 1000 - i, "2026-06-01") for i in range(6)}
+    monkeypatch.setattr(explore_service, "_build_blog_signals", _signals(tag_agg, {}))
+    monkeypatch.setattr(explore_service, "_load_index", lambda: {})
+    monkeypatch.setattr(explore_service.github_trending_service, "get_github_data", _gh)
+
+    graph = await explore_service._construct(tag_agg, {}, "h")
+    assert len(graph["nodes"]) <= 3
+    trending = [n for n in graph["nodes"] if (n.get("github") or {}).get("trending")]
+    assert len(trending) == 1  # 即使 weight 低也被保留

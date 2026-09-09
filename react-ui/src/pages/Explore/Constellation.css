@@ -697,6 +697,21 @@
   color: var(--text-secondary);
 }
 
+/* 官方飙升榜徽标（NodePanel GitHub 区块内） */
+.constellation-panel-trending-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.4rem;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-flame, #e0653a);
+  background: color-mix(in srgb, var(--color-flame, #e0653a) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-flame, #e0653a) 30%, transparent);
+  border-radius: 999px;
+}
+
 .constellation-panel-tags {
   display: flex;
   gap: 0.35rem;
@@ -1055,6 +1070,55 @@
   gap: 0.15rem;
 }
 
+/* ---------- 飙升榜周期 tab（今日 / 本周） ---------- */
+.constellation-trending-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: var(--space-1);
+  padding: 2px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.constellation-trending-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.constellation-trending-tab:hover {
+  color: var(--text-primary);
+}
+
+.constellation-trending-tab.is-active {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.constellation-trending-tab-count {
+  font-size: 0.62rem;
+  color: var(--text-tertiary);
+}
+
+.constellation-trending-empty {
+  margin: 0;
+  padding: 0.3rem 0.25rem var(--space-1);
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
 .constellation-trending-item {
   display: flex;
   align-items: center;
@@ -1075,11 +1139,17 @@
 
 .constellation-trending-rank {
   flex-shrink: 0;
-  width: 16px;
+  min-width: 22px;
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-tertiary);
   text-align: right;
+}
+
+/* 官方榜条目的周期增量文案（替代降级榜的 momentum 条形图） */
+.constellation-trending-delta {
+  font-size: 0.66rem;
+  color: var(--color-flame, #e0653a);
 }
 
 .constellation-trending-body {
@@ -1114,7 +1184,7 @@
 
 .constellation-trending-flame {
   flex-shrink: 0;
-  color: var(--color-accent);
+  color: var(--color-flame, #e0653a);
 }
 
 /* ---------- 分类图例 ---------- */

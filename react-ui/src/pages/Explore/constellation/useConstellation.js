@@ -48,6 +48,8 @@ function buildPalette() {
     gray400: token('--color-gray-400', '#A0A0A0'),
     gray200: token('--color-gray-200', '#D4D4D4'),
     accent: token('--color-accent', '#C8A8E9'),
+    // 火焰色：仅用于官方 GitHub Trending 飙升榜节点的外环标记，与单色 accent 区分。
+    flame: token('--color-flame', '#E0653A'),
     textSecondary: token('--text-secondary', '#6B6B6B'),
     textTertiary: token('--text-tertiary', '#A0A0A0'),
     bgPrimary: token('--bg-primary', '#FAFAFA'),
@@ -398,6 +400,8 @@ export function useConstellation(canvasRef, containerRef, isFullscreen = false) 
             sources: n.sources || [],
             weight: n.weight || 0,
             blog: n.blog || null,
+            // 飙升榜侧栏只需 trending 字段，无需整个 github 元数据。
+            github: n.github ? { trending: n.github.trending || null } : null,
           })),
         );
         recomputeRenderSubset();

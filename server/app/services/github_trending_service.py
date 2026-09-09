@@ -4,14 +4,15 @@
 There is no official Trending API, so two sources are combined:
   1. GitHub Search API — rich metadata (topics / created_at / real
      ``stars / age`` momentum), but ranked by raw stars.
-  2. github.com/trending?since=weekly (HTML scrape) — the only signal that
-     reflects genuine *weekly* star growth, but with sparse metadata.
+  2. github.com/trending daily+weekly pages (HTML scrape) — the only signal
+     that reflects genuine rising repos, with each page's rank and the
+     per-period star delta ("N stars today / this week").
 
-Search wins on overlap (it has the topic/age data needed to join a repo back to
-a curated concept); scrape-only repos are floored so the weekly risers stay
-visible. Results are cached to JSON with a lazy TTL refresh and degrade
-gracefully — any failure returns ``None`` so the constellation still renders
-from curated + blog data.
+Search wins on metadata overlap (it has the topic/age data needed to join a
+repo back to a curated concept), but the trending fields survive the merge so
+official rising repos stay identifiable in the graph. Results are cached to
+JSON with a lazy TTL refresh and degrade gracefully — any failure returns
+``None`` so the constellation still renders from curated + blog data.
 """
 
 from __future__ import annotations
@@ -60,6 +61,24 @@ QUERY_TOPICS = [
     "biome",
 ]
 QUERY_LANGUAGES = ["rust", "go", "typescript", "python"]
+
+# --- github.com/trending 爬取（官方飙升榜，唯一真实 rising 信号）---
+TRENDING_URL = "https://github.com/trending"
+TRENDING_PERIODS = ("daily", "weekly")
+TRENDING_LANGUAGES = ["rust", "go", "typescript", "python"]
+# 缓存中每个榜单（daily/weekly）保留的官方榜条数。
+TRENDING_LIST_SIZE = 15
+# 爬虫客户端保持匿名：绝不携带 github_token / Authorization 头——PAT 只允许用于
+# 官方 API；把自动化页面抓取绑定到账号才是真正的条款/封号风险。这里仅带常规浏览器
+# UA，避免默认脚本 UA 直接被 429。请求量：每次刷新 (1 总榜 + N 语言) × 2 周期页。
+TRENDING_HEADERS = {
+    "Accept": "text/html",
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0 Safari/537.36"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+}
 
 _refresh_lock = asyncio.Lock()
 
@@ -317,107 +336,218 @@ async def _fetch_via_search_api() -> tuple[dict[str, dict], int | None]:
     return seen, rate_remaining
 
 
-def _parse_trending_html(html: str, lang: str) -> dict[str, dict]:
-    """Parse repo + stars out of a github.com/trending HTML payload.
+_ARTICLE_RE = re.compile(r"<article[^>]*>.*?</article>", re.S)
+_REPO_HREF_RE = re.compile(r'href="/([^"]+/[^"]+)"')
+_TOTAL_STARS_RE = re.compile(r'/stargazers"[^>]*>\s*(?:<[^>]+>\s*)*([\d,]+)\s*<')
+_PERIOD_STARS_RE = re.compile(r"(\d[\d,]*)\s*stars?\s*(today|this week)")
+# trending 页上非仓库的单段路径 href（如 /features、/collections），按段名排除。
+_NON_REPO_SEGMENTS = {
+    "features",
+    "collections",
+    "topics",
+    "trending",
+    "settings",
+    "marketplace",
+    "sponsors",
+    "security",
+    "enterprise",
+    "pricing",
+    "about",
+    "site",
+    "readme",
+}
 
-    Kept as a pure function so the regex contract is unit-testable. The selector
-    is intentionally lenient; if GitHub changes its markup this returns an empty
-    map — callers treat that as a parse-failure signal worth logging.
+
+def _parse_trending_page(html: str, lang: str) -> list[dict]:
+    """Parse a github.com/trending page into rank-ordered repo dicts.
+
+    Kept as a pure function so the regex contract is unit-testable. Each
+    ``<article>`` row yields the repo full name, its total stars (from the
+    ``/stargazers`` link) and the per-period delta ("N stars today / this
+    week") — the delta is the genuine rising signal the Search API cannot
+    provide. Rows keep page order, which is the official trending rank.
+    Intentionally lenient: if GitHub changes its markup this returns an empty
+    list — callers treat that as a parse-failure signal worth logging.
     """
-    out: dict[str, dict] = {}
-    for href, stars in re.findall(
-        r'href="/([^"]+)"[^>]*>.*?(\d[\d,]*)\s*stars',
-        html,
-        flags=re.S,
-    ):
-        if (
-            "/" not in href
-            or href.startswith("settings/")
-            or href.endswith("/marketplace")
-        ):
+    out: list[dict] = []
+    for row in _ARTICLE_RE.findall(html):
+        repo = None
+        for href in _REPO_HREF_RE.findall(row):
+            if href.count("/") != 1:
+                continue
+            owner, name = href.split("/")
+            if (
+                not owner
+                or not name
+                or owner.lower() in _NON_REPO_SEGMENTS
+                or name.lower() in _NON_REPO_SEGMENTS
+            ):
+                continue
+            repo = href
+            break
+        if not repo:
             continue
-        repo = href.strip("/")
-        try:
-            star_n = int(stars.replace(",", ""))
-        except ValueError:
-            continue
-        out[repo] = {
-            "repo": repo,
-            "stars": star_n,
-            "language": lang.capitalize(),
-            "description": "",
-            "url": f"https://github.com/{repo}",
-            "topics": [],
-            "created_at": None,
-            "pushed_at": None,
-            "momentum": float(star_n),
-            "_src": "scrape",
-        }
+
+        total_stars = 0
+        m_total = _TOTAL_STARS_RE.search(row)
+        if m_total:
+            try:
+                total_stars = int(m_total.group(1).replace(",", ""))
+            except ValueError:
+                total_stars = 0
+
+        period_stars = 0
+        m_period = _PERIOD_STARS_RE.search(row)
+        if m_period:
+            try:
+                period_stars = int(m_period.group(1).replace(",", ""))
+            except ValueError:
+                period_stars = 0
+
+        out.append(
+            {
+                "repo": repo,
+                "stars": total_stars,
+                # 周期增量是真·rising 信号：直接作为该源的 momentum 原始值，
+                # 归一化后天然可比（榜内「今日 +800」就该压过「今日 +30」）。
+                "momentum": float(period_stars or total_stars),
+                "period_stars": period_stars,
+                "language": lang.capitalize(),
+                "description": "",
+                "url": f"https://github.com/{repo}",
+                "topics": [],
+                "created_at": None,
+                "pushed_at": None,
+                "_src": "scrape",
+            }
+        )
     return out
 
 
-async def _fetch_via_scrape() -> dict[str, dict]:
-    """Auxiliary path: scrape github.com/trending?since=weekly HTML.
+async def _fetch_trending() -> tuple[dict[str, dict], dict[str, list]]:
+    """Scrape github.com/trending daily+weekly (overall + per-language pages).
 
-    This is the only source that reflects genuine *weekly* star growth (the
-    Search API has no trending sort). Best-effort and lenient — any failure is
-    logged and yields an empty map. Repos are tagged ``_src="scrape"``; with no
-    ``created_at`` available we use ``stars`` as the momentum proxy so the
-    per-source normalization in ``_assemble_cache`` can rank them.
+    This is the only source that reflects genuine rising repos (the Search API
+    has no trending sort). Best-effort and lenient — any per-page failure is
+    logged and skipped. Returns:
+
+    - ``seen``: repo -> data, tagged ``_src="scrape"``. Repos on the *overall*
+      daily/weekly lists additionally carry ``trending_since`` /
+      ``trending_rank`` / ``trending_stars`` (the canonical 飙升榜 badge the
+      graph and sidebar render); language-page repos join the pool as regular
+      coverage so they compete under the normal per-topic caps instead of
+      flooding the graph. A repo on both periods keeps the daily badge
+      (fresher signal).
+    - ``trending``: ``{"daily": [...], "weekly": [...]}`` rank-ordered overall
+      entries (``repo/rank/stars/periodStars/language``) for the cache payload
+      and the frontend sidebar.
     """
-    langs = {"rust", "go", "typescript", "python"}
+    pages: list[tuple[str, str]] = []  # (since, lang) — lang "" = overall page
+    for since in TRENDING_PERIODS:
+        pages.append((since, ""))
+        for lang in TRENDING_LANGUAGES:
+            pages.append((since, lang))
 
-    async def _scrape_lang(client: httpx.AsyncClient, lang: str) -> dict[str, dict]:
-        out: dict[str, dict] = {}
+    async def _scrape_page(
+        client: httpx.AsyncClient, since: str, lang: str
+    ) -> list[dict]:
+        url = f"{TRENDING_URL}/{lang}?since={since}" if lang else f"{TRENDING_URL}?since={since}"
         try:
-            resp = await client.get(
-                f"https://github.com/trending/{lang}?since=weekly",
-                headers={"Accept": "text/html"},
-            )
+            resp = await client.get(url, headers=TRENDING_HEADERS)
             if resp.status_code != 200:
-                return out
-            parsed = _parse_trending_html(resp.text, lang)
+                logger.warning(
+                    "GitHub trending scrape non-200 (%s) for %s", resp.status_code, url
+                )
+                return []
+            parsed = _parse_trending_page(resp.text, lang)
             # Got a 200 (so HTML was served) but matched nothing → the regex
             # likely broke after a GitHub markup change. Surface it so it isn't
-            # silently mistaken for "no trending repos this week".
+            # silently mistaken for "no trending repos this period".
             if not parsed:
                 logger.warning(
                     "GitHub trending scrape parsed 0 repos for %s "
                     "(markup changed? payload=%d bytes)",
-                    lang,
+                    url,
                     len(resp.text),
                 )
             return parsed
         except httpx.HTTPError as e:
-            logger.warning("GitHub trending scrape failed (%s): %s", lang, e)
-        return out
+            logger.warning("GitHub trending scrape failed (%s): %s", url, e)
+        return []
+
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        # Fetch all pages concurrently — cuts scrape latency from N×timeout
+        # to ~1×timeout. Each page is independent and best-effort.
+        results = await asyncio.gather(
+            *(_scrape_page(client, since, lang) for since, lang in pages)
+        )
 
     seen: dict[str, dict] = {}
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        # Fetch all languages concurrently — cuts scrape latency from N×timeout
-        # to ~1×timeout. Each language is independent and best-effort.
-        results = await asyncio.gather(*(_scrape_lang(client, lang) for lang in langs))
-    for partial in results:
-        for repo, data in partial.items():
-            seen.setdefault(repo, data)
-    return seen
+    trending: dict[str, list] = {"daily": [], "weekly": []}
+    for (since, lang), parsed in zip(pages, results):
+        is_overall = lang == ""
+        for rank, r in enumerate(parsed, start=1):
+            repo = r["repo"]
+            if is_overall and rank <= TRENDING_LIST_SIZE:
+                # 只有总榜（lang=""）前列才是「飙升榜」本体：badge、豁免、榜单
+                # 区块都以它为准；语言榜只作覆盖补充，避免图谱被仓库淹没。
+                trending[since].append(
+                    {
+                        "repo": repo,
+                        "rank": rank,
+                        "stars": r["stars"],
+                        "periodStars": r["period_stars"],
+                        "language": r["language"],
+                    }
+                )
+                # 同 repo 可能同时在 daily 与 weekly 榜：daily 优先（信号更
+                # 新鲜）；同周期内保留更靠前的排名。
+                prev = seen.get(repo)
+                if prev is None or _trending_key(since, rank) < _trending_key(
+                    prev.get("trending_since", ""), prev.get("trending_rank", 999)
+                ):
+                    seen[repo] = dict(r)
+                    seen[repo]["trending_since"] = since
+                    seen[repo]["trending_rank"] = rank
+                    seen[repo]["trending_stars"] = r["period_stars"]
+            elif repo not in seen:
+                # 语言榜 / 总榜尾部：进普通抓取池（无 trending 身份），
+                # 与 Search 仓库一起按每话题上限竞争进图。
+                seen[repo] = dict(r)
+
+    for since in trending:
+        trending[since] = trending[since][:TRENDING_LIST_SIZE]
+    return seen, trending
+
+
+def _trending_key(since: str, rank: int) -> tuple[int, int]:
+    """Sort key so daily beats weekly and lower rank wins within a period."""
+    return (0 if since == "daily" else 1, rank)
 
 
 def _assemble_cache(
-    seen: dict[str, dict], rate_remaining: int | None, history: dict | None = None
+    seen: dict[str, dict],
+    rate_remaining: int | None,
+    history: dict | None = None,
+    trending: dict[str, list] | None = None,
 ) -> dict:
     """Build the cache payload, ranking rising-fast repos first.
 
     Two sources have incomparable raw momentum scales — Search API uses
-    ``stars / age`` (can be hundreds), the weekly scrape uses ``stars`` (also
-    large) as a proxy. We normalize each source to 0..1 independently so neither
-    drowns the other, then floor scrape momentum: those repos are on the weekly
-    trending list by definition, so they must stay visible even if their raw
-    stars are modest. Final order is momentum desc, stars desc as tiebreaker.
+    ``stars / age`` (can be hundreds), the trending scrape now uses the genuine
+    per-period star delta (``period_stars``). We normalize each source to 0..1
+    independently so neither drowns the other, then floor official-list repos:
+    they are on github.com/trending by definition, so they must stay visible
+    even if their raw delta is modest. Final order is momentum desc, stars desc
+    as tiebreaker.
 
     If ``history`` (star snapshots) is provided and ``explore_star_history_enabled``
     is on, genuine star velocity overrides the raw momentum proxy before
     normalization — a more truthful «rising» signal than the scrape heuristic.
+
+    ``trending`` is the rank-ordered official daily/weekly lists from the
+    scrape; it is stored verbatim (top-N) in the payload so the frontend can
+    render the real surging lists without re-deriving them.
     """
     repos = list(seen.values())
 
@@ -436,9 +566,9 @@ def _assemble_cache(
     scrape_repos = [r for r in repos if r.get("_src") == "scrape"]
     _norm(search_repos)
     _norm(scrape_repos)
-    # Weekly-trending repos must surface — floor them above the long tail.
+    # Official-trending repos must surface — floor them above the long tail.
     for r in scrape_repos:
-        if (r.get("momentum") or 0.0) < 0.45:
+        if r.get("trending_since") and (r.get("momentum") or 0.0) < 0.45:
             r["momentum"] = 0.45
 
     repos.sort(key=lambda r: (r.get("momentum", 0.0), r.get("stars", 0)), reverse=True)
@@ -464,34 +594,50 @@ def _assemble_cache(
         "rate_limit_remaining": rate_remaining,
         "repos": repos,
         "languages": languages,
+        # 官方每日/每周飙升榜（已按 rank 排序、截断到 TRENDING_LIST_SIZE）。
+        "trending": trending or {"daily": [], "weekly": []},
     }
 
 
 def _merge_sources(
     search_seen: dict[str, dict], scrape_seen: dict[str, dict]
 ) -> dict[str, dict]:
-    """Merge scrape + search maps. Search wins on overlap (richer: topics,
-    created_at, real momentum) so concept-linking still works for those repos."""
+    """Merge trending-scrape + search maps.
+
+    Search wins on metadata (richer: topics, created_at, real momentum) so
+    concept-linking still works for those repos — but the official-list
+    identity (``trending_since/rank/stars``) only exists on the scrape side and
+    must survive the override, otherwise the graph loses track of which repos
+    are genuinely rising.
+    """
     merged: dict[str, dict] = {}
     merged.update(scrape_seen)
-    merged.update(search_seen)
+    for repo, data in search_seen.items():
+        prev = merged.get(repo)
+        if prev is not None:
+            for k in ("trending_since", "trending_rank", "trending_stars"):
+                if k in prev:
+                    data[k] = prev[k]
+        merged[repo] = data
     return merged
 
 
 async def _refresh() -> dict | None:
-    """Fetch from Search API + weekly trending scrape, merge, assemble once.
+    """Fetch from Search API + daily/weekly trending scrape, merge, assemble once.
 
     Neither source alone gives the full picture: Search API has rich metadata
-    but ranks by raw stars; the scrape is the real weekly-rising list but lacks
-    metadata. Combining them surfaces fast-rising repos (scrape) while keeping
-    the topic/age data (search) needed to join repos to concepts.
+    but ranks by raw stars; the scrape is the real daily/weekly-rising list but
+    lacks metadata. Combining them surfaces fast-rising repos (with their
+    official rank + period delta) while keeping the topic/age data (search)
+    needed to join repos to concepts.
     """
     try:
         search_seen, rate_remaining = await _fetch_via_search_api()
 
         scrape_seen: dict[str, dict] = {}
+        trending: dict[str, list] = {"daily": [], "weekly": []}
         if settings.explore_github_fallback_scrape:
-            scrape_seen = await _fetch_via_scrape()
+            scrape_seen, trending = await _fetch_trending()
 
         merged = _merge_sources(search_seen, scrape_seen)
         if not merged:
@@ -501,15 +647,18 @@ async def _refresh() -> dict | None:
         # Star 历史：velocity 需在归一化前覆盖 momentum，故先加载、传入 assembly；
         # 落库后再用本次快照更新历史，供下一次刷新计算增量。
         history = _load_history() if settings.explore_star_history_enabled else None
-        data = _assemble_cache(merged, rate_remaining, history=history)
+        data = _assemble_cache(merged, rate_remaining, history=history, trending=trending)
         _save_cache_atomic(data)
         if settings.explore_star_history_enabled:
             _update_history(data["repos"])
         logger.info(
-            "GitHub explore cache refreshed: %d repos (search=%d, scrape=%d)",
+            "GitHub explore cache refreshed: %d repos (search=%d, trending=%d), "
+            "daily list=%d, weekly list=%d",
             len(data["repos"]),
             len(search_seen),
             len(scrape_seen),
+            len(data["trending"]["daily"]),
+            len(data["trending"]["weekly"]),
         )
         return data
     except Exception as e:

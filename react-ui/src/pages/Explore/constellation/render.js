@@ -192,6 +192,17 @@ export function draw(ctx, params) {
       ctx.stroke();
     }
     ctx.shadowBlur = 0;
+
+    // 官方 GitHub Trending 飙升榜节点：火焰色外环，与 momentum 辉光叠加，
+    // 让「官方榜单认证的上升仓库」在星图里一眼可辨。
+    if (n.github?.trending) {
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, pr + 3.5 / scale, 0, Math.PI * 2);
+      ctx.lineWidth = 1.5 / scale;
+      ctx.strokeStyle = palette.flame;
+      ctx.globalAlpha = faded ? (drillActive ? drillDimAlpha : dimAlpha) : 0.9;
+      ctx.stroke();
+    }
   }
   ctx.globalAlpha = 1;
 

@@ -17,12 +17,21 @@ class ExploreNodeBlog(BaseModel):
     articles: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class ExploreNodeTrending(BaseModel):
+    """官方飙升榜身份（来自 github.com/trending daily/weekly 爬取）。"""
+
+    since: str = "daily"  # daily | weekly
+    rank: int = 0
+    periodStars: int = 0  # 榜单页标注的周期新增 stars
+
+
 class ExploreNodeGithub(BaseModel):
     repo: str = ""
     stars: int = 0
     language: str = ""
     url: str = ""
     description: str = ""
+    trending: Optional[ExploreNodeTrending] = None
 
 
 class ExploreNode(BaseModel):

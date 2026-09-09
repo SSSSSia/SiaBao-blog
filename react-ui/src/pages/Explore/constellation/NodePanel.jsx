@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, ExternalLink, FileText, Focus, GitBranch, Link2, Sparkles, Star, X } from 'lucide-react';
+import { Check, ExternalLink, FileText, Flame, Focus, GitBranch, Link2, Sparkles, Star, X } from 'lucide-react';
 import { exploreApi, streamNodeInsight } from '../../../api/explore';
 import { cx } from './utils';
 
@@ -401,6 +401,18 @@ export default function NodePanel({ node, neighbors, getNode, onSelectNode, onCl
                 <Star size={12} /> {formatStars(github.stars)}
               </span>
             </div>
+            {github.trending && (
+              <div className='constellation-panel-trending-badge' title='来自 github.com/trending 官方飙升榜'>
+                <Flame size={12} />
+                <span>
+                  GitHub {github.trending.since === 'daily' ? '日榜' : '周榜'} #
+                  {github.trending.rank}
+                  {github.trending.periodStars
+                    ? ` · ${github.trending.since === 'daily' ? '今日' : '本周'} +${github.trending.periodStars.toLocaleString('en-US')} stars`
+                    : ''}
+                </span>
+              </div>
+            )}
             {github.description && (
               <p className='constellation-panel-github-desc'>{github.description}</p>
             )}

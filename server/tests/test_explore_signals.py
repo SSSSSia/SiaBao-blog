@@ -58,48 +58,107 @@ def test_mom_score_zero_views_is_zero():
 
 
 # ---------------------------------------------------------------------------
-# A3 — HTML trending parse (pure function)
+# A3 — HTML trending parse (pure function)：daily/weekly 官方飙升榜
 # ---------------------------------------------------------------------------
-def test_parse_trending_html_extracts_repos():
+def test_parse_trending_page_extracts_rank_and_period_stars():
     from app.services import github_trending_service as ghs
 
     html = """
-    <article>
+    <article class="Box-row">
       <h2><a href="/owner/repo-one">repo-one</a></h2>
-      <p>1,234 stars this week</p>
+      <a href="/owner/repo-one/stargazers" class="d-inline-block mr-3">
+        <svg/> 12,345
+      </a>
+      <span class="float-sm-right"><svg/> 1,234 stars today</span>
     </article>
-    <article>
+    <article class="Box-row">
       <h2><a href="/owner/repo-two">repo-two</a></h2>
-      <p>567 stars this week</p>
+      <a href="/owner/repo-two/stargazers" class="d-inline-block mr-3">
+        <svg/> 999
+      </a>
+      <span class="float-sm-right"><svg/> 567 stars this week</span>
     </article>
     """
-    out = ghs._parse_trending_html(html, "rust")
-    assert "owner/repo-one" in out
-    assert out["owner/repo-one"]["stars"] == 1234
-    assert out["owner/repo-two"]["stars"] == 567
-    # 标记来源 + 语言
-    assert out["owner/repo-one"]["_src"] == "scrape"
-    assert out["owner/repo-one"]["language"] == "Rust"
+    out = ghs._parse_trending_page(html, "rust")
+    # 榜单保持页面顺序 = 官方排名
+    assert [r["repo"] for r in out] == ["owner/repo-one", "owner/repo-two"]
+    first = out[0]
+    assert first["stars"] == 12345
+    assert first["period_stars"] == 1234
+    # 周期增量直接作为该源 momentum 原始值（真·rising 信号）
+    assert first["momentum"] == 1234.0
+    assert first["_src"] == "scrape"
+    assert first["language"] == "Rust"
+    assert first["url"] == "https://github.com/owner/repo-one"
 
 
-def test_parse_trending_html_skips_non_repo_hrefs():
+def test_parse_trending_page_skips_non_repo_hrefs():
     from app.services import github_trending_service as ghs
 
-    # settings / marketplace 等非仓库 href 不应被当成 repo
+    # 站点导航（article 之外）被分块整体过滤；article 内的站点路径/多段路径也不算 repo
     html = """
-      <a href="/settings/profile">settings</a> 999 stars
-      <a href="/features/marketplace">marketplace</a> 999 stars
-      <a href="/owner/real-repo">real</a> 42 stars
+    <nav>
+      <a href="/features">features</a> 999 stars today
+      <a href="/settings/profile">settings</a> 999 stars today
+    </nav>
+    <article>
+      <a href="/trending/rust">trending</a>
+      <a href="/owner/repo/forks">forks</a>
+      <a href="/owner/real-repo">real</a>
+      <span>42 stars today</span>
+    </article>
     """
-    out = ghs._parse_trending_html(html, "go")
-    assert list(out.keys()) == ["owner/real-repo"]
+    out = ghs._parse_trending_page(html, "go")
+    assert [r["repo"] for r in out] == ["owner/real-repo"]
+    assert out[0]["period_stars"] == 42
 
 
-def test_parse_trending_html_empty_on_unmatched():
+def test_parse_trending_page_empty_on_unmatched():
     from app.services import github_trending_service as ghs
 
-    # GitHub 改版后正则失配 → 空映射（调用方据此告警，A3 的核心）
-    assert ghs._parse_trending_html("<html><body>totally different markup</body></html>", "go") == {}
+    # GitHub 改版后正则失配 → 空列表（调用方据此告警，A3 的核心）
+    assert (
+        ghs._parse_trending_page("<html><body>totally different markup</body></html>", "go")
+        == []
+    )
+
+
+def test_merge_sources_preserves_trending_fields():
+    from app.services import github_trending_service as ghs
+
+    # Search 元数据更全、覆盖 scrape——但官方榜身份字段必须存活
+    scrape = {
+        "a/b": {
+            "repo": "a/b",
+            "trending_since": "daily",
+            "trending_rank": 3,
+            "trending_stars": 812,
+            "_src": "scrape",
+        }
+    }
+    search = {
+        "a/b": {
+            "repo": "a/b",
+            "topics": ["rust"],
+            "created_at": "2025-01-01",
+            "_src": "search",
+        }
+    }
+    merged = ghs._merge_sources(search, scrape)
+    assert merged["a/b"]["_src"] == "search"  # 元数据以 Search 为准
+    assert merged["a/b"]["topics"] == ["rust"]
+    assert merged["a/b"]["trending_since"] == "daily"  # 榜单身份保留
+    assert merged["a/b"]["trending_rank"] == 3
+    assert merged["a/b"]["trending_stars"] == 812
+
+
+def test_trending_key_daily_beats_weekly_lower_rank_wins():
+    from app.services import github_trending_service as ghs
+
+    # daily 优先于 weekly；同周期内 rank 越小越优先
+    assert ghs._trending_key("daily", 20) < ghs._trending_key("weekly", 1)
+    assert ghs._trending_key("daily", 1) < ghs._trending_key("daily", 2)
+    assert ghs._trending_key("weekly", 3) < ghs._trending_key("weekly", 5)
 
 
 # ---------------------------------------------------------------------------

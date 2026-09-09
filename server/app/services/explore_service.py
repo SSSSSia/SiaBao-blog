@@ -459,6 +459,13 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
             topics = [t.lower() for t in (r.get("topics", []) or [])]
             language = (r.get("language") or "").lower()
 
+            # 官方飙升榜身份（来自 github.com/trending daily/weekly 爬取，
+            # Search API 覆盖元数据后仍保留）。
+            t_since = r.get("trending_since")
+            t_rank = r.get("trending_rank")
+            t_stars = r.get("trending_stars")
+            is_trending = bool(t_since and t_rank)
+
             concept_id = None
             for t in topics:
                 if t in concept_by_topic:
@@ -468,30 +475,44 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
                 concept_id = concept_by_lang[language]
 
             cap_key = concept_id or (f"lang:{language}" if language else "lang:other")
-            if seen_per_topic.get(cap_key, 0) >= 5:
+            # 官方飙升榜仓库豁免每 concept 上限：它们是真 trending 信号，
+            # 不应被同话题的「累计 star 大户」挤出图谱。
+            if not is_trending and seen_per_topic.get(cap_key, 0) >= 5:
                 continue
             seen_per_topic[cap_key] = seen_per_topic.get(cap_key, 0) + 1
 
             category = nodes[concept_id]["category"] if concept_id and concept_id in nodes else "github"
             gh_weight = (r.get("stars", 0) / star_max)
             gh_momentum = (r.get("momentum", 0.0) / mom_max) if mom_max else 0.0
+            if is_trending:
+                # 官方榜排名是最真实的上升信号：rank 1 → 1.0，随名次衰减，0.4 托底
+                # （0.4 恰好是前端 render 的辉光阈值，保证榜单节点一定「发光」）。
+                rank_momentum = max(0.4, 1.0 - (t_rank - 1) / 12.0)
+                gh_momentum = max(gh_momentum, rank_momentum)
             # 权重融合 stars（使用量代理）+ momentum（上升势能）：让「新星」也能浮上来，
             # 不被 stars 长期霸榜的老仓库压死。mw 控制动量占比，默认 0.2。
             mw = settings.explore_github_momentum_weight
             mw = max(0.0, min(mw, 0.6))  # 钳制，避免动量占比过高喧宾夺主
             gh_score = (1.0 - mw) * gh_weight + mw * gh_momentum
+            github_payload = {
+                "repo": repo,
+                "stars": r.get("stars", 0),
+                "language": r.get("language", ""),
+                "url": r.get("url", ""),
+                "description": r.get("description", ""),
+            }
+            if is_trending:
+                github_payload["trending"] = {
+                    "since": t_since,
+                    "rank": t_rank,
+                    "periodStars": t_stars or 0,
+                }
             add_node(
                 nid,
                 label=repo.split("/", 1)[-1],
                 category=category,
                 desc=r.get("description", ""),
-                github={
-                    "repo": repo,
-                    "stars": r.get("stars", 0),
-                    "language": r.get("language", ""),
-                    "url": r.get("url", ""),
-                    "description": r.get("description", ""),
-                },
+                github=github_payload,
                 weight=0.3 + 0.6 * gh_score,
                 momentum=gh_momentum,
                 tags=topics[:6],
@@ -514,6 +535,20 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
                 )
                 raw_weights.setdefault(lang_node, 0.25)
                 _add_edge(edges_accum, lang_node, nid, 0.4, "shared-language")
+            elif is_trending:
+                # 总榜来的飙升仓库可能语言/话题双缺（Search 未覆盖时）：
+                # 挂到 lang:other 聚合节点，避免成为力导向图里的游离点。
+                lang_node = "lang:other"
+                add_node(
+                    lang_node,
+                    label="other",
+                    category="github",
+                    desc="暂未归类语言的 GitHub 仓库聚合节点",
+                    weight=0.25,
+                    momentum=0.0,
+                )
+                raw_weights.setdefault(lang_node, 0.25)
+                _add_edge(edges_accum, lang_node, nid, 0.4, "trending-hub")
 
     # --- 5. Curated links ---
     for link in curated_links:
@@ -606,11 +641,20 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
     edges = _finalize_edges(edges_accum, nodes)
 
     # --- 8. Prune nodes to hard cap ---
+    # 官方飙升榜节点优先保留（它们是页面的核心信号），其余按 weight 降序填充。
     node_list = list(nodes.values())
     node_list.sort(key=lambda n: n.get("weight", 0), reverse=True)
     max_nodes = settings.explore_max_nodes
     if len(node_list) > max_nodes:
-        keep_ids = {n["id"] for n in node_list[:max_nodes]}
+        keep_ids = {
+            n["id"]
+            for n in node_list
+            if (n.get("github") or {}).get("trending")
+        }
+        for n in node_list:
+            if len(keep_ids) >= max_nodes:
+                break
+            keep_ids.add(n["id"])
         edges = [e for e in edges if e["source"] in keep_ids and e["target"] in keep_ids]
         node_list = [n for n in node_list if n["id"] in keep_ids]
 

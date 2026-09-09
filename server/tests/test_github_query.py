@@ -76,3 +76,38 @@ async def test_get_data_uses_fresh_cache_without_refresh(monkeypatch):
 
     out = await ghs.get_github_data()
     assert out is fresh
+
+
+# ---------------------------------------------------------------------------
+# _assemble_cache — 官方飙升榜区块 + 榜单仓库动量托底
+# ---------------------------------------------------------------------------
+def test_assemble_cache_carries_trending_block_and_floors_official_repos():
+    seen = {
+        "search/old": {"repo": "search/old", "stars": 50000, "momentum": 999.0, "_src": "search"},
+        "rising/a": {
+            "repo": "rising/a", "stars": 900, "momentum": 812.0, "_src": "scrape",
+            "trending_since": "daily", "trending_rank": 1, "trending_stars": 812,
+        },
+        "rising/b": {
+            "repo": "rising/b", "stars": 30, "momentum": 12.0, "_src": "scrape",
+            "trending_since": "weekly", "trending_rank": 9, "trending_stars": 12,
+        },
+    }
+    trending = {
+        "daily": [{"repo": "rising/a", "rank": 1, "stars": 900, "periodStars": 812, "language": ""}],
+        "weekly": [{"repo": "rising/b", "rank": 9, "stars": 30, "periodStars": 12, "language": ""}],
+    }
+    out = ghs._assemble_cache(seen, 42, trending=trending)
+
+    # 官方榜区块原样入缓存，供前端直接渲染飙升榜
+    assert out["trending"]["daily"][0]["repo"] == "rising/a"
+    assert out["trending"]["weekly"][0]["periodStars"] == 12
+
+    repos = {r["repo"]: r for r in out["repos"]}
+    # search 源归一化后动量 1.0；官方榜仓库托底 ≥0.45 保持可见
+    assert repos["search/old"]["momentum"] == 1.0
+    assert repos["rising/a"]["momentum"] >= 0.45
+    assert repos["rising/b"]["momentum"] >= 0.45
+    # 榜单身份字段随 repo 落缓存（图谱融合靠它识别官方飙升仓库）
+    assert repos["rising/b"]["trending_rank"] == 9
+    assert "_src" not in repos["rising/b"]
