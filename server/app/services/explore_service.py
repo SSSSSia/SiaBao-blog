@@ -460,10 +460,12 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
             language = (r.get("language") or "").lower()
 
             # 官方飙升榜身份（来自 github.com/trending daily/weekly 爬取，
-            # Search API 覆盖元数据后仍保留）。
+            # Search API 覆盖元数据后仍保留）。trending_since/rank/stars 是
+            # 主徽标（日榜优先），trending_also 是另一张榜的副身份。
             t_since = r.get("trending_since")
             t_rank = r.get("trending_rank")
             t_stars = r.get("trending_stars")
+            t_also = r.get("trending_also") or {}
             is_trending = bool(t_since and t_rank)
 
             concept_id = None
@@ -502,11 +504,18 @@ async def _construct(tag_agg: dict, cat_agg: dict, blog_hash: str) -> dict:
                 "description": r.get("description", ""),
             }
             if is_trending:
-                github_payload["trending"] = {
-                    "since": t_since,
-                    "rank": t_rank,
-                    "periodStars": t_stars or 0,
-                }
+                trending_list = [
+                    {"since": t_since, "rank": t_rank, "periodStars": t_stars or 0}
+                ]
+                if t_also.get("since") and t_also.get("rank"):
+                    trending_list.append(
+                        {
+                            "since": t_also["since"],
+                            "rank": t_also["rank"],
+                            "periodStars": t_also.get("periodStars") or 0,
+                        }
+                    )
+                github_payload["trending"] = trending_list
             add_node(
                 nid,
                 label=repo.split("/", 1)[-1],

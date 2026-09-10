@@ -31,7 +31,8 @@ class ExploreNodeGithub(BaseModel):
     language: str = ""
     url: str = ""
     description: str = ""
-    trending: Optional[ExploreNodeTrending] = None
+    # 官方飙升榜身份列表（可同时在日榜与周榜），日榜在前。
+    trending: list[ExploreNodeTrending] = Field(default_factory=list)
 
 
 class ExploreNode(BaseModel):

@@ -1,8 +1,9 @@
 /**
  * TrendingSidebar — 飙升榜（DOM）
  * 优先展示官方 GitHub Trending 榜（后端爬 github.com/trending，节点带
- * n.github.trending 字段），「今日 / 本周」tab 切换、按官方排名排序，
+ * n.github.trending 身份列表），「今日 / 本周」tab 切换、按官方排名排序，
  * 显示周期新增 stars；点击某条 flyToNode(id) 平滑定位到该节点。
+ * 一个仓库可同时上日榜与周榜（trending 为数组），两个 tab 都会出现。
  * 图中无官方榜数据时（爬取失败/未开启）降级为原 momentum Top-10。
  */
 
@@ -19,6 +20,13 @@ const TABS = [
 
 const fmtStars = (n) => (typeof n === 'number' ? n.toLocaleString('en-US') : n);
 
+// 兼容取节点的榜单身份列表（后端为数组，防御旧格式单对象）。
+const trendingListOf = (n) => {
+  const t = n.github?.trending;
+  if (!t) return [];
+  return Array.isArray(t) ? t : [t];
+};
+
 // 移动端默认折叠浮层，避免遮挡画布；用户可手动展开。
 const isMobileViewport = () =>
   typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
@@ -27,13 +35,12 @@ export default function TrendingSidebar({ nodes, flyToNode }) {
   const [collapsed, setCollapsed] = useState(isMobileViewport);
   const [tab, setTab] = useState('daily');
 
-  // 官方榜：按 tab 分组、官方排名升序。
+  // 官方榜：按 tab 分组、官方排名升序；双榜仓库在两个 tab 各自出现。
   const trendingByTab = useMemo(() => {
     const map = { daily: [], weekly: [] };
     for (const n of nodes || []) {
-      const t = n.github?.trending;
-      if (t && (t.since === 'daily' || t.since === 'weekly')) {
-        map[t.since].push({ node: n, trending: t });
+      for (const t of trendingListOf(n)) {
+        if (map[t.since]) map[t.since].push({ node: n, trending: t });
       }
     }
     for (const key of Object.keys(map)) {

@@ -195,7 +195,8 @@ export function draw(ctx, params) {
 
     // 官方 GitHub Trending 飙升榜节点：火焰色外环，与 momentum 辉光叠加，
     // 让「官方榜单认证的上升仓库」在星图里一眼可辨。
-    if (n.github?.trending) {
+    // trending 为身份列表（可同时上日榜与周榜），有任一身份即标记。
+    if (n.github?.trending?.length) {
       ctx.beginPath();
       ctx.arc(n.x, n.y, pr + 3.5 / scale, 0, Math.PI * 2);
       ctx.lineWidth = 1.5 / scale;

@@ -260,8 +260,46 @@ async def test_trending_repo_bypasses_cap_and_carries_badge(monkeypatch):
     by_id = {n["id"]: n for n in graph["nodes"]}
     assert "gh:plain/p4" in by_id and "gh:plain/p5" not in by_id  # 普通仓库仍受上限约束
     tr = by_id["gh:rising/star"]  # trending 豁免上限
-    assert tr["github"]["trending"] == {"since": "daily", "rank": 1, "periodStars": 812}
+    assert tr["github"]["trending"] == [
+        {"since": "daily", "rank": 1, "periodStars": 812}
+    ]
     assert tr["momentum"] >= 0.4  # rank 动量托底（前端辉光阈值）
+
+
+async def test_trending_dual_list_node_carries_both_badges(monkeypatch):
+    """同时上日榜与周榜的仓库：节点携带两份榜单身份（日榜在前）。"""
+
+    async def _gh():
+        return {
+            "repos": [
+                {
+                    "repo": "dual/list",
+                    "stars": 9000,
+                    "language": "Nim",
+                    "topics": [],
+                    "momentum": 0.05,
+                    "trending_since": "daily",
+                    "trending_rank": 13,
+                    "trending_stars": 300,
+                    "trending_also": {
+                        "since": "weekly",
+                        "rank": 2,
+                        "periodStars": 9146,
+                    },
+                }
+            ]
+        }
+
+    monkeypatch.setattr(explore_service, "_build_blog_signals", _signals({}, {}))
+    monkeypatch.setattr(explore_service, "_load_index", lambda: {})
+    monkeypatch.setattr(explore_service.github_trending_service, "get_github_data", _gh)
+
+    graph = await explore_service._construct({}, {}, "h")
+    tr = next(n for n in graph["nodes"] if n["id"] == "gh:dual/list")
+    assert tr["github"]["trending"] == [
+        {"since": "daily", "rank": 13, "periodStars": 300},
+        {"since": "weekly", "rank": 2, "periodStars": 9146},
+    ]
 
 
 async def test_node_prune_keeps_trending_nodes(monkeypatch):

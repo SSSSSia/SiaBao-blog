@@ -430,6 +430,35 @@ def _parse_trending_page(html: str, lang: str) -> list[dict]:
     return out
 
 
+def _merge_overall_entry(
+    seen: dict[str, dict], repo: str, since: str, rank: int, period_stars: int, base: dict
+) -> None:
+    """Fold one overall-trending entry into ``seen`` (pure, unit-testable).
+
+    The primary badge (``trending_since/rank/stars``) goes to the first overall
+    list a repo joins in page order (daily pages are scraped before weekly); a
+    repo on BOTH lists keeps the primary and records the other period in
+    ``trending_also`` so it surfaces under both sidebar tabs.
+    """
+    membership = {"since": since, "rank": rank, "periodStars": period_stars}
+    prev = seen.get(repo)
+    if prev is None or not prev.get("trending_since"):
+        # 还没有总榜身份（不存在 / 语言榜普通条目）→ 升级为主徽标
+        entry = dict(base)
+        entry["trending_since"] = since
+        entry["trending_rank"] = rank
+        entry["trending_stars"] = period_stars
+        seen[repo] = entry
+    elif prev["trending_since"] == since:
+        # 同榜重现：保留更靠前的排名（防御性，总榜每周期只有一页）
+        if rank < prev.get("trending_rank", 999):
+            prev["trending_rank"] = rank
+            prev["trending_stars"] = period_stars
+    else:
+        # 另一张总榜的身份 → 记为副榜身份（节点在两个 tab 都可见）
+        prev["trending_also"] = membership
+
+
 async def _fetch_trending() -> tuple[dict[str, dict], dict[str, list]]:
     """Scrape github.com/trending daily+weekly (overall + per-language pages).
 
@@ -438,12 +467,12 @@ async def _fetch_trending() -> tuple[dict[str, dict], dict[str, list]]:
     logged and skipped. Returns:
 
     - ``seen``: repo -> data, tagged ``_src="scrape"``. Repos on the *overall*
-      daily/weekly lists additionally carry ``trending_since`` /
-      ``trending_rank`` / ``trending_stars`` (the canonical 飙升榜 badge the
-      graph and sidebar render); language-page repos join the pool as regular
-      coverage so they compete under the normal per-topic caps instead of
-      flooding the graph. A repo on both periods keeps the daily badge
-      (fresher signal).
+      daily/weekly lists carry ``trending_since`` / ``trending_rank`` /
+      ``trending_stars`` (the canonical 飙升榜 badge the graph and sidebar
+      render); a repo on BOTH periods keeps the daily badge as primary and the
+      weekly one in ``trending_also`` so it surfaces under both tabs.
+      Language-page repos join the pool as regular coverage so they compete
+      under the normal per-topic caps instead of flooding the graph.
     - ``trending``: ``{"daily": [...], "weekly": [...]}`` rank-ordered overall
       entries (``repo/rank/stars/periodStars/language``) for the cache payload
       and the frontend sidebar.
@@ -522,16 +551,9 @@ async def _fetch_trending() -> tuple[dict[str, dict], dict[str, list]]:
                         "language": r["language"],
                     }
                 )
-                # 同 repo 可能同时在 daily 与 weekly 榜：daily 优先（信号更
-                # 新鲜）；同周期内保留更靠前的排名。
-                prev = seen.get(repo)
-                if prev is None or _trending_key(since, rank) < _trending_key(
-                    prev.get("trending_since", ""), prev.get("trending_rank", 999)
-                ):
-                    seen[repo] = dict(r)
-                    seen[repo]["trending_since"] = since
-                    seen[repo]["trending_rank"] = rank
-                    seen[repo]["trending_stars"] = r["period_stars"]
+                _merge_overall_entry(
+                    seen, repo, since, rank, r["period_stars"], r
+                )
             elif repo not in seen:
                 # 语言榜 / 总榜尾部：进普通抓取池（无 trending 身份），
                 # 与 Search 仓库一起按每话题上限竞争进图。
@@ -639,16 +661,21 @@ def _merge_sources(
 
     Search wins on metadata (richer: topics, created_at, real momentum) so
     concept-linking still works for those repos — but the official-list
-    identity (``trending_since/rank/stars``) only exists on the scrape side and
-    must survive the override, otherwise the graph loses track of which repos
-    are genuinely rising.
+    identity (``trending_since/rank/stars`` + ``trending_also``) only exists on
+    the scrape side and must survive the override, otherwise the graph loses
+    track of which repos are genuinely rising.
     """
     merged: dict[str, dict] = {}
     merged.update(scrape_seen)
     for repo, data in search_seen.items():
         prev = merged.get(repo)
         if prev is not None:
-            for k in ("trending_since", "trending_rank", "trending_stars"):
+            for k in (
+                "trending_since",
+                "trending_rank",
+                "trending_stars",
+                "trending_also",
+            ):
                 if k in prev:
                     data[k] = prev[k]
         merged[repo] = data

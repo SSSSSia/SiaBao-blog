@@ -133,6 +133,7 @@ def test_merge_sources_preserves_trending_fields():
             "trending_since": "daily",
             "trending_rank": 3,
             "trending_stars": 812,
+            "trending_also": {"since": "weekly", "rank": 9, "periodStars": 2100},
             "_src": "scrape",
         }
     }
@@ -150,6 +151,35 @@ def test_merge_sources_preserves_trending_fields():
     assert merged["a/b"]["trending_since"] == "daily"  # 榜单身份保留
     assert merged["a/b"]["trending_rank"] == 3
     assert merged["a/b"]["trending_stars"] == 812
+    assert merged["a/b"]["trending_also"]["since"] == "weekly"  # 副榜身份保留
+
+
+def test_merge_overall_entry_dual_list_keeps_both_memberships():
+    from app.services import github_trending_service as ghs
+
+    base = {"repo": "a/b", "_src": "scrape"}
+    seen: dict = {}
+    # 页面顺序：daily 总榜先于 weekly 总榜处理
+    ghs._merge_overall_entry(seen, "a/b", "daily", 13, 812, base)
+    ghs._merge_overall_entry(seen, "a/b", "weekly", 2, 9146, base)
+    assert seen["a/b"]["trending_since"] == "daily"  # 主徽标不变
+    assert seen["a/b"]["trending_rank"] == 13
+    assert seen["a/b"]["trending_also"] == {
+        "since": "weekly",
+        "rank": 2,
+        "periodStars": 9146,
+    }  # 副榜身份保留 → 侧栏两个 tab 都可见
+
+
+def test_merge_overall_entry_upgrades_plain_entry():
+    from app.services import github_trending_service as ghs
+
+    # 语言榜普通条目（无 trending 身份）被总榜身份升级
+    seen = {"a/b": {"repo": "a/b", "language": "Rust", "_src": "scrape"}}
+    ghs._merge_overall_entry(seen, "a/b", "weekly", 7, 500, {"repo": "a/b", "_src": "scrape"})
+    assert seen["a/b"]["trending_since"] == "weekly"
+    assert seen["a/b"]["trending_rank"] == 7
+    assert "trending_also" not in seen["a/b"]
 
 
 def test_trending_key_daily_beats_weekly_lower_rank_wins():
