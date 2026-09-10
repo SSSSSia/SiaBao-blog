@@ -125,3 +125,32 @@ def test_assemble_cache_carries_trending_block_and_floors_official_repos():
     # 榜单身份字段随 repo 落缓存（图谱融合靠它识别官方飙升仓库）
     assert repos["rising/b"]["trending_rank"] == 9
     assert "_src" not in repos["rising/b"]
+
+
+def test_assemble_cache_falls_back_to_previous_trending_when_scrape_empty():
+    """本次抓取为空（网络抖动）时沿用上一份好榜，而不是把侧栏刷成空白。"""
+    seen = {"search/old": {"repo": "search/old", "stars": 500, "momentum": 1.0, "_src": "search"}}
+    prev_trending = {
+        "daily": [{"repo": "keep/a", "rank": 1, "stars": 900, "periodStars": 812, "language": ""}],
+        "weekly": [{"repo": "keep/b", "rank": 2, "stars": 300, "periodStars": 100, "language": ""}],
+    }
+
+    out = ghs._assemble_cache(
+        seen, 42, trending={"daily": [], "weekly": []}, prev_trending=prev_trending
+    )
+    assert [e["repo"] for e in out["trending"]["daily"]] == ["keep/a"]
+    assert [e["repo"] for e in out["trending"]["weekly"]] == ["keep/b"]
+
+    # 新榜非空的周期用新榜，只有空缺的周期才回退
+    out2 = ghs._assemble_cache(
+        seen,
+        42,
+        trending={"daily": [{"repo": "new/x", "rank": 1, "stars": 1, "periodStars": 1, "language": ""}], "weekly": []},
+        prev_trending=prev_trending,
+    )
+    assert out2["trending"]["daily"][0]["repo"] == "new/x"
+    assert out2["trending"]["weekly"][0]["repo"] == "keep/b"
+
+    # 无旧榜且新榜为空 → 空列表（前端降级为 momentum 榜）
+    out3 = ghs._assemble_cache(seen, 42, trending={"daily": [], "weekly": []}, prev_trending=None)
+    assert out3["trending"] == {"daily": [], "weekly": []}

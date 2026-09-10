@@ -455,37 +455,53 @@ async def _fetch_trending() -> tuple[dict[str, dict], dict[str, list]]:
             pages.append((since, lang))
 
     async def _scrape_page(
-        client: httpx.AsyncClient, since: str, lang: str
+        client: httpx.AsyncClient, since: str, lang: str, attempts: int = 2
     ) -> list[dict]:
         url = f"{TRENDING_URL}/{lang}?since={since}" if lang else f"{TRENDING_URL}?since={since}"
-        try:
-            resp = await client.get(url, headers=TRENDING_HEADERS)
-            if resp.status_code != 200:
-                logger.warning(
-                    "GitHub trending scrape non-200 (%s) for %s", resp.status_code, url
-                )
-                return []
-            parsed = _parse_trending_page(resp.text, lang)
-            # Got a 200 (so HTML was served) but matched nothing → the regex
-            # likely broke after a GitHub markup change. Surface it so it isn't
-            # silently mistaken for "no trending repos this period".
-            if not parsed:
-                logger.warning(
-                    "GitHub trending scrape parsed 0 repos for %s "
-                    "(markup changed? payload=%d bytes)",
-                    url,
-                    len(resp.text),
-                )
-            return parsed
-        except httpx.HTTPError as e:
-            logger.warning("GitHub trending scrape failed (%s): %s", url, e)
+        # github.com 的 HTML 端点从部分网络（尤其国内）访问时常被间歇性重置，
+        # 单页瞬时失败重试一次能挽回大多数页面。
+        for attempt in range(1, attempts + 1):
+            try:
+                resp = await client.get(url, headers=TRENDING_HEADERS)
+                if resp.status_code != 200:
+                    logger.warning(
+                        "GitHub trending scrape non-200 (%s) for %s",
+                        resp.status_code,
+                        url,
+                    )
+                    return []
+                parsed = _parse_trending_page(resp.text, lang)
+                # Got a 200 (so HTML was served) but matched nothing → the regex
+                # likely broke after a GitHub markup change. Surface it so it
+                # isn't silently mistaken for "no trending repos this period".
+                if not parsed:
+                    logger.warning(
+                        "GitHub trending scrape parsed 0 repos for %s "
+                        "(markup changed? payload=%d bytes)",
+                        url,
+                        len(resp.text),
+                    )
+                return parsed
+            except httpx.HTTPError as e:
+                if attempt >= attempts:
+                    logger.warning("GitHub trending scrape failed (%s): %s", url, e)
+                    return []
+                await asyncio.sleep(1.5)
         return []
 
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        # Fetch all pages concurrently — cuts scrape latency from N×timeout
-        # to ~1×timeout. Each page is independent and best-effort.
+        # 并发上限 3：10 页全并发对一个 IP 来说太像机器人流量，容易招致连接重置；
+        # 配合单页重试，整体成功率比「更快但更脆」的全并发高。
+        sem = asyncio.Semaphore(3)
+
+        async def _bounded(since: str, lang: str) -> list[dict]:
+            async with sem:
+                return await _scrape_page(client, since, lang)
+
+        # Fetch all pages concurrently (bounded) — each page is independent and
+        # best-effort.
         results = await asyncio.gather(
-            *(_scrape_page(client, since, lang) for since, lang in pages)
+            *(_bounded(since, lang) for since, lang in pages)
         )
 
     seen: dict[str, dict] = {}
@@ -536,6 +552,7 @@ def _assemble_cache(
     rate_remaining: int | None,
     history: dict | None = None,
     trending: dict[str, list] | None = None,
+    prev_trending: dict[str, list] | None = None,
 ) -> dict:
     """Build the cache payload, ranking rising-fast repos first.
 
@@ -595,14 +612,23 @@ def _assemble_cache(
         for k, v in sorted(lang_counts.items(), key=lambda kv: -kv[1])
     ]
 
+    # 官方每日/每周飙升榜（已按 rank 排序、截断到 TRENDING_LIST_SIZE）。
+    # 本期抓取为空（网络抖动/被重置）时沿用上一份好榜：对用户来说「稍旧的真实
+    # 榜单」远好于「凭空消失」，下一次成功刷新会自动替换。
+    merged_trending: dict[str, list] = {}
+    for period in ("daily", "weekly"):
+        new_list = (trending or {}).get(period) or []
+        if not new_list:
+            new_list = (prev_trending or {}).get(period) or []
+        merged_trending[period] = new_list[:TRENDING_LIST_SIZE]
+
     return {
         "schema": CACHE_SCHEMA_VERSION,
         "fetched_at": _now_iso(),
         "rate_limit_remaining": rate_remaining,
         "repos": repos,
         "languages": languages,
-        # 官方每日/每周飙升榜（已按 rank 排序、截断到 TRENDING_LIST_SIZE）。
-        "trending": trending or {"daily": [], "weekly": []},
+        "trending": merged_trending,
     }
 
 
@@ -654,7 +680,15 @@ async def _refresh() -> dict | None:
         # Star 历史：velocity 需在归一化前覆盖 momentum，故先加载、传入 assembly；
         # 落库后再用本次快照更新历史，供下一次刷新计算增量。
         history = _load_history() if settings.explore_star_history_enabled else None
-        data = _assemble_cache(merged, rate_remaining, history=history, trending=trending)
+        # 上一份缓存中的好榜：本次 trending 抓取为空（网络抖动）时兜底沿用。
+        prev_cache = _load_cache()
+        data = _assemble_cache(
+            merged,
+            rate_remaining,
+            history=history,
+            trending=trending,
+            prev_trending=(prev_cache or {}).get("trending"),
+        )
         _save_cache_atomic(data)
         if settings.explore_star_history_enabled:
             _update_history(data["repos"])
