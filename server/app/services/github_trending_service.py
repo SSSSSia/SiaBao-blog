@@ -69,6 +69,8 @@ QUERY_LANGUAGES = ["rust", "go", "typescript", "python"]
 # --- github.com/trending 爬取（官方飙升榜，唯一真实 rising 信号）---
 TRENDING_URL = "https://github.com/trending"
 TRENDING_PERIODS = ("daily", "weekly")
+# 注意：daily 榜在 UTC 午夜重置，刚过午夜（约 00:00–01:00 UTC）抓取可能得到空榜——
+# 属数据源日节律而非故障；届时 weekly 仍在，下一个刷新周期 daily 自动恢复。
 TRENDING_LANGUAGES = ["rust", "go", "typescript", "python"]
 # 缓存中每个榜单（daily/weekly）保留的官方榜条数。
 TRENDING_LIST_SIZE = 15
