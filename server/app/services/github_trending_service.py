@@ -35,6 +35,10 @@ CACHE_FILE = DATA_DIR / "explore_github_cache.json"
 HISTORY_FILE = DATA_DIR / "explore_github_history.json"
 GITHUB_API = "https://api.github.com"
 REQUEST_TIMEOUT = 15.0  # seconds — project rule: all network calls must time out
+# 缓存 schema 版本：payload 结构变更时 bump。旧结构缓存即使 fetched_at 尚在 TTL 内
+# 也视为过期——否则部署重启时 preheat 看到「新鲜但缺新字段」的缓存会跳过重抓，
+# 新功能静默失效（曾因此上线后 2 小时内 trending 一直是空的）。
+CACHE_SCHEMA_VERSION = 2
 # Star 历史保留窗口：超过此时长的快照剪枝，控制 history 文件体积。
 HISTORY_MAX_AGE_DAYS = 90
 HISTORY_MAX_POINTS = 16
@@ -590,6 +594,7 @@ def _assemble_cache(
     ]
 
     return {
+        "schema": CACHE_SCHEMA_VERSION,
         "fetched_at": _now_iso(),
         "rate_limit_remaining": rate_remaining,
         "repos": repos,
@@ -669,6 +674,9 @@ async def _refresh() -> dict | None:
 
 def _is_stale(cache: dict | None, force: bool) -> bool:
     if force or not cache:
+        return True
+    # schema 不匹配 = 旧代码写入的缓存，缺当前结构的新字段 → 立即重抓。
+    if cache.get("schema") != CACHE_SCHEMA_VERSION:
         return True
     fetched = cache.get("fetched_at")
     if not fetched:

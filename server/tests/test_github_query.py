@@ -48,9 +48,21 @@ def test_parse_rate_limit():
 def test_is_stale_when_missing_or_forced():
     assert ghs._is_stale(None, force=False) is True
     assert ghs._is_stale({"fetched_at": None}, force=False) is True
-    fresh = {"fetched_at": datetime.now(timezone.utc).isoformat()}
+    fresh = {
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "schema": ghs.CACHE_SCHEMA_VERSION,
+    }
     assert ghs._is_stale(fresh, force=False) is False
     assert ghs._is_stale(fresh, force=True) is True
+
+
+def test_is_stale_on_schema_mismatch():
+    """旧 schema 的缓存即使 fetched_at 新鲜也视为过期（部署后立即重抓，功能不静默失效）。"""
+    now = datetime.now(timezone.utc).isoformat()
+    current = {"fetched_at": now, "schema": ghs.CACHE_SCHEMA_VERSION}
+    legacy = {"fetched_at": now}  # 旧代码写入：无 schema 字段
+    assert ghs._is_stale(current, force=False) is False
+    assert ghs._is_stale(legacy, force=False) is True
 
 
 # ---------------------------------------------------------------------------
@@ -65,6 +77,7 @@ async def test_get_data_uses_fresh_cache_without_refresh(monkeypatch):
     monkeypatch.setattr(ghs.settings, "explore_github_enabled", True)
     fresh = {
         "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "schema": ghs.CACHE_SCHEMA_VERSION,
         "repos": [{"repo": "owner/name"}],
         "rate_limit_remaining": 10,
     }
@@ -99,6 +112,7 @@ def test_assemble_cache_carries_trending_block_and_floors_official_repos():
     }
     out = ghs._assemble_cache(seen, 42, trending=trending)
 
+    assert out["schema"] == ghs.CACHE_SCHEMA_VERSION
     # 官方榜区块原样入缓存，供前端直接渲染飙升榜
     assert out["trending"]["daily"][0]["repo"] == "rising/a"
     assert out["trending"]["weekly"][0]["periodStars"] == 12
