@@ -49,7 +49,8 @@
   background: var(--bg-primary);
   border-radius: var(--radius-sm);
   border: 1px solid var(--bg-tertiary);
-  max-width: 50%;
+  /* 整年 53 列热力图需要全宽；SVG viewBox + width:100% 自适应缩放 */
+  max-width: 100%;
 }
 
 .heatmap-header {
@@ -74,6 +75,37 @@
 .heatmap-period {
   font-size: 0.75rem;
   color: var(--text-secondary);
+}
+
+/* 年份切换器（‹ 2026 年 · N 篇 ›） */
+.heatmap-year-switch {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.heatmap-year-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.heatmap-year-btn:hover:not(:disabled) {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.heatmap-year-btn:disabled {
+  color: var(--text-tertiary);
+  opacity: 0.5;
+  cursor: default;
 }
 
 .heatmap-grid {
@@ -172,21 +204,8 @@
   border-radius: var(--radius-sm);
 }
 
-@media (max-width: 1200px) {
-  .heatmap-section {
-    max-width: 60%;
-  }
-}
-
-@media (max-width: 900px) {
-  .heatmap-section {
-    max-width: 80%;
-  }
-}
-
 @media (max-width: 640px) {
   .heatmap-section {
-    max-width: 100%;
     padding: var(--space-3);
   }
 }

@@ -269,18 +269,23 @@ async def get_article_counts() -> dict:
     }
 
 
-async def get_heatmap_data() -> dict:
-    """Get writing activity heatmap data for the last 6 months.
+async def get_heatmap_data(year: int | None = None) -> dict:
+    """Get writing activity heatmap data.
+
+    Args:
+        year: 目标年份。None 时默认取有文章的最新一年（首次加载无需预知年份）。
 
     Returns:
-        Dictionary with 'dates' key mapping YYYY-MM-DD to article info.
+        Dictionary with:
+        - 'dates': YYYY-MM-DD -> {"count": N, "articles": [{title, slug}]}
+        - 'year': 实际生效的年份
+        - 'years': 有文章的全部年份（降序），供前端年切换器渲染
+        - 'first_year': 第一篇文章发布年份
     """
     all_articles, _ = await get_articles_from_repo(page=1, page_size=10000)
 
-    now = datetime.utcnow()
-    six_months_ago = now - timedelta(days=180)
-
-    date_map: dict[str, dict] = {}
+    # 先全量收集发布日期：计算可用年份范围，再按目标年份过滤。
+    year_dates: dict[int, list[tuple[str, dict]]] = {}
     for article in all_articles:
         published_at_str = article.get("published_at")
         if not published_at_str:
@@ -289,19 +294,34 @@ async def get_heatmap_data() -> dict:
             pub_date = datetime.fromisoformat(
                 published_at_str.replace("Z", "+00:00")
             ).replace(tzinfo=None)
-            if pub_date >= six_months_ago:
-                date_key = pub_date.strftime("%Y-%m-%d")
-                if date_key not in date_map:
-                    date_map[date_key] = {"count": 0, "articles": []}
-                date_map[date_key]["count"] += 1
-                date_map[date_key]["articles"].append({
-                    "title": article.get("title", "无标题"),
-                    "slug": article.get("slug", ""),
-                })
         except (ValueError, TypeError):
             continue
+        y = pub_date.year
+        entry = {
+            "title": article.get("title", "无标题"),
+            "slug": article.get("slug", ""),
+        }
+        year_dates.setdefault(y, []).append((pub_date.strftime("%Y-%m-%d"), entry))
 
-    return {"dates": date_map}
+    years = sorted(year_dates.keys(), reverse=True)
+    if not years:
+        return {"dates": {}, "year": None, "years": [], "first_year": None}
+
+    effective_year = year if year in year_dates else years[0]
+
+    date_map: dict[str, dict] = {}
+    for date_key, entry in year_dates[effective_year]:
+        if date_key not in date_map:
+            date_map[date_key] = {"count": 0, "articles": []}
+        date_map[date_key]["count"] += 1
+        date_map[date_key]["articles"].append(entry)
+
+    return {
+        "dates": date_map,
+        "year": effective_year,
+        "years": years,
+        "first_year": years[-1],
+    }
 
 
 async def get_running_days() -> dict:

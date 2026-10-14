@@ -77,9 +77,13 @@ async def get_article_counts_endpoint(
 @router.get("/heatmap")
 async def get_heatmap_endpoint(
     _admin: Annotated[dict, Depends(get_admin_user)],
+    year: Annotated[int | None, Query(ge=2000, le=2100)] = None,
 ) -> R:
-    """Get writing activity heatmap data (admin only)."""
-    heatmap = await get_heatmap_data()
+    """Get writing activity heatmap data (admin only).
+
+    ``year`` 不传时默认返回有文章的最新一年；响应同时携带全部可用年份列表。
+    """
+    heatmap = await get_heatmap_data(year)
     return R.ok(data=heatmap)
 
 

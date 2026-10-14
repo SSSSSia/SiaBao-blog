@@ -40,10 +40,17 @@ export const statisticsApi = {
 
   /**
    * 获取写作热力图数据（需要管理员权限）
-   * @returns {Promise<{data: {dates: {[key: string]: number}}}>}
+   * @param {number} [year] 目标年份，不传时后端默认返回有文章的最新一年
+   * @returns {Promise<{data: {
+   *   dates: {[key: string]: {count: number, articles: Array}},
+   *   year: number,
+   *   years: number[],
+   *   first_year: number|null
+   * }}>}
    */
-  getHeatmap: () => {
-    return get(`${API_BASE}/heatmap`);
+  getHeatmap: (year) => {
+    const query = year ? `?year=${encodeURIComponent(year)}` : '';
+    return get(`${API_BASE}/heatmap${query}`);
   },
 };
 

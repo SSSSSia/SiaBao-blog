@@ -1,16 +1,16 @@
 /**
  * 写作热力图组件
- * 纯 SVG 实现，支持鼠标悬停交互和自定义 tooltip
+ * 纯 SVG 实现，按年展示（从第一篇文章年份起可切换），支持悬停 tooltip
  */
 
 import { useState, useCallback } from 'react'
 import dayjs from 'dayjs'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 // 网格参数
 const CELL_SIZE = 14
 const CELL_GAP = 4
 const CELL_STEP = CELL_SIZE + CELL_GAP
-const WEEKS = 26
 const LABEL_OFFSET_X = 32
 const LABEL_OFFSET_Y = 20
 
@@ -46,16 +46,19 @@ const DAY_LABELS = [
   { index: 5, label: '五' },
 ]
 
-export default function Heatmap({ data = {} }) {
+export default function Heatmap({ data = {}, year, years = [], onYearChange }) {
   const [hoveredDate, setHoveredDate] = useState(null)
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
 
-  const today = dayjs()
-  const startDate = today.subtract(25, 'week').startOf('week')
+  // 年份视图：从该年 1 月 1 日所在周（周日对齐，与原实现一致）铺满到 12 月 31 日
+  const activeYear = year || dayjs().year()
+  const startDate = dayjs(`${activeYear}-01-01`).startOf('week')
+  const yearEnd = dayjs(`${activeYear}-12-31`)
+  const weekCount = yearEnd.diff(startDate, 'week') + 1
 
   // 构建周列数据
   const weeks = []
-  for (let w = 0; w < WEEKS; w++) {
+  for (let w = 0; w < weekCount; w++) {
     const days = []
     for (let d = 0; d < 7; d++) {
       const date = startDate.add(w, 'week').add(d, 'day')
@@ -76,21 +79,41 @@ export default function Heatmap({ data = {} }) {
   // 计算月份标签位置
   const monthLabels = []
   let lastMonth = -1
-  for (let w = 0; w < WEEKS; w++) {
+  for (let w = 0; w < weekCount; w++) {
     const firstDayOfWeek = startDate.add(w, 'week')
     const month = firstDayOfWeek.month()
     if (month !== lastMonth) {
       lastMonth = month
-      monthLabels.push({
-        label: firstDayOfWeek.format('M月'),
-        x: LABEL_OFFSET_X + w * CELL_STEP,
-      })
+      const x = LABEL_OFFSET_X + w * CELL_STEP
+      const prev = monthLabels[monthLabels.length - 1]
+      // 网格首列常落在上一年的 12 月（残月），与紧随的 1 月标签只隔 1~2 列，
+      // 文字会重叠成「12月月」。间距不足 3 列时用当前标签替换前一个：
+      // 丢弃残月、保留本年真月份。
+      if (prev && x - prev.x < CELL_STEP * 3) {
+        monthLabels[monthLabels.length - 1] = {
+          label: firstDayOfWeek.format('M月'),
+          x,
+        }
+      } else {
+        monthLabels.push({
+          label: firstDayOfWeek.format('M月'),
+          x,
+        })
+      }
     }
   }
 
   // SVG 尺寸
-  const svgWidth = LABEL_OFFSET_X + WEEKS * CELL_STEP + 10
+  const svgWidth = LABEL_OFFSET_X + weekCount * CELL_STEP + 10
   const svgHeight = LABEL_OFFSET_Y + 7 * CELL_STEP
+
+  // 该年总篇数（标题旁展示）
+  const yearTotal = Object.values(data).reduce((sum, d) => sum + (d?.count || 0), 0)
+
+  // 年份切换：只在有文章的年份间移动（years 降序），避免跳到空年
+  const yearIndex = years.indexOf(activeYear)
+  const prevYear = yearIndex >= 0 && yearIndex < years.length - 1 ? years[yearIndex + 1] : null
+  const nextYear = yearIndex > 0 ? years[yearIndex - 1] : null
 
   // 鼠标事件处理 — 使用 clientX/clientY，配合 position: fixed
   const handleCellEnter = useCallback((day, e) => {
@@ -114,7 +137,29 @@ export default function Heatmap({ data = {} }) {
       <div className="heatmap-header">
         <div className="heatmap-header-left">
           <h3>写作活跃度</h3>
-          <span className="heatmap-period">近 6 个月</span>
+          <div className="heatmap-year-switch">
+            <button
+              type="button"
+              className="heatmap-year-btn"
+              onClick={() => prevYear && onYearChange?.(prevYear)}
+              disabled={!prevYear}
+              aria-label={`上一年（${prevYear || '无更多年份'}）`}
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="heatmap-period">
+              {activeYear} 年 · {yearTotal} 篇
+            </span>
+            <button
+              type="button"
+              className="heatmap-year-btn"
+              onClick={() => nextYear && onYearChange?.(nextYear)}
+              disabled={!nextYear}
+              aria-label={`下一年（${nextYear || '已是最新'}）`}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
         <div className="heatmap-legend">
           <span className="heatmap-legend-label">少</span>
