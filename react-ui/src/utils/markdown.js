@@ -80,7 +80,19 @@ function preprocessMarkdown(markdown) {
     return placeholder;
   });
 
-  // 5. 【关键修复】在交给 marked 解析前，把代码块恢复为 Markdown！
+  // 5. 【CJK 加粗修复】CommonMark 侧翼规则：当加粗内容以标点/符号结尾
+  // （如全角括号、%、引号）且闭合 ** 后紧贴 CJK 汉字时，闭合定界符不满足
+  // right-flanking，加粗失效、星号原样显示（如 **几率（Odds）**是指）。
+  // 此处仅在「完整 **…** 跨度 + 内容以标点/符号结尾 + 后紧跟 CJK」的失效形态
+  // 下补一个半角空格；正常形态（闭合前是汉字、后跟标点/空格/行尾）不命中。
+  // 注意：必须在恢复代码块之前执行（代码/行内代码已占位保护），避免污染代码；
+  // 单星斜体存在同样问题但罕见，暂不处理。
+  text = text.replace(
+    /(\*\*[^*\n]*?[\p{P}\p{S}]\*\*)(?=[\p{Script=Han}\u3040-\u30ff\uac00-\ud7af])/gu,
+    '$1 ',
+  );
+
+  // 6. 【关键修复】在交给 marked 解析前，把代码块恢复为 Markdown！
   // 注意：必须使用 () => original，防止代码里的 $ 符号被 js 的 replace 方法误识别为正则变量
   codeBlocks.forEach(({ placeholder, original }) => {
     text = text.replace(new RegExp(placeholder, 'g'), () => original);
